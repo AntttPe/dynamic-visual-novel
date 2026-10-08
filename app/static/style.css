@@ -1,0 +1,17 @@
+:root { --bg: #f7f7f8; --fg: #1d1d1f; --muted: #6e6e73; --accent: #4f46e5; --card: #fff; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111114; --fg: #ececf1; --muted: #9a9aa3; --card: #1c1c21; }
+}
+* { box-sizing: border-box; }
+body { margin: 0 auto; max-width: 760px; min-height: 100vh; padding: 16px;
+       display: flex; flex-direction: column; gap: 12px;
+       font-family: system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+header h1 { margin: 0; font-size: 1.4rem; }
+#status { color: var(--muted); font-size: .9rem; }
+#log { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.msg { padding: 10px 14px; border-radius: 10px; background: var(--card); white-space: pre-wrap; }
+.msg.user { align-self: flex-end; background: var(--accent); color: #fff; }
+.msg.error { color: crimson; }
+form { display: flex; gap: 8px; }
+input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--muted); background: var(--card); color: var(--fg); }
+button { padding: 10px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }

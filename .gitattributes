@@ -1,0 +1,5 @@
+# Wymuszamy LF, bo skrypty z CRLF (Windows) psują się w kontenerach Linux
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary

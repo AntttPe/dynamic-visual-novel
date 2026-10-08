@@ -1,0 +1,30 @@
+services:
+  app:
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app                # hot reload kodu (Python + UI)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # dostęp do Ollamy na hoście (Linux)
+
+  # Lokalny LLM w kontenerze, tylko Linux/Windows z kartą NVIDIA.
+  # Uruchamianie: docker compose --profile local-gpu up
+  ollama:
+    image: ollama/ollama:0.12.3
+    profiles: ["local-gpu"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  ollama_models:
