@@ -37,8 +37,8 @@ docker compose version
 ## Krok 2. Pobierz projekt
 
 ```bash
-git clone <ADRES_REPO>
-cd <NAZWA_REPO>
+git clone https://github.com/AntttPe/dynamic-visual-novel.git
+cd dynamic-visual-novel
 ```
 
 > **Windows:** rób to w terminalu Ubuntu, w swoim katalogu domowym (np. `cd ~`).
