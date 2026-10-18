@@ -6,3 +6,6 @@ data/*
 !data/.gitkeep
 .DS_Store
 .idea/
+
+# wyniki benchmarków (obrazy)
+bench/*/out/

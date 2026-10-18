@@ -1,0 +1,7 @@
+[
+  {"id": "tavern", "text": "smoky wooden medieval tavern interior, stone fireplace, long tables, beer barrels, warm candlelight"},
+  {"id": "market", "text": "cobbled medieval town market square with colorful stalls, clock tower in the background, cloudy sky"},
+  {"id": "castle_gate", "text": "stone castle walls with a closed iron-bound oak gate between two towers, overcast day"},
+  {"id": "forest", "text": "dense pine forest with a narrow dirt path, mist between the trees, early morning"},
+  {"id": "tavern_night", "text": "smoky wooden medieval tavern interior at night, stone fireplace, long tables, beer barrels, dim candlelight"}
+]

@@ -1,0 +1,45 @@
+id: zaginiona_korona
+title: Zaginiona korona
+player: Aren, wędrowny najemnik
+setting: >-
+  Średniowieczne miasto Velgard i jego okolice. Świat bez magii: nie ma czarów,
+  teleportacji ani potworów. Technika i obyczaje jak w XIV wieku.
+goal: Odnaleźć zaginioną koronę króla.
+rules:
+  - W świecie nie ma magii.
+  - Bohater ma tylko to, co jest w jego ekwipunku.
+  - Postacie mają własną wolę i nie zawsze mówią prawdę.
+start_location: tavern
+intro: >-
+  Deszcz bębni o okiennice karczmy Pod Złamanym Kołem. Siedzisz przy kominku,
+  a karczmarz Borwin przeciera kufle i co chwilę zerka w twoją stronę.
+  Od tygodnia całe miasto szepcze o koronie, która zniknęła z zamku w noc balu.
+locations:
+  - id: tavern
+    name: Karczma Pod Złamanym Kołem
+    aliases: [karczm]
+    description: zadymiona drewniana karczma, kominek, długie stoły, beczki piwa, ciepłe światło świec
+  - id: market
+    name: Rynek
+    aliases: [rynek, rynku, targ]
+    description: brukowany rynek z kolorowymi kramami, w tle wieża ratusza, pochmurne niebo
+  - id: castle_gate
+    name: Brama zamku
+    aliases: [bram, zamek, zamku]
+    description: kamienne mury zamku, zamknięta dębowa brama okuta żelazem, dwie baszty
+  - id: forest
+    name: Las za miastem
+    aliases: [las]
+    description: gęsty sosnowy las, wąska ścieżka, mgła między drzewami
+  - id: town_hall
+    name: Ratusz
+    aliases: [ratusz]
+    description: kamienny ratusz z wieżą zegarową, szerokie schody, plac przed wejściem
+facts:
+  - {entity: miecz, attribute: materiał, value: srebrny, immutable: true}
+  - {entity: bohater, attribute: znak szczególny, value: blizna na lewej dłoni, immutable: true}
+  - {entity: borwin, attribute: zawód, value: karczmarz, immutable: true}
+  - {entity: borwin, attribute: wygląd, value: "rudy, jednooki", immutable: true}
+  - {entity: bohater, attribute: monety, value: "12"}
+  - {entity: bohater, attribute: ekwipunek, value: "miecz, sakiewka, lina"}
+  - {entity: korona, attribute: miejsce, value: nieznane}

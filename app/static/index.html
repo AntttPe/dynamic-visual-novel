@@ -7,17 +7,104 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <header>
-    <h1>Dynamic Visual Novel</h1>
-    <div id="status">Sprawdzam backend…</div>
+  <header class="topbar">
+    <div class="brand">
+      <strong>Dynamic Visual Novel</strong>
+      <span id="worldTitle" class="muted"></span>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="actions">
+      <button type="button" id="btnNew" class="btn">Nowa gra</button>
+      <button type="button" id="btnPanel" class="btn" aria-pressed="true">Panel badawczy</button>
+    </div>
   </header>
 
-  <main id="log"></main>
+  <div id="banner" class="banner" hidden></div>
 
-  <form id="input">
-    <input id="msg" placeholder="Co robisz?" autocomplete="off" />
-    <button>Wyślij</button>
-  </form>
+  <main class="layout" id="layout">
+    <section class="play">
+      <div class="stage" id="stage">
+        <div class="bg" id="bg"></div>
+        <div class="loc" id="loc"></div>
+        <div class="viewing" id="viewing" hidden></div>
+
+        <div class="start" id="start" hidden>
+          <p class="eyebrow">Nowa historia</p>
+          <h1 id="startTitle"></h1>
+          <p id="startIntro"></p>
+          <div class="row">
+            <button type="button" class="btn primary" id="btnStart">Zacznij grę</button>
+            <button type="button" class="btn ghost" id="btnDemo">Szybki start w trybie demo</button>
+          </div>
+        </div>
+
+        <div class="box" id="box" hidden>
+          <p class="action" id="lastAction"></p>
+          <p class="narr" id="narr"></p>
+          <div class="dialogue" id="dialogue"></div>
+          <p class="turn-error" id="turnErr" hidden></p>
+          <div class="thinking" id="thinking" hidden>
+            <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            Narrator pisze… <span id="elapsed">0,0 s</span>
+          </div>
+        </div>
+      </div>
+
+      <form id="form" class="input" autocomplete="off">
+        <label for="action" class="sr-only">Co robisz?</label>
+        <input id="action" placeholder="Co robisz? Np. Pytam Borwina o koronę" maxlength="500" />
+        <button class="btn primary" id="send">Wyślij</button>
+      </form>
+      <p class="hint">Enter wysyła. Kliknięcie tekstu pomija animację. Tło jest tymczasowe: kolor wynika z <code>location_id</code>, więc to samo miejsce ma zawsze ten sam kolor.</p>
+    </section>
+
+    <aside class="panel" id="panel" aria-label="Panel badawczy">
+      <nav class="tabs" role="tablist">
+        <button type="button" role="tab" data-tab="turn">Tura</button>
+        <button type="button" role="tab" data-tab="state">Stan świata</button>
+        <button type="button" role="tab" data-tab="prompt">Prompt</button>
+        <button type="button" role="tab" data-tab="json">JSON</button>
+        <button type="button" role="tab" data-tab="history">Historia</button>
+      </nav>
+      <div class="tabbody" id="tabbody"></div>
+    </aside>
+  </main>
+
+  <dialog id="dlg" aria-labelledby="dlgTitle">
+    <form id="newForm">
+      <h2 id="dlgTitle">Nowa gra</h2>
+      <label>Świat
+        <select id="fWorld"></select>
+      </label>
+      <label>Model narratora
+        <select id="fModelPick"></select>
+        <input id="fModel" spellcheck="false" placeholder="np. ollama_chat/gemma4:12b" hidden />
+        <small>Format LiteLLM: <code>ollama_chat/…</code> (Mac albo GPU przez tunel), <code>hosted_vllm/…</code> (vLLM), <code>anthropic/…</code> (API). <code>demo</code> działa bez modelu.</small>
+      </label>
+      <div class="grid2">
+        <label>Pamięć
+          <select id="fHistory">
+            <option value="window">Okno ostatnich tur</option>
+            <option value="full">Pełna historia</option>
+          </select>
+        </label>
+        <label>Rozmiar okna (tury)
+          <input id="fWindow" type="number" min="1" max="100" />
+        </label>
+      </div>
+      <div class="grid2">
+        <label class="check"><input id="fState" type="checkbox" /> Stan świata w prompcie</label>
+        <label>Seed (opcjonalnie)
+          <input id="fSeed" type="number" placeholder="brak" />
+        </label>
+      </div>
+      <p class="dlg-error" id="dlgErr"></p>
+      <div class="row end">
+        <button type="button" class="btn" id="dlgCancel">Anuluj</button>
+        <button class="btn primary" id="dlgOk">Zacznij</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="/app.js"></script>
 </body>

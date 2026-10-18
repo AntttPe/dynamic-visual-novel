@@ -1,0 +1,7 @@
+# Instalowane tylko na maszynie z GPU. torch pochodzi z szablonu PyTorch na RunPod.
+diffusers==0.40.0
+transformers==5.17.0
+accelerate==1.15.0
+safetensors==0.8.0
+sentencepiece==0.2.2
+protobuf==7.36.2

@@ -61,8 +61,11 @@ docker compose up -d --build
 
 Pierwsze uruchomienie trwa kilka minut. Potem otwórz w przeglądarce:
 
-* **http://localhost:8000** to aplikacja (czat z narratorem)
+* **http://localhost:8000** to gra (scena, okno narracji i panel badawczy)
 * **http://localhost:8000/docs** to dokumentacja API
+
+Bez uruchomionego modelu kliknij **Szybki start w trybie demo**. Tryb demo nie opowiada
+prawdziwej historii, ale pokazuje cały przepływ: scenę, stan świata, prompt i JSON.
 
 ## Krok 5. Sprawdź, czy wszystko działa
 
@@ -72,7 +75,7 @@ docker compose exec app pytest -v
 
 Poprawny wynik wygląda tak:
 ```
-3 passed, 1 skipped
+20 passed, 1 skipped
 ```
 Jeden test jest pominięty, jeśli nie masz uruchomionej Ollamy (patrz niżej). To normalne.
 
@@ -101,14 +104,26 @@ Po dodaniu biblioteki wrzuć na GitHuba pliki `pyproject.toml` i `uv.lock`,
 
 ```
 app/
-  main.py        adresy API aplikacji
-  llm.py         połączenie z modelem językowym
-  config.py      odczyt ustawień z .env
-  static/        wygląd strony (HTML, CSS, JS)
-tests/
-  test_app.py    testy sprawdzające, czy środowisko działa
-data/            dane lokalne, nie trafiają na GitHuba
+  main.py            adresy API gry
+  config.py          odczyt ustawień z .env
+  core/              silnik gry: jedna tura od akcji gracza do zapisu
+    engine.py        przebieg tury, ponowienia przy złym JSON
+    context.py       składanie promptu
+    memory.py        strategie pamięci (pełna historia, okno)
+    state.py         stan świata i walidator faktów niezmiennych
+    schemas.py       format odpowiedzi narratora (JSON)
+    world.py         wczytywanie świata z pliku YAML
+  llm/               połączenie z modelami (LiteLLM, tryb demo, model na niby do testów)
+  storage/db.py      zapis każdej tury do SQLite
+  prompts/           prompt narratora
+  worlds/            światy gry (YAML)
+  static/            wygląd strony (HTML, CSS, JS)
+tests/               testy (działają bez modelu)
+data/                baza dvn.sqlite z zapisem gier, nie trafia na GitHuba
 ```
+
+Każda tura zapisuje się w `data/dvn.sqlite`: prompt, odpowiedź modelu, tokeny, czas,
+lokacja i zmiany stanu. To surowe dane do metryk.
 
 ---
 
@@ -133,8 +148,34 @@ i pobierz model komendą `ollama pull llama3.1:8b`.
 3. Uruchom: `docker compose --profile local-gpu up -d`
 4. Pobierz model: `docker compose exec ollama ollama pull llama3.1:8b`
 
-Po uruchomieniu Ollamy odśwież http://localhost:8000. Przy „ollama” pojawi się ✅
-i można pisać z narratorem.
+Po uruchomieniu Ollamy odśwież http://localhost:8000. Przy nazwie modelu pojawi się
+zielona kropka i można grać.
+
+---
+
+## Wybór modelu narratora
+
+Połączenie z modelami idzie przez bibliotekę **LiteLLM**, więc zmiana modelu to zmiana
+jednej linijki w `.env` (`NARRATOR_MODEL`) albo pola „Model narratora” w oknie nowej gry.
+
+| Gdzie działa model | Ustawienia w `.env` |
+|---|---|
+| Ollama na twoim komputerze | `NARRATOR_MODEL=ollama_chat/llama3.1:8b` |
+| Ollama na wynajętym GPU (np. RunPod) | to samo, plus tunel SSH (niżej) |
+| vLLM na wynajętym GPU | `NARRATOR_MODEL=hosted_vllm/<nazwa-modelu>` i `NARRATOR_API_BASE=http://host.docker.internal:8001/v1` |
+| Model przez API | np. `NARRATOR_MODEL=anthropic/claude-haiku-5-5` i klucz `ANTHROPIC_API_KEY` |
+| Bez modelu | `NARRATOR_MODEL=demo` |
+
+**Wynajęte GPU.** Na komputerze otwórz tunel SSH do maszyny z GPU i zostaw terminal otwarty:
+```bash
+ssh -N -L 11434:localhost:11434 root@<adres-maszyny> -p <port> -i ~/.ssh/<twój-klucz>
+```
+Model na GPU jest wtedy widoczny tak, jakby działał lokalnie, więc `OLLAMA_BASE_URL` się nie zmienia.
+Dla vLLM przekieruj port 8001 (`-L 8001:localhost:8000`).
+**Nie wystawiaj portu Ollamy publicznie** w panelu RunPod: Ollama nie ma hasła.
+
+Wersja LiteLLM jest przypięta w `pyproject.toml`. Nie aktualizuj jej bez sprawdzenia
+(w marcu 2026 w PyPI pojawiły się złośliwe wersje 1.82.7 i 1.82.8).
 
 ---
 
@@ -145,6 +186,7 @@ i można pisać z narratorem.
 | `Cannot connect to the Docker daemon` | Docker Desktop nie jest uruchomiony. Włącz go. |
 | `port is already allocated` | Port 8000 jest zajęty. W `docker-compose.yml` zmień `"8000:8000"` na np. `"8080:8000"` i wejdź na localhost:8080 |
 | Zmiany w kodzie nie restartują serwera | W `.env` ustaw `WATCHFILES_FORCE_POLLING=true` i uruchom ponownie |
-| „Ollama niedostępna” | Sprawdź, czy działa `ollama serve` |
+| „Ollama nie odpowiada” (żółty pasek w grze) | Sprawdź, czy działa `ollama serve` albo tunel SSH do GPU |
+| „Narrator nie zwrócił poprawnej odpowiedzi” | Model nie trzyma formatu JSON. Spróbuj jeszcze raz albo użyj większego modelu |
 | `model not found` | Pobierz model: `ollama pull llama3.1:8b` |
 | Dziwne błędy po zmianie bibliotek | `docker compose down`, potem `docker compose build --no-cache`, potem `docker compose up -d` |
