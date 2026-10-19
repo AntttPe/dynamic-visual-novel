@@ -9,6 +9,17 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH"
 
+# git i curl dla agenta Claude Code; safe.directory, bo kod z hosta ma innego właściciela
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && git config --system --add safe.directory /app
+
+# Claude Code w kontenerze. Konfiguracja, logowanie i pamięć są w wolumenie (docker-compose.yml)
+RUN curl -fsSL https://claude.ai/install.sh | bash
+ENV PATH="/root/.local/bin:$PATH" \
+    CLAUDE_CONFIG_DIR=/root/.claude
+
 WORKDIR /app
 
 # Najpierw tylko zależności, dla lepszego cache warstw

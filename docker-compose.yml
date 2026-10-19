@@ -6,6 +6,7 @@ services:
       - "8000:8000"
     volumes:
       - .:/app                # hot reload kodu (Python + UI)
+      - claude_home:/root/.claude   # pamięć i logowanie Claude Code, przetrwa docker compose down
     extra_hosts:
       - "host.docker.internal:host-gateway"   # dostęp do Ollamy na hoście (Linux)
 
@@ -28,3 +29,4 @@ services:
 
 volumes:
   ollama_models:
+  claude_home:

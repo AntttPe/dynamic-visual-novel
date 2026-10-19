@@ -73,9 +73,9 @@ prawdziwej historii, ale pokazuje cały przepływ: scenę, stan świata, prompt 
 docker compose exec app pytest -v
 ```
 
-Poprawny wynik wygląda tak:
+Poprawny wynik wygląda tak (liczby mogą być inne, ważne, żeby nie było `failed`):
 ```
-20 passed, 1 skipped
+21 passed, 1 skipped
 ```
 Jeden test jest pominięty, jeśli nie masz uruchomionej Ollamy (patrz niżej). To normalne.
 
@@ -88,7 +88,9 @@ Jeden test jest pominięty, jeśli nie masz uruchomionej Ollamy (patrz niżej). 
 | Co chcesz zrobić | Komenda |
 |---|---|
 | Uruchomić aplikację | `docker compose up -d` |
-| Zatrzymać aplikację | `docker compose down` |
+| Wstrzymać aplikację (na przerwę) | `docker compose stop` |
+| Wznowić po wstrzymaniu | `docker compose start` |
+| Usunąć kontener | `docker compose down` |
 | Zobaczyć logi | `docker compose logs -f app` |
 | Uruchomić testy | `docker compose exec app pytest -v` |
 | Wejść do kontenera | `docker compose exec app bash` |
@@ -99,6 +101,26 @@ Gdy zmienisz plik w `app/static/`, wystarczy odświeżyć stronę.
 
 Po dodaniu biblioteki wrzuć na GitHuba pliki `pyproject.toml` i `uv.lock`,
 żeby reszta zespołu miała te same wersje.
+
+`docker compose down` usuwa kontener, ale nic ważnego nie ginie: kod i `data/` są na twoim
+komputerze, a pamięć agenta Claude Code jest w osobnym wolumenie.
+Wolumen usuwa dopiero `docker compose down -v`, więc **nie dodawaj `-v`**, chyba że chcesz wyczyścić wszystko.
+
+## Agent Claude Code w kontenerze
+
+Claude Code jest zainstalowany w kontenerze. Wejdź do środka i uruchom go:
+```bash
+docker compose exec app bash
+claude
+```
+Przy pierwszym uruchomieniu trzeba się zalogować. Logowanie, historia rozmów i pamięć agenta
+zapisują się w wolumenie `claude_home`, więc zostają po `docker compose down` i po przebudowie obrazu.
+
+Agent czyta plik `CLAUDE.md` z opisem projektu i zasadami pracy. Gdy zmienia się coś ważnego
+w projekcie, zaktualizuj ten plik, bo z niego korzysta cały zespół.
+
+**Commity z kontenera:** w `.env` odkomentuj i uzupełnij linie `GIT_AUTHOR_...` i `GIT_COMMITTER_...`.
+Wypychanie na GitHuba (`git push`) rób na swoim komputerze, bo kontener nie ma dostępu do twojego konta GitHub.
 
 ## Struktura projektu
 
@@ -119,6 +141,7 @@ app/
   worlds/            światy gry (YAML)
   static/            wygląd strony (HTML, CSS, JS)
 tests/               testy (działają bez modelu)
+CLAUDE.md            opis projektu i zasady dla agenta Claude Code
 data/                baza dvn.sqlite z zapisem gier, nie trafia na GitHuba
 ```
 
@@ -189,4 +212,5 @@ Wersja LiteLLM jest przypięta w `pyproject.toml`. Nie aktualizuj jej bez sprawd
 | „Ollama nie odpowiada” (żółty pasek w grze) | Sprawdź, czy działa `ollama serve` albo tunel SSH do GPU |
 | „Narrator nie zwrócił poprawnej odpowiedzi” | Model nie trzyma formatu JSON. Spróbuj jeszcze raz albo użyj większego modelu |
 | `model not found` | Pobierz model: `ollama pull llama3.1:8b` |
+| `claude: command not found` w kontenerze | Obraz jest stary. Uruchom `docker compose up -d --build` |
 | Dziwne błędy po zmianie bibliotek | `docker compose down`, potem `docker compose build --no-cache`, potem `docker compose up -d` |
