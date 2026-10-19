@@ -9,3 +9,7 @@ data/*
 
 # wyniki benchmarków (obrazy)
 bench/*/out/
+
+# prywatne ustawienia i notatki agenta Claude Code
+.claude/settings.local.json
+CLAUDE.local.md
