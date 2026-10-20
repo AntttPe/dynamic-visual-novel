@@ -30,7 +30,9 @@ def test_university_proxy_uses_own_base_and_key():
 
 
 def test_default_model_falls_back_to_ollama_model():
-    assert Settings(_env_file=None, ollama_model="gemma4:e4b").default_narrator_model == "ollama_chat/gemma4:e4b"
+    # narrator_model podany jawnie, bo zmienna NARRATOR_MODEL z .env trafia do środowiska kontenera
+    s = Settings(_env_file=None, narrator_model="", ollama_model="gemma4:e4b")
+    assert s.default_narrator_model == "ollama_chat/gemma4:e4b"
     assert Settings(_env_file=None, narrator_model="anthropic/x").default_narrator_model == "anthropic/x"
 
 
