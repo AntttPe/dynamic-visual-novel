@@ -38,12 +38,14 @@ macierz: modele x strategie pamięci x scenariusze.
 - `app/prompts/narrator_system.md`: prompt narratora.
 - `app/static/`: UI w czystym HTML/CSS/JS.
 - `app/eval/`: scenariusze badawcze. `scenario.py` (format YAML i walidator), `check.py`
-  (`python -m app.eval.check`), `scenarios/_template.yaml` (opis pól), `scenarios/main_v1.yaml`.
+  (`python -m app.eval.check`), `run.py` (runner, wznawianie po przerwaniu, tabela `eval_runs`),
+  `metrics.py` (M1, M2 bez gaslightingu, M4), `report.py`, `scenarios/_template.yaml` (opis pól),
+  `scenarios/main_v1.yaml`. Sędzia LLM (M2 gaslighting, M3) jeszcze nie istnieje.
   Metryki sprintu: 1 recall@k, 2 naruszenia faktów niezmiennych, 3 dziwne komendy, 4 spójność location_id.
 - `bench/images/`: osobny benchmark modeli obrazów na wynajętym GPU (torch/diffusers, poza kontenerem gry).
 
 Dalsze kroki: pipeline obrazów (cache po location_id, stały styl i seed), kolejne strategie pamięci
-(streszczenie, RAG), moduł eval ze skryptowymi scenariuszami i metrykami, dashboard wyników.
+(streszczenie, RAG), sędzia LLM, raport z wykresami.
 
 ## Środowisko
 - Jesteś w kontenerze, kod jest w `/app` (bind mount z hosta). venv: `/opt/venv`.

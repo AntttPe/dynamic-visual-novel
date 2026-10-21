@@ -3,6 +3,7 @@
 Ten sam silnik obsługuje grę w przeglądarce i (później) skryptowe eksperymenty.
 """
 
+import json
 import re
 import uuid
 
@@ -12,7 +13,7 @@ from app.core.context import build_messages, prompt_version
 from app.core.memory import make_memory
 from app.core.schemas import NarratorResponse, TurnRecord
 from app.core.state import WorldState
-from app.core.world import World
+from app.core.world import Fact, World
 from app.llm.base import LLMClient
 from app.storage.db import Store
 
@@ -48,8 +49,10 @@ class GameEngine:
         seed: int | None = None,
         store: Store | None = None,
         mode: str = "play",
+        game_id: str | None = None,
+        create_run: bool = True,
     ):
-        self.game_id = uuid.uuid4().hex[:12]
+        self.game_id = game_id or uuid.uuid4().hex[:12]
         self.world = world
         self.llm = llm
         self.memory = make_memory(history, window)
@@ -57,6 +60,7 @@ class GameEngine:
         self.location = world.start_location
         self.known_locations = {loc.id: loc.name for loc in world.locations}
         self.turns: list[TurnRecord] = []
+        self._restored = 0  # tury odtworzone z bazy przy wznowieniu
         self.store = store
         self.config = {
             "mode": mode,
@@ -71,8 +75,19 @@ class GameEngine:
             "seed": seed,
             "prompt_version": prompt_version(),
         }
-        if store:
+        if store and create_run:
             store.create_run(self.game_id, self.config)
+
+    def restore(self, rows: list[dict]) -> None:
+        """Odtwarza pamięć, stan świata i lokację z zapisanych tur (wznowienie przerwanego eksperymentu)."""
+        for row in rows:
+            if row["error"] is None:
+                parsed = NarratorResponse.model_validate_json(extract_json(row["raw_output"]))
+                self.memory.record(row["player_action"], parsed)
+                self.known_locations.setdefault(row["location"], (row["scene_description"] or "")[:60])
+            self.location = row["location"]
+            self.state = WorldState([Fact(**f) for f in json.loads(row["state_after"])])
+        self._restored = len(rows)
 
     async def step(self, player_action: str) -> TurnRecord:
         """Rozgrywa jedną turę. LLMError (model niedostępny) przechodzi wyżej, tura nie jest zapisana."""
@@ -124,7 +139,7 @@ class GameEngine:
             self.memory.record(action, parsed)
 
         record = TurnRecord(
-            t=len(self.turns) + 1,
+            t=self._restored + len(self.turns) + 1,
             player_action=action,
             response=parsed,
             raw_output=raw,

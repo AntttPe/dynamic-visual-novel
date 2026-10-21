@@ -140,6 +140,7 @@ app/
   prompts/           prompt narratora
   worlds/            światy gry (YAML)
   static/            wygląd strony (HTML, CSS, JS)
+  eval/              scenariusze badawcze, runner, metryki, raport
 tests/               testy (działają bez modelu)
 CLAUDE.md            opis projektu i zasady dla agenta Claude Code
 data/                baza dvn.sqlite z zapisem gier, nie trafia na GitHuba
@@ -199,6 +200,59 @@ Dla vLLM przekieruj port 8001 (`-L 8001:localhost:8000`).
 
 Wersja LiteLLM jest przypięta w `pyproject.toml`. Nie aktualizuj jej bez sprawdzenia
 (w marcu 2026 w PyPI pojawiły się złośliwe wersje 1.82.7 i 1.82.8).
+
+---
+
+## Eksperymenty (badanie modeli)
+
+Scenariusze badawcze leżą w `app/eval/scenarios/`. Każdy to z góry napisana lista akcji gracza
+z oczekiwaniami (opis pól w `_template.yaml`). Runner przepuszcza scenariusz przez model
+tym samym silnikiem co gra, a każda tura trafia do `data/dvn.sqlite`.
+
+Wszystkie komendy wpisuj w kontenerze (`docker compose exec app bash`).
+
+**1. Sprawdź scenariusz** (po każdej zmianie w YAML):
+```bash
+python -m app.eval.check main_v1
+```
+
+**2. Szybki test bez modelu** (tryb demo, ok. minuty):
+```bash
+python -m app.eval.run --model demo --reps 1 --tag demo
+```
+
+**3. Uruchom badanie** (włącz VPN instytutu):
+```bash
+python -m app.eval.run --model openai/large-reasoning --reps 3 --tag sprint1
+python -m app.eval.run --model openai/strata-big --reps 3 --tag sprint1
+python -m app.eval.run --model openai/large-reasoning --reps 3 --tag sprint1 --no-state   # bez stanu świata
+```
+Jedna tura trwa 30 do 90 s, więc 28 tur × 3 powtórzenia to ok. 1 do 2 godzin na konfigurację.
+Na krótki test dodaj `--max-turns 3`.
+
+**Gdy coś przerwie badanie** (VPN, Ctrl+C, zamknięty laptop): uruchom **tę samą komendę** jeszcze raz.
+Runner wznowi od ostatniej zapisanej tury i pominie ukończone powtórzenia.
+
+**Długie badanie w tle** (na hoście, nie w kontenerze; `caffeinate` nie pozwala Macowi zasnąć):
+```bash
+caffeinate -i docker compose exec app sh -c \
+  "python -m app.eval.run --model openai/large-reasoning --reps 3 --tag sprint1 >> data/eval/run.log 2>&1"
+```
+Postęp: `tail -f data/eval/run.log`. Nie używaj `docker compose down` w trakcie, bo przerwie badanie.
+
+**4. Wyniki:**
+```bash
+python -m app.eval.report --tag sprint1                 # podsumowanie metryk dla każdej konfiguracji
+python -m app.eval.report --tag sprint1 --details       # plus lista nieudanych sprawdzeń
+python -m app.eval.report --tag sprint1 --csv data/eval/sprint1.csv   # do analizy i wykresów
+```
+
+| Metryka | Co mierzy | Jak liczona |
+|---|---|---|
+| M1 pamięć faktów | czy model pamięta fakt podany przez gracza k tur wcześniej | w odpowiedzi musi paść słowo z `accept` |
+| M2 fakty niezmienne | czy model utrzymuje stałe cechy świata | słowa z `accept`, próby zmiany wykryte przez walidator, gaslighting oceni sędzia |
+| M3 dziwne komendy | czy model logicznie reaguje na nietypowe akcje | sędzia LLM (w przygotowaniu) |
+| M4 spójność lokacji | czy to samo miejsce ma zawsze ten sam `location_id` | porównanie z oczekiwaną lokacją albo między wizytami |
 
 ---
 
