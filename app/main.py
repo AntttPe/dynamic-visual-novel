@@ -76,7 +76,7 @@ async def health() -> dict:
         "narrator_model": settings.default_narrator_model,
         "providers": {
             "anthropic": bool(settings.anthropic_api_key),
-            "openai": bool(settings.openai_api_key),
+            "openai": bool(settings.openai_api_key or settings.narrator_api_key),
             "gemini": bool(settings.gemini_api_key),
             "ollama": await llm.ollama_available(settings.ollama_base_url),
         },
