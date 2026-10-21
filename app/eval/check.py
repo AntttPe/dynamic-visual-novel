@@ -32,4 +32,5 @@ def check(scenario_id: str) -> bool:
 
 if __name__ == "__main__":
     ids = sys.argv[1:] or list_scenarios()
-    sys.exit(0 if all([check(i) for i in ids]) else 1)
+    # lista, a nie generator: sprawdzamy wszystkie scenariusze, a nie tylko do pierwszego błędu
+    sys.exit(0 if all([check(i) for i in ids]) else 1)  # noqa: C419

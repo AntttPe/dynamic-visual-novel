@@ -4,7 +4,13 @@ import pytest
 
 from app.core.world import load_world
 from app.eval.scenario import (
-    SCENARIOS_DIR, Scenario, ScenarioError, list_scenarios, load_scenario, summary, validate,
+    SCENARIOS_DIR,
+    Scenario,
+    ScenarioError,
+    list_scenarios,
+    load_scenario,
+    summary,
+    validate,
 )
 
 WORLD = load_world("zaginiona_korona")
