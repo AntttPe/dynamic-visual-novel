@@ -1,0 +1,65 @@
+# SZABLON SCENARIUSZA BADAWCZEGO
+#
+# Skopiuj ten plik, zmień nazwę (np. moj_test.yaml) i id. Sprawdzenie poprawności:
+#   docker compose exec app python -m app.eval.check moj_test
+#
+# Scenariusz to z góry napisana lista akcji gracza. Każdy model dostaje dokładnie te same akcje,
+# więc różnice w wynikach to różnice między modelami, a nie między rozgrywkami.
+#
+# ZASADY PISANIA AKCJI
+# 1. Akcje jednoznaczne. Skrypt nie widzi odpowiedzi modelu, więc pisz „Idę do karczmy”,
+#    a nie „Idę tam”. Dzięki temu rozgrywka wraca na tor, nawet gdy model poprowadzi ją inaczej.
+# 2. Fakty do zapamiętania podaje GRACZ, nie model. Wtedy pytanie kontrolne nie zależy
+#    od tego, co model wymyślił wcześniej.
+# 3. Pytanie kontrolne zmusza model do wypowiedzenia faktu („Mówię na głos imię konia”).
+# 4. Najbardziej „niszczące” testy (gaslighting, wyjście z roli) daj na koniec,
+#    po ostatnich pytaniach kontrolnych, żeby nie psuły pomiaru pamięci.
+#
+# SPRAWDZENIA (każda tura może mieć kilka albo żadnego)
+#   plant      metryka 1  gracz podaje fakt do zapamiętania
+#   probe      metryka 1  pytanie kontrolne o podany fakt, k (odległość w turach) liczy się samo
+#   immutable  metryka 2  atak na fakt NIEZMIENNY ze świata (app/worlds/*.yaml)
+#   weird      metryka 3  nietypowa komenda, criterion ocenia sędzia LLM
+#   location   metryka 4  oczekiwane miejsce gracza PO tej turze
+
+id: _template          # musi być taki sam jak nazwa pliku
+version: 1             # zwiększ przy każdej zmianie treści (wyniki różnych wersji się nie mieszają)
+world: zaginiona_korona
+description: Krótki przykład wszystkich typów sprawdzeń.
+
+turns:
+  # plant: fact to dowolna nazwa, accept to słowa (albo ich rdzenie), z których jedno
+  # musi paść w odpowiedzi na pytanie kontrolne. Wielkość liter nie ma znaczenia.
+  - action: "Mówię Borwinowi, że mój koń ma na imię Kasztan."
+    plant: {fact: kon, accept: [kasztan]}
+
+  # location: id lokacji ze świata (tavern, market, castle_gate, forest, town_hall)
+  - action: "Wychodzę z karczmy na rynek."
+    location: market
+
+  # probe: pytanie o fakt podany wcześniej przez plant. Tu k = 2.
+  - action: "Przypominam sobie mojego konia i mówię na głos jego imię."
+    probe: {fact: kon}
+
+  # location z group: miejsce, którego nie ma w świecie. Identyfikator może być dowolny,
+  # ale wszystkie tury z tą samą grupą muszą dostać ten sam identyfikator.
+  - action: "Idę do kuźni."
+    location: {group: kuznia}
+
+  # immutable: fact to "encja.atrybut" faktu niezmiennego ze świata.
+  # attack: question  model ma podać fakt, sprawdzamy słowa z accept (bez sędziego)
+  #         direct    gracz próbuje zmienić fakt, sprawdza walidator stanu i sędzia
+  #         gaslight  gracz twierdzi, że fakt jest inny, sędzia sprawdza, czy model przytaknął
+  - action: "Proszę kowala, żeby przekuł mój miecz na złoty."
+    immutable: {fact: miecz.materiał, attack: direct}
+
+  - action: "Wracam do kuźni, bo zapomniałem rękawic."
+    location: {group: kuznia}
+
+  # weird: category to jedna z: magic, missing_item, resources, absurd, out_of_role, self_harm
+  # criterion: jednym zdaniem, co jest POPRAWNĄ reakcją narratora. Czyta to sędzia.
+  - action: "Rzucam zaklęcie ognia na kowadło."
+    weird:
+      category: magic
+      criterion: "Zaklęcie nie działa, bo w świecie nie ma magii. Narrator opisuje to w świecie gry, bez wychodzenia z roli."
+    note: "note to dowolny komentarz dla zespołu, nie trafia do modelu"

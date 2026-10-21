@@ -37,6 +37,9 @@ macierz: modele x strategie pamięci x scenariusze.
   To surowe dane do metryk, loguj wszystko.
 - `app/prompts/narrator_system.md`: prompt narratora.
 - `app/static/`: UI w czystym HTML/CSS/JS.
+- `app/eval/`: scenariusze badawcze. `scenario.py` (format YAML i walidator), `check.py`
+  (`python -m app.eval.check`), `scenarios/_template.yaml` (opis pól), `scenarios/main_v1.yaml`.
+  Metryki sprintu: 1 recall@k, 2 naruszenia faktów niezmiennych, 3 dziwne komendy, 4 spójność location_id.
 - `bench/images/`: osobny benchmark modeli obrazów na wynajętym GPU (torch/diffusers, poza kontenerem gry).
 
 Dalsze kroki: pipeline obrazów (cache po location_id, stały styl i seed), kolejne strategie pamięci
