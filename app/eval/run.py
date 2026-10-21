@@ -26,8 +26,9 @@ from app.core.world import World, load_world
 from app.eval.scenario import Scenario, load_scenario
 from app.storage.db import Store
 
-# Przerwy między ponowieniami, gdy model nie odpowiada (sieć, VPN, przeciążony serwer)
-BACKOFF_S = (10, 30, 60)
+# Przerwy między ponowieniami, gdy model nie odpowiada (sieć, VPN, przeciążony serwer).
+# Razem około 14 minut, żeby zdążyć ponownie połączyć VPN bez przerywania badania.
+BACKOFF_S = (10, 30, 60, 120, 300, 300)
 
 
 class RunConfig(BaseModel):
@@ -135,7 +136,7 @@ async def run_all(scenario: Scenario, cfg: RunConfig, reps: int, store: Store, *
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Uruchamia scenariusz badawczy na wybranym modelu.")
-    p.add_argument("--scenario", default="main_v1")
+    p.add_argument("--scenario", default="main_v2")
     p.add_argument("--model", default=settings.default_narrator_model)
     p.add_argument("--reps", type=int, default=3, help="liczba powtórzeń (różne seedy)")
     p.add_argument("--history", choices=["full", "window"], default=settings.memory_history)

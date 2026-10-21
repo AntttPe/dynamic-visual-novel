@@ -1,7 +1,7 @@
 """Raport wyników eksperymentów w terminalu.
 
 Użycie (w kontenerze):
-  python -m app.eval.report                       # wszystkie uruchomienia main_v1
+  python -m app.eval.report                       # wszystkie uruchomienia main_v2
   python -m app.eval.report --details             # plus lista nieudanych sprawdzeń
   python -m app.eval.report --csv data/eval.csv   # wszystkie sprawdzenia do pliku (analiza, wykresy)
 """
@@ -36,7 +36,7 @@ def describe(run: dict) -> str:
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Wyniki eksperymentów.")
-    p.add_argument("--scenario", default="main_v1")
+    p.add_argument("--scenario", default="main_v2")
     p.add_argument("--tag", default=None)
     p.add_argument("--details", action="store_true", help="pokaż nieudane i nieocenione sprawdzenia")
     p.add_argument("--csv", help="zapisz wszystkie sprawdzenia do pliku CSV")

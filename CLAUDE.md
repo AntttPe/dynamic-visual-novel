@@ -40,7 +40,7 @@ macierz: modele x strategie pamięci x scenariusze.
 - `app/eval/`: scenariusze badawcze. `scenario.py` (format YAML i walidator), `check.py`
   (`python -m app.eval.check`), `run.py` (runner, wznawianie po przerwaniu, tabela `eval_runs`),
   `metrics.py` (M1, M2 bez gaslightingu, M4), `report.py`, `scenarios/_template.yaml` (opis pól),
-  `scenarios/main_v1.yaml`. Sędzia LLM (M2 gaslighting, M3) jeszcze nie istnieje.
+  `scenarios/main_v2.yaml` (aktualny, `main_v1` zostaje dla porównania). Sędzia LLM (M2 gaslighting, M3) jeszcze nie istnieje.
   Metryki sprintu: 1 recall@k, 2 naruszenia faktów niezmiennych, 3 dziwne komendy, 4 spójność location_id.
 - `bench/images/`: osobny benchmark modeli obrazów na wynajętym GPU (torch/diffusers, poza kontenerem gry).
 

@@ -213,7 +213,7 @@ Wszystkie komendy wpisuj w kontenerze (`docker compose exec app bash`).
 
 **1. Sprawdź scenariusz** (po każdej zmianie w YAML):
 ```bash
-python -m app.eval.check main_v1
+python -m app.eval.check main_v2
 ```
 
 **2. Szybki test bez modelu** (tryb demo, ok. minuty):
@@ -233,9 +233,9 @@ Na krótki test dodaj `--max-turns 3`.
 **Gdy coś przerwie badanie** (VPN, Ctrl+C, zamknięty laptop): uruchom **tę samą komendę** jeszcze raz.
 Runner wznowi od ostatniej zapisanej tury i pominie ukończone powtórzenia.
 
-**Długie badanie w tle** (na hoście, nie w kontenerze; `caffeinate` nie pozwala Macowi zasnąć):
+**Długie badanie w tle** (na hoście, nie w kontenerze; `caffeinate -di` nie pozwala Macowi zasnąć ani wygasić ekranu, bo wygaszacz rozłącza VPN):
 ```bash
-caffeinate -i docker compose exec app sh -c \
+caffeinate -di docker compose exec app sh -c \
   "python -m app.eval.run --model openai/large-reasoning --reps 3 --tag sprint1 >> data/eval/run.log 2>&1"
 ```
 Postęp: `tail -f data/eval/run.log`. Nie używaj `docker compose down` w trakcie, bo przerwie badanie.

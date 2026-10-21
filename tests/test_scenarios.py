@@ -26,14 +26,16 @@ def test_template_is_not_listed_for_runs():
     assert "main_v1" in list_scenarios()
 
 
-def test_main_v1_covers_all_metrics():
-    counts = summary(load_scenario("main_v1"))
+@pytest.mark.parametrize("scenario_id", ["main_v1", "main_v2"])
+def test_main_covers_all_metrics(scenario_id):
+    counts = summary(load_scenario(scenario_id))
     for check in ("probe", "immutable", "weird", "location"):
         assert counts[check] >= 4, check
 
 
-def test_probe_k_is_computed():
-    sc = load_scenario("main_v1")
+@pytest.mark.parametrize("scenario_id", ["main_v1", "main_v2"])
+def test_probe_k_is_computed(scenario_id):
+    sc = load_scenario(scenario_id)
     assert [t.probe.k for t in sc.turns if t.probe] == [2, 5, 18, 9, 19]
 
 
