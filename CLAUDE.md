@@ -24,6 +24,12 @@ Planowane metryki:
 Eksperymenty mają być powtarzalne: skryptowe scenariusze gracza, stała temperatura i seed,
 macierz: modele x strategie pamięci x scenariusze.
 
+## Pamięć zespołu: PROGRESS.md
+Nad projektem pracuje kilka osób, każda ze swoim agentem. `PROGRESS.md` to wspólna pamięć:
+stan projektu, zadania w toku, decyzje i dziennik zmian.
+- Na początku pracy przeczytaj `PROGRESS.md` i sprawdź, czy ktoś nie robi już tego samego zadania.
+- Przed pushem z większą zmianą zaktualizuj `PROGRESS.md` według zasad na jego początku.
+
 ## Architektura (stan obecny)
 - `app/main.py`: FastAPI. `/api/health`, `/api/config`, `/api/games`, `/api/games/{id}`,
   `/api/games/{id}/turns`. UI serwowane pod `/`.
@@ -66,4 +72,5 @@ Dalsze kroki: pipeline obrazów (cache po location_id, stały styl i seed), kole
   Aktualizuj README, gdy zmienia się sposób uruchamiania.
 - Przed dużymi decyzjami (nowy provider, zmiana architektury, ciężkie zależności typu torch)
   zaproponuj plan i zapytaj.
-- Bez force push i przepisywania historii bez pytania. Push robi użytkownik.
+- Bez force push i przepisywania historii bez pytania. Push tylko na wyraźną prośbę użytkownika,
+  zawsze po `git pull --rebase`.
