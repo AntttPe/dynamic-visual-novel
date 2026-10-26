@@ -245,6 +245,7 @@ Postęp: `tail -f data/eval/run.log`. Nie używaj `docker compose down` w trakci
 python -m app.eval.report --tag sprint1                 # podsumowanie metryk dla każdej konfiguracji
 python -m app.eval.report --tag sprint1 --details       # plus lista nieudanych sprawdzeń
 python -m app.eval.report --tag sprint1 --csv data/eval/sprint1.csv   # do analizy i wykresów
+python -m app.eval.extra_metrics --tag sprint1 --csv data/eval/sprint1_extra.csv   # metryki X1 do X5 i porównanie ze stanem/bez stanu
 ```
 
 | Metryka | Co mierzy | Jak liczona |
