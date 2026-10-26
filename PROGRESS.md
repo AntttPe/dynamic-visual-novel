@@ -66,6 +66,7 @@ Wzór wpisu w dzienniku:
 
 | Kto | Zadanie | Od kiedy |
 |---|---|---|
+| Dudsztor | Badanie 4 modeli, 25 gier ze stanem + 25 bez, tag `long50`, metryki X1 do X5 | 2026-10-26 |
 | (wolne) | Sędzia LLM dla M3 i gaslightingu | |
 | (wolne) | Pełne badanie na noc (tag `sprint1`) | |
 | (wolne) | Pipeline obrazów (ImageProvider, cache po location_id) | |
