@@ -172,9 +172,11 @@ def x2_scene(rows: list[dict]) -> dict:
 
 _CAPITAL = re.compile(r"[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{2,}")
 _OPENERS = " \t„\"“”«»'*(—–-"
-# Formy grzecznościowe i zaimki pisane wielką literą w środku zdania to nie nowe byty
-_STOP = {"ty", "twoj", "twoja", "twoje", "twojego", "twoim", "ciebie", "tobie", "cie", "pan", "pani",
-         "panie", "panu", "wasz", "wasza", "wam", "was"}
+_QUOTES = "„\"“”«»'"
+# Formy grzecznościowe, zaimki i wykrzykniki pisane wielką literą w środku zdania to nie nowe byty
+_STOP = {"ty", "ciebie", "tobie", "cie", "ci", "pan", "pani", "panie", "panu", "wam", "was", "boze", "boga",
+         "bogu"}
+_STOP_PREFIX = ("twoj", "twoi", "twe", "twy", "wasz", "wasi")
 # Mówiący, którym jest sam gracz (nie musi być w characters_present)
 _PLAYER = {"ty", "ja", "bohater", "gracz", "narrator"}
 
@@ -190,11 +192,13 @@ def _key(word: str) -> str:
 
 
 def capitalized_names(text: str) -> list[str]:
-    """Słowa z wielkiej litery, które nie stoją na początku zdania ani wypowiedzi."""
+    """Słowa z wielkiej litery, które nie stoją na początku zdania ani wypowiedzi (po cudzysłowie)."""
     names = []
     for m in _CAPITAL.finditer(text):
-        before = text[:m.start()].rstrip(_OPENERS)
-        if before and before[-1] not in ".!?…:;\n":
+        prefix = text[:m.start()]
+        before = prefix.rstrip(_OPENERS)
+        opens_quote = any(c in _QUOTES for c in prefix[len(before):])
+        if before and before[-1] not in ".!?…:;\n" and not opens_quote:
             names.append(m.group())
     return names
 
@@ -220,37 +224,48 @@ def x3_entities(world: World, rows: list[dict]) -> dict:
     """Nowe nazwy własne: brak w YAML świata, w akcjach gracza i we wcześniejszych turach tej gry.
 
     Słowa porównujemy po prefiksie (do 5 liter), żeby odmiana („Borwina”, „Velgardzie”) nie liczyła się
-    jako nowa nazwa. Każda nowa nazwa liczy się raz na grę.
+    jako nowa nazwa. Krótkie znane słowa (4 litery, np. „Aren”) pasują też do dłuższych form („Arenowi”).
+    Pole speaker pomijamy, bo modele wpisują tam głównie role („Kowal”, „Strażnik”), a nie nazwy własne.
+    Każda nowa nazwa liczy się raz na grę.
     """
     known: set[str] = set()
+    short: set[str] = set()
+
+    def learn(word: str) -> None:
+        known.update(_prefixes(word))
+        if len(fold(word)) == 4:
+            short.add(fold(word))
+
+    def is_known(name: str) -> bool:
+        w = fold(name)
+        return w in _STOP or w.startswith(_STOP_PREFIX) or _key(name) in known or w[:4] in short
+
     for w in _world_words(world):
-        known |= _prefixes(w)
+        learn(w)
     player_names = {fold(w) for w in re.findall(r"\w+", world.player)}
     hits, turns_with_new = [], 0
     lines_total = lines_bad = 0
     for r in rows:
         for w in re.findall(r"\w+", r["player_action"]):
-            known |= _prefixes(w)
+            learn(w)
         if r["error"] is not None:
             continue
         dialogue = json.loads(r["dialogue"] or "[]")
         texts = [r["narration"] or ""] + [d.get("text", "") for d in dialogue]
         candidates = [n for text in texts for n in capitalized_names(text)]
-        candidates += [w for d in dialogue for w in _CAPITAL.findall(d.get("speaker", ""))]
         new_here = []
         for name in candidates:
-            key = _key(name)
-            if fold(name) in _STOP or key in known:
+            if is_known(name):
                 continue
             new_here.append(name)
-            known |= _prefixes(name)
+            learn(name)
         if new_here:
             turns_with_new += 1
             context = turn_text(r)
             hits += [{"t": r["t"], "name": n, "context": context} for n in new_here]
         for text in texts + [d.get("speaker", "") for d in dialogue]:
             for w in re.findall(r"\w+", text):
-                known |= _prefixes(w)
+                learn(w)
 
         present = [fold(p) for p in characters_present(r)]
         for d in dialogue:

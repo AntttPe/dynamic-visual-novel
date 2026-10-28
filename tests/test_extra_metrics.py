@@ -109,6 +109,12 @@ def test_x3_new_names_ignore_world_inflection_and_repeats():
     assert x3["turns_with_new"] == 2 and x3["turns"] == 3
 
 
+def test_x3_skips_player_forms_pronouns_quotes_and_speaker_roles():
+    rows = [row(1, 'Strażnik mówi do Arenowi, że zna Twojej rodziny, O Boże. Rzuca: "Możesz wejść".',
+                dialogue=[("Kowal", "Witaj.")])]
+    assert xm.x3_entities(WORLD, rows)["new_names"] == 0
+
+
 def test_x3_speakers_outside_characters_present():
     rows = [row(1, dialogue=[("Borwin", "Witaj."), ("Strażnik", "Stój!"), ("Aren", "Dzień dobry.")],
                 present=["Borwin karczmarz"])]
