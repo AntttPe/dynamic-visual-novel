@@ -74,6 +74,18 @@ Wzór wpisu w dzienniku:
 | (wolne) | Sędzia LLM dla M3 i gaslightingu | |
 | (wolne) | Pełne badanie na noc (tag `sprint1`) | |
 | (wolne) | Pipeline obrazów (ImageProvider, cache po location_id) | |
+| (wolne) | Pamięć `full_cached`: układ promptu pod cache serwera (opis niżej) | |
+
+**Opis zadania `full_cached`.** Serwer prowadzącego ma cache promptu na `strata-big` (zmierzone 2026-10-29,
+szczegóły w Dzienniku). Teraz stan świata i lista lokacji są w prompcie systemowym, który zmienia się co turę,
+więc cache nie działa. Do zrobienia:
+- nowa strategia pamięci w `app/core/memory.py` i `context.py`: stały prompt systemowy (zasady, świat),
+  potem pełna historia tylko dopisywana, na końcu stan świata, lista lokacji i akcja gracza,
+- przy okazji rozdzielić `--no-state` na dwie flagi (stan osobno, lista lokacji osobno), bo teraz M4 bez stanu
+  mierzy głównie brak listy lokacji,
+- badanie: `full_cached` vs `window/8` na `strata-big` i `large-reasoning`, te same seedy co `long50`.
+  Mierzyć czas tury, `cached_tokens` z odpowiedzi serwera (trzeba je zapisywać w `turns`) i M1, M2, M4.
+- Zmiana układu promptu zmienia `prompt_version`, więc wyniki są nowym wariantem, nie nadpisują `long50`.
 
 ## Decyzje
 
@@ -93,6 +105,25 @@ Wzór wpisu w dzienniku:
   ile się wykonało.
 
 ## Dziennik
+
+### 2026-10-29, Antek: okno kontekstu i cache promptu na serwerze prowadzącego
+- Co zrobione: sprawdzone limity modeli (`/v1/model/info`) i pomiar cache promptu, bez zmian w kodzie.
+- Limity: `strata-big` (Qwen3.8-Flash-Next) 164k tokenów wejścia, `large-reasoning` (Qwen3.8-27B-FP8) 131k,
+  oba maks. 8k na odpowiedź. Nasza tura to ok. 4k tokenów, cała gra z pełną historią ok. 20 do 30k.
+- Pomiar (czas „przeczytania” promptu, odpowiedź 1 token, po 3 powtórzenia):
+
+  | model | prompt | bez cache | z cache |
+  |---|---|---|---|
+  | strata-big | 6k | 29 s | 0,3 s (cached_tokens 5943) |
+  | strata-big | 30k | 109 s | 0,3 s |
+  | large-reasoning | 6k | 6,2 s | 6,2 s (serwer nie zgłasza cache) |
+
+  `strata-big` czyta prompt wolno (ok. 200 tokenów/s), a pisze ok. 40 tokenów/s.
+- Wniosek: przy `strata-big` ok. 18 z 41 s tury to czytanie promptu, które cache może prawie usunąć.
+  Szacunek: tura ok. 30% krócej. NIEPOTWIERDZONE na prawdziwej grze (cache może wypaść przy obciążeniu serwera).
+  Przy `large-reasoning` zysku nie ma, a pełna historia wydłuży czytanie promptu.
+- Uwaga dla następnych: zadanie `full_cached` w „Zadaniach w toku”. Ryzyko: pełna historia BEZ trafienia
+  w cache na `strata-big` to ok. 100 s na turę pod koniec gry.
 
 ### 2026-10-28, Dudsztor: badanie long50 (3 modele × 50 gier) i metryki X1 do X5
 - Co zrobione: `app/eval/extra_metrics.py` (X1 do X5, testy pary ze stanem/bez stanu) z testami,
