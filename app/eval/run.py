@@ -139,7 +139,7 @@ def main() -> None:
     p.add_argument("--scenario", default="main_v2")
     p.add_argument("--model", default=settings.default_narrator_model)
     p.add_argument("--reps", type=int, default=3, help="liczba powtórzeń (różne seedy)")
-    p.add_argument("--history", choices=["full", "window"], default=settings.memory_history)
+    p.add_argument("--history", choices=["full", "window", "full_cached"], default=settings.memory_history)
     p.add_argument("--window", type=int, default=settings.memory_window)
     p.add_argument("--no-state", action="store_true", help="bez stanu świata w prompcie")
     p.add_argument("--temperature", type=float, default=settings.narrator_temperature)

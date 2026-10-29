@@ -24,7 +24,8 @@ class Settings(BaseSettings):
     narrator_timeout_s: float = 180
     narrator_json_retries: int = 2
 
-    # Pamięć narratora: "full" (pełna historia) albo "window" (ostatnie N tur)
+    # Pamięć narratora: "full" (pełna historia), "window" (ostatnie N tur)
+    # albo "full_cached" (pełna historia w układzie pod cache promptu serwera)
     memory_history: str = "window"
     memory_window: int = 8
     memory_state_in_prompt: bool = True

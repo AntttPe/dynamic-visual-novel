@@ -9,6 +9,8 @@ from app.core.state import WorldState
 from app.core.world import World
 
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "narrator_system.md"
+# Od tego nagłówka prompt zmienia się co turę (lokacja, stan). W układzie pod cache ta część idzie na koniec.
+DYNAMIC_MARKER = "# Aktualna sytuacja"
 
 
 def prompt_template() -> str:
@@ -36,7 +38,7 @@ def build_messages(
     else:
         state_text = "(w tej konfiguracji stan świata nie jest podawany)"
         locations_text = "(w tej konfiguracji lista lokacji nie jest podawana)"
-    system = Template(prompt_template()).safe_substitute(
+    text = Template(prompt_template()).safe_substitute(
         title=world.title,
         setting=world.setting,
         player=world.player,
@@ -47,8 +49,16 @@ def build_messages(
         locations=locations_text,
         state=state_text,
     )
+    if memory.name == "full_cached":
+        # Stały początek (zasady, świat, historia) serwer może wziąć z cache, czyta tylko nowy koniec
+        static, marker, dynamic = text.partition(DYNAMIC_MARKER)
+        return [
+            {"role": "system", "content": static.rstrip()},
+            *memory.history(),
+            {"role": "user", "content": f"{marker}{dynamic.rstrip()}\n\n# Działanie gracza\n{player_action}"},
+        ]
     return [
-        {"role": "system", "content": system},
+        {"role": "system", "content": text},
         *memory.history(),
         {"role": "user", "content": player_action},
     ]

@@ -75,9 +75,11 @@ class LiteLLMClient:
             raise LLMError(f"{type(e).__name__}: {e}") from e
         latency_ms = (time.perf_counter() - start) * 1000
         usage = getattr(resp, "usage", None)
+        details = getattr(usage, "prompt_tokens_details", None)
         return LLMResult(
             text=resp.choices[0].message.content or "",
             tokens_in=getattr(usage, "prompt_tokens", 0) or 0,
             tokens_out=getattr(usage, "completion_tokens", 0) or 0,
+            tokens_cached=getattr(details, "cached_tokens", 0) or 0,
             latency_ms=latency_ms,
         )

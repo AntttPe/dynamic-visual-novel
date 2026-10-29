@@ -52,6 +52,7 @@ class TurnRecord(BaseModel):
     retries: int
     tokens_in: int
     tokens_out: int
+    tokens_cached: int = 0
     latency_ms: float
     prompt: list[dict]
     accepted_updates: list[StateUpdate] = Field(default_factory=list)

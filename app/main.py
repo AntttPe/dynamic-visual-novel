@@ -42,7 +42,7 @@ def get_store(request: Request) -> Store:
 class NewGame(BaseModel):
     world_id: str = "zaginiona_korona"
     model: str | None = None
-    history: Literal["full", "window"] | None = None
+    history: Literal["full", "window", "full_cached"] | None = None
     window: int | None = Field(default=None, ge=1, le=100)
     state_in_prompt: bool | None = None
     seed: int | None = None

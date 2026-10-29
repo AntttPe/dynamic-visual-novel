@@ -52,9 +52,21 @@ class SlidingWindow(FullHistory):
         return self._turns[-self.size:] if self.size > 0 else []
 
 
+class CachedFullHistory(FullHistory):
+    """Pełna historia w układzie pod cache promptu serwera.
+
+    Historia jest tylko dopisywana, a zmienne części (stan świata, lokacje) trafiają na koniec promptu
+    (context.build_messages), więc początek promptu jest taki sam jak w poprzedniej turze.
+    """
+
+    name = "full_cached"
+
+
 def make_memory(kind: str, window: int) -> MemoryStrategy:
     if kind == "full":
         return FullHistory()
+    if kind == "full_cached":
+        return CachedFullHistory()
     if kind == "window":
         return SlidingWindow(window)
     raise ValueError(f"Nieznana strategia pamięci: {kind}")

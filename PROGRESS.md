@@ -74,7 +74,9 @@ Wzór wpisu w dzienniku:
 | (wolne) | Sędzia LLM dla M3 i gaslightingu | |
 | (wolne) | Pełne badanie na noc (tag `sprint1`) | |
 | (wolne) | Pipeline obrazów (ImageProvider, cache po location_id) | |
-| (wolne) | Pamięć `full_cached`: układ promptu pod cache serwera (opis niżej) | |
+| (wstrzymane) | Pamięć `full_cached`: kod jest, ale serwer nie daje zysku (test 2026-10-29, opis niżej) | |
+
+**Stan 2026-10-29: zbudowane i przetestowane, przyspieszenia brak** (Dziennik 2026-10-29, test `cache15`). Zostało: zapytać prowadzącego o konfigurację cache i rozdzielić `--no-state`.
 
 **Opis zadania `full_cached`.** Serwer prowadzącego ma cache promptu na `strata-big` (zmierzone 2026-10-29,
 szczegóły w Dzienniku). Teraz stan świata i lista lokacji są w prompcie systemowym, który zmienia się co turę,
@@ -105,6 +107,26 @@ więc cache nie działa. Do zrobienia:
   ile się wykonało.
 
 ## Dziennik
+
+### 2026-10-29, Antek: test `full_cached` w prawdziwej grze (cache nie działa między turami)
+- Co zrobione: strategia pamięci `full_cached` (`--history full_cached`): stały prompt systemowy, pełna historia
+  tylko dopisywana, lokacja, stan i akcja gracza na końcu. Nowa kolumna `turns.tokens_cached` (ile tokenów serwer
+  wziął z cache, stare bazy dostają ją same) i test stałości prefiksu.
+- Pliki: `app/core/context.py`, `memory.py`, `engine.py`, `schemas.py`, `app/llm/`, `app/storage/db.py`,
+  `app/eval/run.py`, `app/main.py`, `tests/test_core.py`.
+- Test `cache15`: strata-big, `main_v2`, 14 tur, seed 1001, obie gry równolegle:
+
+  | wariant | tokeny z cache | mediana tury | gra 14 tur | tokeny wej. | M1 |
+  |---|---|---|---|---|---|
+  | window/8 | 0 | 79 s | 23 min | 41k | 1/2 |
+  | full_cached | **0 w 14 turach** | 79 s | 22 min | 50k | 2/2 |
+
+- Wyjaśnienie: serwer bierze z cache tylko prompt powtórzony W CAŁOŚCI (wtedy pełna tura 9 do 13 s zamiast 40 s).
+  Prompt tury 13 wysłany zaraz po prompcie tury 12 (wspólne 23 z 24 wiadomości) dał 0 tokenów z cache,
+  z wymuszonym JSON i bez. Wcześniejszy szacunek „tura o 30% krótsza” był błędny (pomiar na powtórzonym prompcie).
+- Uwaga dla następnych: bez zmiany po stronie serwera `full_cached` nie przyspiesza, a zużywa więcej tokenów.
+  Pytanie do prowadzącego: czy vLLM ma `--enable-prefix-caching` i czy za `strata-big` stoi kilka kopii modelu.
+  Czasy tury w teście są ok. 2 razy dłuższe niż w `long50`, bo obie gry szły równolegle.
 
 ### 2026-10-29, Antek: okno kontekstu i cache promptu na serwerze prowadzącego
 - Co zrobione: sprawdzone limity modeli (`/v1/model/info`) i pomiar cache promptu, bez zmian w kodzie.

@@ -6,7 +6,7 @@ import pytest
 
 from app.core.context import build_messages, prompt_version
 from app.core.engine import GameEngine, extract_json, normalize_location
-from app.core.memory import FullHistory, SlidingWindow
+from app.core.memory import CachedFullHistory, FullHistory, SlidingWindow
 from app.core.schemas import NarratorResponse, Scene, StateUpdate
 from app.core.state import WorldState
 from app.core.world import Fact, WorldNotFound, load_world
@@ -78,6 +78,21 @@ def test_prompt_contains_state_only_when_enabled():
     assert "Gracz jest w lokacji: tavern" in without[0]["content"]
     assert with_state[-1] == {"role": "user", "content": "Hej"}
     assert len(prompt_version()) == 8
+
+
+def test_full_cached_keeps_prompt_prefix_stable():
+    """Układ pod cache: kolejna tura zaczyna się dokładnie tak jak poprzednia, zmienia się tylko koniec."""
+    state, memory = WorldState(WORLD.facts), CachedFullHistory()
+    kwargs = {"known_locations": {"tavern": "Karczma"}, "state_in_prompt": True}
+    first = build_messages(WORLD, state, memory, "Idę na rynek", current_location="tavern", **kwargs)
+    assert "Stan świata" not in first[0]["content"] and "Gracz jest w lokacji" not in first[0]["content"]
+    assert "miecz.materiał = srebrny" in first[-1]["content"] and first[-1]["content"].endswith("Idę na rynek")
+    memory.record("Idę na rynek", response())
+    state.apply([StateUpdate(entity="bohater", attribute="monety", value="5")])
+    second = build_messages(WORLD, state, memory, "Kupuję chleb", current_location="market", **kwargs)
+    assert second[0] == first[0]
+    assert second[1] == {"role": "user", "content": "Idę na rynek"}
+    assert "Gracz jest w lokacji: market" in second[-1]["content"]
 
 
 @pytest.mark.anyio

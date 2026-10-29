@@ -13,6 +13,7 @@ class LLMResult(BaseModel):
     text: str
     tokens_in: int = 0
     tokens_out: int = 0
+    tokens_cached: int = 0  # część tokens_in wzięta z cache serwera (0, gdy serwer tego nie zgłasza)
     latency_ms: float = 0.0
 
 

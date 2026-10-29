@@ -103,7 +103,7 @@ class GameEngine:
         )
         conversation = list(prompt)
         parsed, raw, error = None, "", None
-        tokens_in = tokens_out = 0
+        tokens_in = tokens_out = tokens_cached = 0
         latency_ms = 0.0
         attempts = 0
         for _ in range(cfg["json_retries"] + 1):
@@ -117,6 +117,7 @@ class GameEngine:
             attempts += 1
             tokens_in += result.tokens_in
             tokens_out += result.tokens_out
+            tokens_cached += result.tokens_cached
             latency_ms += result.latency_ms
             raw = result.text
             try:
@@ -147,6 +148,7 @@ class GameEngine:
             retries=attempts - 1,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
+            tokens_cached=tokens_cached,
             latency_ms=latency_ms,
             prompt=prompt,
             accepted_updates=accepted,
