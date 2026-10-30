@@ -39,7 +39,8 @@ Wzór wpisu w dzienniku:
 - Gra w przeglądarce (`http://localhost:8000`) w jednym kontenerze Docker (macOS, Windows/WSL2, Linux).
 - Narrator przez LiteLLM: tryb `demo` bez modelu, Ollama na hoście, modele prowadzącego
   `openai/strata-big` i `openai/large-reasoning` (wymagają VPN instytutu, klucz w `.env`).
-- Stan świata z faktami niezmiennymi i walidatorem, pamięć `full` i `window`, każda tura w `data/dvn.sqlite`.
+- Stan świata z faktami niezmiennymi i walidatorem, pamięć `full`, `window` i `full_cached` (pod cache serwera),
+  każda tura w `data/dvn.sqlite` (z `tokens_cached`).
 - Scenariusze badawcze (`app/eval/scenarios/`, aktualny `main_v2`), runner ze wznawianiem po zerwaniu VPN,
   metryki M1, M2 (bez gaslightingu), M4 i raport w terminalu. Opis komend: README, sekcja „Eksperymenty”.
 - Metryki dodatkowe X1 do X5 i porównanie „ze stanem minus bez stanu” na parach seedów (McNemar, bootstrap,
@@ -50,13 +51,13 @@ Wzór wpisu w dzienniku:
 - Sędzia LLM (M3 dziwne komendy, gaslighting w M2).
 - Wyniki Gemini (darmowy klucz: 20 zapytań dziennie, za mało na badanie).
 - Wykresy i raport dla prowadzącego.
-- Generowanie obrazów teł (pytanie badawcze 3).
+- Generowanie obrazów teł (pytanie badawcze 3), zadanie S2.
 
 **Znane problemy:**
 - VPN rozłącza się przy wygaszaczu ekranu i bez powodu (macOS i Windows). Na macOS `caffeinate -di` (README),
   na Windows wyłącz usypianie i wygaszacz. Runner i tak wznawia po powrocie VPN.
 - `large-reasoning` jest wolny (mediana 34 s, p95 150 s na turę) i w 2,6% tur nie daje poprawnego JSON.
-- `--no-state` ukrywa w prompcie także listę lokacji, nie tylko stan. Spadek M4 bez stanu wynika głównie z tego.
+- `--no-state` ukrywa w prompcie także listę lokacji, nie tylko stan. Spadek M4 bez stanu wynika głównie z tego (zadanie P3).
 
 ## Metryki sprintu (ustalone)
 
@@ -69,25 +70,87 @@ Wzór wpisu w dzienniku:
 
 ## Zadania w toku
 
+Wpisz się w kolumnę „Kto”, zanim zaczniesz (osobny mały commit i push). Opisy zadań są niżej.
+
+**Sprint 3 (od 2026-10-30), wymagania prowadzącego (DoD):**
+
 | Kto | Zadanie | Od kiedy |
 |---|---|---|
-| (wolne) | Sędzia LLM dla M3 i gaslightingu | |
-| (wolne) | Pełne badanie na noc (tag `sprint1`) | |
-| (wolne) | Pipeline obrazów (ImageProvider, cache po location_id) | |
-| (wolne) | Badanie `full_cached` vs `window/8` na pełnym scenariuszu (cache działa od 2026-10-30, opis niżej) | |
+| (wolne) | S1. SOTA: czy ktoś zrobił coś podobnego | |
+| (wolne) | S2. Research: lokalne modele graficzne, proof-of-concept | |
+| (wolne) | S3. Research: lokalne modele językowe (gemma-4-26b-A4B-it i inne) | |
+| (wolne) | S4. Scenariusz: wygenerowany na początku vs halucynowany on-the-fly, proof-of-concept | |
+| (wolne) | S5. Metryki automatycznej oceny jakości rozgrywki | |
 
-**Stan 2026-10-30: działa na `strata-big`** (Dziennik 2026-10-30, test `cache_fix`). Zostało: pełne badanie (czas, M1, M2, M4), rozdzielić `--no-state`. `large-reasoning` nie ma cache po stronie serwera.
+**Z poprzednich sprintów (nadal otwarte):**
 
-**Opis zadania `full_cached`.** Serwer prowadzącego ma cache promptu na `strata-big` (zmierzone 2026-10-29,
-szczegóły w Dzienniku). Teraz stan świata i lista lokacji są w prompcie systemowym, który zmienia się co turę,
-więc cache nie działa. Do zrobienia:
-- nowa strategia pamięci w `app/core/memory.py` i `context.py`: stały prompt systemowy (zasady, świat),
-  potem pełna historia tylko dopisywana, na końcu stan świata, lista lokacji i akcja gracza,
-- przy okazji rozdzielić `--no-state` na dwie flagi (stan osobno, lista lokacji osobno), bo teraz M4 bez stanu
-  mierzy głównie brak listy lokacji,
-- badanie: `full_cached` vs `window/8` na `strata-big` i `large-reasoning`, te same seedy co `long50`.
-  Mierzyć czas tury, `cached_tokens` z odpowiedzi serwera (trzeba je zapisywać w `turns`) i M1, M2, M4.
-- Zmiana układu promptu zmienia `prompt_version`, więc wyniki są nowym wariantem, nie nadpisują `long50`.
+| Kto | Zadanie | Od kiedy |
+|---|---|---|
+| (wolne) | P1. Sędzia LLM dla M3 i gaslightingu w M2 | |
+| (wolne) | P2. Badanie `full_cached` vs `window/8` na pełnym scenariuszu | |
+| (wolne) | P3. Rozdzielić `--no-state` na stan i listę lokacji | |
+| (wolne) | P4. Wykresy i raport z `long50` | |
+
+### Opisy zadań
+
+**S1. SOTA.** Przegląd prac i projektów, w których LLM prowadzi interaktywną fabułę: gry tekstowe
+z narratorem AI, badania nad spójnością narracji i pamięcią długich rozmów, generowanie obrazów spójnych
+w czasie. Wynik: krótka lista (nazwa, link, co robią, czym się różnimy) w `docs/sota.md`.
+Pytanie do odpowiedzi: co u nas jest nowe (np. pomiar spójności faktów i lokacji na stałych scenariuszach).
+
+**S2. Lokalne modele graficzne (proof-of-concept).** Cel: tło lokacji generowane lokalnie z `scene.description`,
+z cache po `location_id` (ta sama lokacja = to samo tło). Tropy:
+- „NoGPU Flux3 Klein”: znalezione przez Antka, podobno bardzo szybkie. Do sprawdzenia: co to dokładnie jest,
+  licencja, czy działa bez GPU (Mac, CPU), czas jednego obrazu.
+- Maszyna z RTX 4090 od prowadzącego: dostępna do testów, ale niestabilna. Nie opierać na niej gry,
+  tylko pomiary. Gotowy benchmark: `bench/images/` (SD 1.5, SDXL Turbo, SDXL, FLUX.1 schnell).
+- Mac M (Apple Silicon) jako opcja lokalna dla zespołu.
+
+Wynik: tabela model × sprzęt (czas obrazu, VRAM, jakość na 5 scenach z `bench/images/prompts.json`)
+i decyzja, który model wpinamy do gry.
+
+**S3. Lokalne modele językowe.** Sprawdzić `gemma-4-26b-A4B-it` (MoE, ok. 4B aktywnych parametrów,
+powinna być szybka) i inne lokalne modele na tym samym scenariuszu `main_v2`. Mamy już wynik
+`llama3.1:8b` w `long50` (słaba pamięć faktów: M1 31%). Uruchamianie przez Ollamę na hoście
+(`ollama_chat/<model>`) albo na maszynie z GPU. Wynik: M1, M2, M4, JSON, czas tury obok modeli prowadzącego.
+
+**S4. Scenariusz: z góry czy na żywo.** Dwa tryby fabuły do porównania:
+- wygenerowany na początku: model najpierw tworzy plan historii (wątek główny, kluczowe wydarzenia,
+  zakończenie), potem prowadzi grę, trzymając się planu,
+- halucynowany on-the-fly: jak teraz, model wymyśla wszystko na bieżąco.
+
+Proof-of-concept: tryb „plan na początku” w silniku (plan zapisany jak stan świata, w prompcie)
+i krótki test na `main_v2`. Pytanie badawcze: czy plan poprawia utrzymanie wątku głównego.
+
+**S5. Metryki jakości rozgrywki (automatyczne).** Obecne metryki mierzą spójność (fakty, lokacje).
+Brakuje oceny, czy gra jest dobra: postęp w wątku głównym (np. odległość od celu z planu z S4),
+różnorodność i powtarzalność tekstu (X4 już jest), zmyślone byty (X3), sensowność reakcji (sędzia LLM, P1),
+spójność obrazów (CLIP/DINOv2, po S2). Wynik: propozycja 3 do 5 metryk z opisem, jak je liczyć
+automatycznie, w tym pliku w sekcji „Metryki”.
+
+**P1. Sędzia LLM.** Model ocenia odpowiedź narratora według kryterium z YAML (M3) i to, czy narrator
+przytaknął gaslightingowi (M2). Ocena krzyżowa (model nie ocenia sam siebie), temperatura 0,
+ręczna weryfikacja ok. 20 ocen i zgodność z człowiekiem.
+
+**P2. Badanie `full_cached`.** Działa na `strata-big` od 2026-10-30 (Dziennik, test `cache_fix`: tura ok. 17 s
+zamiast 41 s, 1 gra). Zostało pełne badanie na seedach z `long50`: czas tury, `tokens_cached`, M1, M2, M4.
+`large-reasoning` nie ma cache po stronie serwera.
+
+**P3. `--no-state`.** Teraz ukrywa stan świata i listę lokacji naraz, więc spadek M4 bez stanu
+mierzy głównie brak listy lokacji. Dwie osobne flagi i powtórka porównania.
+
+**P4. Wykresy.** M1 w zależności od k dla każdego modelu, porównanie ze stanem/bez stanu, czasy tur.
+Dane `long50` są tylko u Dudsztora (`data/dvn.sqlite`), trzeba je wymienić albo wyeksportować do CSV.
+
+### Otwarte problemy i pytania
+
+- Cache na `large-reasoning` jest wyłączony albo niezgłaszany. Pytanie do prowadzącego, czy da się włączyć.
+- Maszyna RTX 4090 prowadzącego jest niestabilna: tylko do testów, nie do gry ani długich badań.
+- VPN zrywa się przy wygaszaczu ekranu i bez powodu. Długie badania z `caffeinate -di` (macOS).
+- Dane badań są lokalne u każdego (`data/` nie jest w repo). Trzeba ustalić wspólny eksport (CSV) do raportu.
+- Gemini: darmowy klucz ma 20 zapytań dziennie, za mało na badanie. Bez płatnego klucza odpada.
+- X3 (zmyślone nazwy) ma precyzję ok. 55%, a M2 „próba zmiany” daje 100% wszędzie. Obie metryki
+  wymagają poprawy albo sędziego.
 
 ## Decyzje
 
@@ -107,6 +170,14 @@ więc cache nie działa. Do zrobienia:
   ile się wykonało.
 
 ## Dziennik
+
+### 2026-10-30, Antek: zadania sprintu 3 z DoD prowadzącego
+- Co zrobione: nowa lista zadań (S1 do S5 z DoD, P1 do P4 z poprzednich sprintów) z opisami
+  i sekcja „Otwarte problemy i pytania”.
+- DoD prowadzącego: SOTA, research lokalnych modeli graficznych (proof-of-concept) i językowych
+  (gemma-4-26b-A4B-it), scenariusz wygenerowany na początku vs halucynowany on-the-fly (proof-of-concept),
+  metryki automatycznej oceny jakości rozgrywki.
+- Uwaga dla następnych: prowadzący może udostępnić maszynę z RTX 4090, ale jest niestabilna (tylko testy).
 
 ### 2026-10-30, Antek: przyczyna problemu z cache i poprawka `full_cached`
 - Diagnoza (nagłówki serwera pokazują, która maszyna odpowiada; obie mają po 1 kopii modelu):
