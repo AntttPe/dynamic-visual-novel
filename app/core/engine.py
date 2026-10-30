@@ -83,11 +83,15 @@ class GameEngine:
         for row in rows:
             if row["error"] is None:
                 parsed = NarratorResponse.model_validate_json(extract_json(row["raw_output"]))
-                self.memory.record(row["player_action"], parsed)
+                self.memory.record(self._remembered(row["player_action"], json.loads(row["prompt"])), parsed)
                 self.known_locations.setdefault(row["location"], (row["scene_description"] or "")[:60])
             self.location = row["location"]
             self.state = WorldState([Fact(**f) for f in json.loads(row["state_after"])])
         self._restored = len(rows)
+
+    def _remembered(self, action: str, prompt: list[dict]) -> str:
+        """Co pamięć zapisuje jako wiadomość gracza: samą akcję albo całą wysłaną wiadomość (full_cached)."""
+        return prompt[-1]["content"] if getattr(self.memory, "records_sent_message", False) else action
 
     async def step(self, player_action: str) -> TurnRecord:
         """Rozgrywa jedną turę. LLMError (model niedostępny) przechodzi wyżej, tura nie jest zapisana."""
@@ -137,7 +141,7 @@ class GameEngine:
             accepted, rejected = self.state.apply(parsed.state_updates)
             self.location = normalize_location(parsed.scene.location_id)
             self.known_locations.setdefault(self.location, parsed.scene.description[:60])
-            self.memory.record(action, parsed)
+            self.memory.record(self._remembered(action, prompt), parsed)
 
         record = TurnRecord(
             t=self._restored + len(self.turns) + 1,

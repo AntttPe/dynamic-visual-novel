@@ -74,9 +74,9 @@ Wzór wpisu w dzienniku:
 | (wolne) | Sędzia LLM dla M3 i gaslightingu | |
 | (wolne) | Pełne badanie na noc (tag `sprint1`) | |
 | (wolne) | Pipeline obrazów (ImageProvider, cache po location_id) | |
-| (wstrzymane) | Pamięć `full_cached`: kod jest, ale serwer nie daje zysku (test 2026-10-29, opis niżej) | |
+| (wolne) | Badanie `full_cached` vs `window/8` na pełnym scenariuszu (cache działa od 2026-10-30, opis niżej) | |
 
-**Stan 2026-10-29: zbudowane i przetestowane, przyspieszenia brak** (Dziennik 2026-10-29, test `cache15`). Zostało: zapytać prowadzącego o konfigurację cache i rozdzielić `--no-state`.
+**Stan 2026-10-30: działa na `strata-big`** (Dziennik 2026-10-30, test `cache_fix`). Zostało: pełne badanie (czas, M1, M2, M4), rozdzielić `--no-state`. `large-reasoning` nie ma cache po stronie serwera.
 
 **Opis zadania `full_cached`.** Serwer prowadzącego ma cache promptu na `strata-big` (zmierzone 2026-10-29,
 szczegóły w Dzienniku). Teraz stan świata i lista lokacji są w prompcie systemowym, który zmienia się co turę,
@@ -107,6 +107,23 @@ więc cache nie działa. Do zrobienia:
   ile się wykonało.
 
 ## Dziennik
+
+### 2026-10-30, Antek: przyczyna problemu z cache i poprawka `full_cached`
+- Diagnoza (nagłówki serwera pokazują, która maszyna odpowiada; obie mają po 1 kopii modelu):
+  - `strata-big` (Qwen3.8-Flash-Next, model hybrydowy z warstwami liniowymi) zapisuje cache tylko na KOŃCU
+    całego promptu. Trafienie jest wtedy, gdy nowy prompt to poprzedni prompt plus dopisane wiadomości.
+    Sam wspólny początek z innym końcem daje 0 (test: 3 końcówki po 5,2k wspólnych tokenów, 0 trafień;
+    dopisanie do poprzedniego promptu: 5201 z 5232 z cache, 28 s → 0,5 s).
+  - `large-reasoning`: cache wyłączony albo niezgłaszany (brak `cached_tokens`, identyczny czas przy powtórce).
+- Dlaczego test `cache15` dał 0: w `full_cached` historia zapisywała samą akcję gracza, a wysłana wiadomość
+  zawierała też stan świata, więc kolejny prompt nie był dopisaniem do poprzedniego.
+- Poprawka: przy `full_cached` pamięć zapisuje wiadomość gracza dokładnie tak, jak była wysłana
+  (razem ze stanem z tamtej tury). Prompt rośnie szybciej, ale prawie cały idzie z cache. Test silnika sprawdza,
+  że kolejny prompt zaczyna się całym poprzednim.
+- Test `cache_fix` (strata-big, 8 tur, sama jedna gra): z cache od 2. tury 85 do 99% promptu,
+  mediana tury 2 do 8: 17 s (w `long50` przy `window/8`: 41 s). Dwie tury po 35 i 42 s mimo cache
+  (prawdopodobnie obciążenie serwera). 1 gra, do potwierdzenia pełnym badaniem.
+- Przy okazji: nagłówek `x-litellm-key-spend` podaje wydatki klucza: 1,59 $ ze 100 $ (2026-10-30).
 
 ### 2026-10-29, Antek: test `full_cached` w prawdziwej grze (cache nie działa między turami)
 - Co zrobione: strategia pamięci `full_cached` (`--history full_cached`): stały prompt systemowy, pełna historia

@@ -55,11 +55,14 @@ class SlidingWindow(FullHistory):
 class CachedFullHistory(FullHistory):
     """Pełna historia w układzie pod cache promptu serwera.
 
-    Historia jest tylko dopisywana, a zmienne części (stan świata, lokacje) trafiają na koniec promptu
-    (context.build_messages), więc początek promptu jest taki sam jak w poprzedniej turze.
+    Zmienne części (stan świata, lokacje) idą na koniec promptu (context.build_messages), a historia
+    zapamiętuje wiadomość gracza DOKŁADNIE tak, jak została wysłana (razem ze stanem z tamtej tury).
+    Dzięki temu prompt kolejnej tury to poprzedni prompt plus dopisane wiadomości. Serwer (strata-big,
+    model hybrydowy) bierze z cache tylko taki przypadek, sam wspólny początek nie wystarcza.
     """
 
     name = "full_cached"
+    records_sent_message = True
 
 
 def make_memory(kind: str, window: int) -> MemoryStrategy:

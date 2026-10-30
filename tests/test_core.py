@@ -81,17 +81,16 @@ def test_prompt_contains_state_only_when_enabled():
 
 
 def test_full_cached_keeps_prompt_prefix_stable():
-    """Układ pod cache: kolejna tura zaczyna się dokładnie tak jak poprzednia, zmienia się tylko koniec."""
+    """Układ pod cache: prompt kolejnej tury zaczyna się całym promptem poprzedniej."""
     state, memory = WorldState(WORLD.facts), CachedFullHistory()
     kwargs = {"known_locations": {"tavern": "Karczma"}, "state_in_prompt": True}
     first = build_messages(WORLD, state, memory, "Idę na rynek", current_location="tavern", **kwargs)
     assert "Stan świata" not in first[0]["content"] and "Gracz jest w lokacji" not in first[0]["content"]
     assert "miecz.materiał = srebrny" in first[-1]["content"] and first[-1]["content"].endswith("Idę na rynek")
-    memory.record("Idę na rynek", response())
+    memory.record(first[-1]["content"], response())  # tak zapisuje silnik przy full_cached
     state.apply([StateUpdate(entity="bohater", attribute="monety", value="5")])
     second = build_messages(WORLD, state, memory, "Kupuję chleb", current_location="market", **kwargs)
-    assert second[0] == first[0]
-    assert second[1] == {"role": "user", "content": "Idę na rynek"}
+    assert second[:len(first)] == first  # kolejna tura = poprzedni prompt + dopisane wiadomości
     assert "Gracz jest w lokacji: market" in second[-1]["content"]
 
 
@@ -116,3 +115,15 @@ async def test_engine_plays_turns_and_logs_them(tmp_path):
     assert [r["t"] for r in rows] == [1, 2]
     assert rows[0]["location_id"] == "Old Inn" and rows[0]["location"] == "old_inn"
     assert json.loads(rows[0]["rejected_updates"])[0]["update"]["value"] == "złoty"
+
+
+@pytest.mark.anyio
+async def test_engine_full_cached_sends_previous_prompt_as_prefix():
+    answer = json.dumps({"narration": "Idziesz.", "scene": {"location_id": "market", "description": "rynek"},
+                         "state_updates": [{"entity": "bohater", "attribute": "monety", "value": "5"}]})
+    fake = FakeLLM([answer, answer])
+    game = GameEngine(WORLD, fake, history="full_cached")
+    await game.step("Idę na rynek")
+    await game.step("Kupuję chleb")
+    first, second = fake.calls
+    assert second[:len(first)] == first
