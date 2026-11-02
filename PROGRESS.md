@@ -72,7 +72,16 @@ Wzór wpisu w dzienniku:
 
 Wpisz się w kolumnę „Kto”, zanim zaczniesz (osobny mały commit i push). Opisy zadań są niżej.
 
-**Sprint 3 (od 2026-10-30), wymagania prowadzącego (DoD):**
+**Sprint 4 (od 2026-11-03), wymagania prowadzącego (DoD: KV cache, model image-to-image, optymalizacja czasu):**
+
+| Kto | Zadanie | Od kiedy |
+|---|---|---|
+| (wolne) | Z1. Architektura pomiarowa obrazów na RTX 4090 (najpierw, blokuje Z2) | |
+| (wolne) | Z2. Wybór modelu image-to-image | |
+| (czeka) | Z3. Testy KV cache (czeka na odpowiedź prowadzącego) | |
+| (wolne) | Z4. Optymalizacja czasu tury i obrazu | |
+
+**Sprint 3, wymagania prowadzącego (DoD):**
 
 | Kto | Zadanie | Od kiedy |
 |---|---|---|
@@ -92,6 +101,32 @@ Wpisz się w kolumnę „Kto”, zanim zaczniesz (osobny mały commit i push). O
 | (wolne) | P4. Wykresy i raport z `long50` | |
 
 ### Opisy zadań
+
+**Z1. Architektura pomiarowa obrazów.** Powtarzalne stanowisko do porównywania modeli pod spójność postaci
+i lokacji. Założenie od innej grupy badawczej (u nas jeszcze niezmierzone): bez obrazu wejściowego modele szybko
+się rozjeżdżają, więc bohatera i inne postacie trzeba podawać jako obraz. To samo sprawdzamy dla teł lokacji.
+- Miejsce: `bench/images/` (torch i diffusers poza kontenerem gry). Dziś benchmark obsługuje tylko tekst na obraz
+  i jest ustawiony pod RunPod, więc trzeba go dostosować do serwera instytutu (zasady niżej).
+- Wejście: plik ze stałymi testami: postacie i lokacje z obrazem wzorcowym oraz sekwencja scen
+  (ta sama postać w różnych miejscach, powroty do tej samej lokacji).
+- Warianty: bez obrazu (punkt odniesienia), zawsze ze wzorca, łańcuch (każdy obraz z poprzedniego).
+- Modele za wspólnym interfejsem, żeby nowy model wymagał tylko małego adaptera. Stałe seedy.
+- Wyjście: obrazy i jeden plik z wynikami na obraz (model, wariant, seed, krok, czas, szczyt VRAM, ładowanie modelu).
+  Wznawianie po przerwaniu, bo maszyna jest niestabilna.
+- Metryki: podobieństwo do wzorca w zależności od kroku k (rozjeżdżanie się, jak recall@k w M1),
+  postać: embeddingi twarzy lub DINOv2/CLIP, lokacja: DINOv2/CLIP, zgodność z opisem sceny: CLIPScore,
+  czas i VRAM. Do sprawdzenia: czy detektor twarzy działa na grafikach, inaczej same DINOv2/CLIP.
+- Wynik: jedna komenda uruchamia macierz modele × warianty × seedy i daje raport obok siebie.
+
+**Z2. Wybór modelu image-to-image.** Pomiar na Z1. Kandydaci: SDXL, rodzina FLUX, „Flux Klein” z zadania S2.
+`flux-schnell` wg `bench/images/README.md` zajmuje ok. 33 GB VRAM, a RTX 4090 ma 24 GB: potrzebne odciążenie
+albo lżejsza wersja. Wynik: decyzja, który model wpinamy do gry.
+
+**Z3. KV cache.** Prowadzący sprawdza konfigurację i to, czy cache trzeba jawnie włączać. Potem powtórzyć pomiary
+o różnych porach, z zapisem obciążenia (wieczorem 2026-11-01 prompt z 11 tokenów czekał 122 do 217 s).
+
+**Z4. Optymalizacja czasu.** Tekst: zadanie P2. Obrazy: cache po `location_id`, mniej kroków, mniejsza rozdzielczość.
+Miara: czas od komendy gracza do tekstu i do obrazu.
 
 **S1. SOTA.** Przegląd prac i projektów, w których LLM prowadzi interaktywną fabułę: gry tekstowe
 z narratorem AI, badania nad spójnością narracji i pamięcią długich rozmów, generowanie obrazów spójnych
@@ -142,6 +177,18 @@ mierzy głównie brak listy lokacji. Dwie osobne flagi i powtórka porównania.
 **P4. Wykresy.** M1 w zależności od k dla każdego modelu, porównanie ze stanem/bez stanu, czasy tur.
 Dane `long50` są tylko u Dudsztora (`data/dvn.sqlite`), trzeba je wymienić albo wyeksportować do CSV.
 
+### Zasady serwera GPU instytutu
+
+Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN instytutu). Adres u nich, nie wpisywać do repo.
+- Na początku uzupełnić `PROJECT.md` w katalogu głównym serwera.
+- Tylko środowiska Conda, `pip` wewnątrz nich. Bez `sudo apt-get` i bez instalowania innych VPN-ów.
+- Przed startem `top`, `nvidia-smi`, `df -h`. Nie przerywać cudzych procesów.
+- Modele, dane i wyniki w `~/data`, bo katalog domowy to mały dysk systemowy.
+- Bez usług działających w trybie ciągłym (np. ollama), po testach wyłączyć, bo blokują GPU.
+  Po pracy z Dockerem usunąć swoje kontenery i obrazy.
+- Konto i dane są usuwane na końcu semestru, kopii nie ma: kod do repo, wyniki kopiować poza serwer.
+  Po zakończeniu projektu usunąć swoje dane i środowiska.
+
 ### Otwarte problemy i pytania
 
 - Cache na `large-reasoning` jest wyłączony albo niezgłaszany. Pytanie do prowadzącego, czy da się włączyć.
@@ -171,6 +218,11 @@ Dane `long50` są tylko u Dudsztora (`data/dvn.sqlite`), trzeba je wymienić alb
 
 ## Dziennik
 
+### 2026-11-03, Antek: zadania sprintu 4 i zasady serwera GPU
+- Co zrobione: zadania Z1 do Z4 z opisami, zasady serwera GPU (bez adresu). Prowadzący dodał klucze Antka i Krzyśka.
+- Poprawka: „model hybrydowy” jako przyczyna działania cache na `strata-big` to był domysł, wpis z 2026-10-30 poprawiony.
+- Uwaga dla następnych: najpierw Z1. Połączenia z serwerem GPU jeszcze nie sprawdzaliśmy.
+
 ### 2026-10-30, Antek: zadania sprintu 3 z DoD prowadzącego
 - Co zrobione: nowa lista zadań (S1 do S5 z DoD, P1 do P4 z poprzednich sprintów) z opisami
   i sekcja „Otwarte problemy i pytania”.
@@ -181,8 +233,8 @@ Dane `long50` są tylko u Dudsztora (`data/dvn.sqlite`), trzeba je wymienić alb
 
 ### 2026-10-30, Antek: przyczyna problemu z cache i poprawka `full_cached`
 - Diagnoza (nagłówki serwera pokazują, która maszyna odpowiada; obie mają po 1 kopii modelu):
-  - `strata-big` (Qwen3.8-Flash-Next, model hybrydowy z warstwami liniowymi) zapisuje cache tylko na KOŃCU
-    całego promptu. Trafienie jest wtedy, gdy nowy prompt to poprzedni prompt plus dopisane wiadomości.
+  - `strata-big` (Qwen3.8-Flash-Next) w pomiarach zachowuje się tak, jakby zapisywał cache tylko na KOŃCU
+    całego promptu (przyczyna nieznana, konfigurację sprawdza prowadzący). Trafienie jest wtedy, gdy nowy prompt to poprzedni prompt plus dopisane wiadomości.
     Sam wspólny początek z innym końcem daje 0 (test: 3 końcówki po 5,2k wspólnych tokenów, 0 trafień;
     dopisanie do poprzedniego promptu: 5201 z 5232 z cache, 28 s → 0,5 s).
   - `large-reasoning`: cache wyłączony albo niezgłaszany (brak `cached_tokens`, identyczny czas przy powtórce).

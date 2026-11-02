@@ -57,8 +57,8 @@ class CachedFullHistory(FullHistory):
 
     Zmienne części (stan świata, lokacje) idą na koniec promptu (context.build_messages), a historia
     zapamiętuje wiadomość gracza DOKŁADNIE tak, jak została wysłana (razem ze stanem z tamtej tury).
-    Dzięki temu prompt kolejnej tury to poprzedni prompt plus dopisane wiadomości. Serwer (strata-big,
-    model hybrydowy) bierze z cache tylko taki przypadek, sam wspólny początek nie wystarcza.
+    Dzięki temu prompt kolejnej tury to poprzedni prompt plus dopisane wiadomości. W pomiarach strata-big
+    bierze z cache tylko taki przypadek, sam wspólny początek nie wystarcza.
     """
 
     name = "full_cached"
