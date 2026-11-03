@@ -79,10 +79,10 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 
 | Kto | Zadanie | Wymaga | Od kiedy |
 |---|---|---|---|
-| (wolne) | Z1. Architektura pomiarowa obrazów (najpierw, blokuje Z2) | GPU | |
-| (wolne) | Z2. Wybór modelu image-to-image (po Z1) | GPU | |
-| (wolne) | Z3. Pomiar KV cache przez TTFT na promptach z gry | VPN | |
-| (wolne) | Z4a. Myślenie narratora: wyłączyć albo ograniczyć, zmierzyć czas i jakość | VPN | |
+| Dudsztor | Z1. Architektura pomiarowa obrazów (najpierw, blokuje Z2) | GPU | 2026-11-03 |
+| Dudsztor | Z2. Wybór modelu image-to-image (po Z1) | GPU | 2026-11-03 |
+| Dudsztor | Z3. Pomiar KV cache przez TTFT na promptach z gry | VPN | 2026-11-03 |
+| Dudsztor | Z4a. Myślenie narratora: wyłączyć albo ograniczyć, zmierzyć czas i jakość | VPN | 2026-11-03 |
 | (wolne) | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2) | VPN | |
 | (wolne) | Z4c. Strumieniowanie narracji do UI | nic (tryb `demo`) | |
 | (wolne) | Z4d. Obrazy w tle i cache po `location_id` w grze (po Z2) | GPU | |
