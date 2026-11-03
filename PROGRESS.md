@@ -83,7 +83,7 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 | (wolne) | Z2. Wybór modelu image-to-image (po Z1) | GPU | |
 | Krzysiek | Z3. Pomiar KV cache przez TTFT na promptach z gry | VPN | 2026-11-03 |
 | Krzysiek | Z4a. Myślenie narratora: wyłączyć albo ograniczyć, zmierzyć czas i jakość | VPN | 2026-11-03 |
-| (wolne) | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2) | VPN | |
+| Krzysiek | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2) | VPN | 2026-11-03 |
 | (wolne) | Z4c. Strumieniowanie narracji do UI | nic (tryb `demo`) | |
 | (wolne) | Z4d. Obrazy w tle i cache po `location_id` w grze (po Z2) | GPU | |
 | (wolne) | Z5. Czy `large-reasoning` przyjmuje obrazy, sędzia spójności obrazów | VPN | |
