@@ -74,12 +74,19 @@ Wpisz się w kolumnę „Kto”, zanim zaczniesz (osobny mały commit i push). O
 
 **Sprint 4 (od 2026-11-03), wymagania prowadzącego (DoD: KV cache, model image-to-image, optymalizacja czasu):**
 
-| Kto | Zadanie | Od kiedy |
-|---|---|---|
-| (wolne) | Z1. Architektura pomiarowa obrazów na RTX 4090 (najpierw, blokuje Z2) | |
-| (wolne) | Z2. Wybór modelu image-to-image | |
-| (czeka) | Z3. Testy KV cache (czeka na odpowiedź prowadzącego) | |
-| (wolne) | Z4. Optymalizacja czasu tury i obrazu | |
+Zadania oznaczone „GPU” wymagają serwera GPU instytutu (dostęp: Antek, Krzysiek). Reszta wymaga tylko
+VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w opisie jest „po”.
+
+| Kto | Zadanie | Wymaga | Od kiedy |
+|---|---|---|---|
+| (wolne) | Z1. Architektura pomiarowa obrazów (najpierw, blokuje Z2) | GPU | |
+| (wolne) | Z2. Wybór modelu image-to-image (po Z1) | GPU | |
+| (wolne) | Z3. Pomiar KV cache przez TTFT na promptach z gry | VPN | |
+| (wolne) | Z4a. Myślenie narratora: wyłączyć albo ograniczyć, zmierzyć czas i jakość | VPN | |
+| (wolne) | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2) | VPN | |
+| (wolne) | Z4c. Strumieniowanie narracji do UI | nic (tryb `demo`) | |
+| (wolne) | Z4d. Obrazy w tle i cache po `location_id` w grze (po Z2) | GPU | |
+| (wolne) | Z5. Czy `large-reasoning` przyjmuje obrazy, sędzia spójności obrazów | VPN | |
 
 **Sprint 3, wymagania prowadzącego (DoD):**
 
@@ -122,11 +129,39 @@ się rozjeżdżają, więc bohatera i inne postacie trzeba podawać jako obraz. 
 `flux-schnell` wg `bench/images/README.md` zajmuje ok. 33 GB VRAM, a RTX 4090 ma 24 GB: potrzebne odciążenie
 albo lżejsza wersja. Wynik: decyzja, który model wpinamy do gry.
 
-**Z3. KV cache.** Prowadzący sprawdza konfigurację i to, czy cache trzeba jawnie włączać. Potem powtórzyć pomiary
-o różnych porach, z zapisem obciążenia (wieczorem 2026-11-01 prompt z 11 tokenów czekał 122 do 217 s).
+**Z3. Pomiar KV cache przez TTFT.** Najpierw przeczytaj „Wnioski z noty prowadzącego o modelach” niżej.
+- Dodać do `app/llm/litellm_client.py` tryb strumieniowania i zapis TTFT (czas do pierwszego tokenu) w `turns`,
+  tak jak `tokens_cached` (kolumna z migracją w `app/storage/db.py`). Bez tego cache na `large-reasoning` jest
+  niewidoczny, bo vLLM nie zgłasza `cached_tokens`.
+- Skrypt pomiarowy (np. `app/eval/kv_cache.py`): 4 scenariusze z noty (zimny, powtórka, dopisanie, zmiana początku)
+  na prawdziwych promptach z gry (`turns.prompt` w bazie), oba modele, po kilka powtórzeń, zapis do CSV.
+- Wynik: tabela TTFT jak w nocie, ale dla naszych promptów, z godziną pomiaru. Testy bez modelu (FakeLLM).
 
-**Z4. Optymalizacja czasu.** Tekst: zadanie P2. Obrazy: cache po `location_id`, mniej kroków, mniejsza rozdzielczość.
-Miara: czas od komendy gracza do tekstu i do obrazu.
+**Z4a. Myślenie narratora.** Oba modele myślą przed odpowiedzią (`strata-big`: budżet do 2048 tokenów).
+Z naszych danych (szacunek z liczby znaków na token): ok. 40% tokenów wyjściowych `strata-big` i ponad połowa
+u `large-reasoning` to ukryte myślenie, czyli 10 do 20 s na turę.
+- Sprawdzić, które parametry serwer przyjmuje: `reasoning_effort` („low”, „none”) i dla Qwen
+  `extra_body={"chat_template_kwargs": {"enable_thinking": false}}`. Zmierzyć tokeny wyjściowe i czas.
+- Jeśli działa: opcja w konfiguracji gry (`.env` i runner, np. `--thinking off`), domyślnie bez zmian.
+- Badanie: `main_v2`, myślenie włączone vs wyłączone, ok. 5 gier na wariant. Mierzyć czas tury, JSON, M1, M2, M4.
+  Pytanie: ile czasu zyskujemy i czy spada jakość.
+
+**Z4b. Badanie `full_cached`.** Jak P2, ale na obu modelach (`large-reasoning` ma cache od początku, `strata-big`
+od 2026-11-03). Seedy z `long50`, ok. 5 gier na wariant na start. Mierzyć czas tury, TTFT (po Z3), `tokens_cached`,
+M1, M2, M4. Nie więcej niż kilka gier naraz: `strata-big` ma 32 sloty cache wspólne dla wszystkich studentów.
+
+**Z4c. Strumieniowanie do UI.** Narracja pojawia się w przeglądarce w trakcie generowania, a nie po całej turze.
+Problem: odpowiedź to JSON, więc trzeba wyciągać pole `narration` w locie. FastAPI (np. Server-Sent Events)
+i obecny UI w `app/static/` (czysty JS, bez frameworków). Działa w trybie `demo`, więc nie wymaga VPN.
+Miara: czas do pierwszego widocznego słowa.
+
+**Z4d. Obrazy w grze.** Po Z2. Generowanie tła w tle (gra nie czeka na obraz), cache po `location_id`,
+stały styl i seed. Gra działa dalej bez obrazów, gdy serwer GPU jest niedostępny.
+
+**Z5. Obrazy w `large-reasoning`.** Prowadzący pisze, że `large-reasoning` powinien przyjmować obrazy
+(tabela w nocie podaje tylko tekst). Sprawdzić wysłanie obrazu w formacie OpenAI (`image_url` z base64).
+Jeśli działa: prototyp sędziego spójności, który dostaje obraz wzorcowy postaci lub lokacji i nowy obraz
+i ocenia, czy to ta sama postać lub miejsce (skala i krótkie uzasadnienie). To dodatkowa miara do Z1 obok DINOv2/CLIP.
 
 **S1. SOTA.** Przegląd prac i projektów, w których LLM prowadzi interaktywną fabułę: gry tekstowe
 z narratorem AI, badania nad spójnością narracji i pamięcią długich rozmów, generowanie obrazów spójnych
@@ -177,6 +212,23 @@ mierzy głównie brak listy lokacji. Dwie osobne flagi i powtórka porównania.
 **P4. Wykresy.** M1 w zależności od k dla każdego modelu, porównanie ze stanem/bez stanu, czasy tur.
 Dane `long50` są tylko u Dudsztora (`data/dvn.sqlite`), trzeba je wymienić albo wyeksportować do CSV.
 
+### Wnioski z noty prowadzącego o modelach (2026-11-03)
+
+Nota jest na wiki przedmiotu (link u Antka). Najważniejsze dla nas:
+- `large-reasoning`: Qwen3.8-27B FP8 na vLLM, 5 kart RTX 4080. Generuje 17 do 20 tokenów/s, czyta prompt
+  1000 do 1800 tokenów/s. Cache prefiksu działa automatycznie, ale vLLM NIE zgłasza `cached_tokens`:
+  sprawdzamy go po TTFT. Cache obejmuje tylko pełne bloki po 784 tokeny, reszta jest liczona od nowa.
+- `strata-big`: Qwen3.8-Flash-Next, MoE 180B (ok. 22B aktywnych), osobny silnik (wagi w RAM, jedna RTX 4080).
+  Generuje 22 do 28 tokenów/s. Cache włączony 2026-11-03: 32 sesje w RAM wspólne dla wszystkich studentów,
+  przy dużym ruchu najstarsze są usuwane. Myśli przed odpowiedzią (budżet 2048 tokenów, `reasoning_effort` „medium”).
+- TTFT z noty: z cache ok. 0,1 s (`strata-big`) i 0,15 do 1 s (`large-reasoning`), bez cache 2 do 15 s
+  zależnie od długości promptu.
+- Złota zasada: stały początek, zmienne dane na końcu, historii nie zmieniać, tylko dopisywać.
+  Każda zmiana na początku (data, ID sesji) unieważnia cache całego promptu. Nasz `full_cached` jest zgodny z tą zasadą,
+  a `window/8` nie (okno się przesuwa i zmienia początek historii).
+- Obciążenie serwera i kolejki widać na dashboardzie Grafana (adres w nocie). Sprawdzać przed długimi pomiarami.
+- Ceny w nocie są odwrotne niż te, które zwraca serwer (`/model/info`). Na budżet nie ma to wpływu.
+
 ### Zasady serwera GPU instytutu
 
 Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN instytutu). Adres u nich, nie wpisywać do repo.
@@ -191,7 +243,7 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ### Otwarte problemy i pytania
 
-- Cache na `large-reasoning` jest wyłączony albo niezgłaszany. Pytanie do prowadzącego, czy da się włączyć.
+- Cache na `large-reasoning` działa, ale nie jest zgłaszany w `cached_tokens` (vLLM). Mierzyć przez TTFT (Z3).
 - Maszyna RTX 4090 prowadzącego jest niestabilna: tylko do testów, nie do gry ani długich badań.
 - VPN zrywa się przy wygaszaczu ekranu i bez powodu. Długie badania z `caffeinate -di` (macOS).
 - Dane badań są lokalne u każdego (`data/` nie jest w repo). Trzeba ustalić wspólny eksport (CSV) do raportu.
@@ -217,6 +269,14 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
   ile się wykonało.
 
 ## Dziennik
+
+### 2026-11-03, Antek: nota prowadzącego o modelach i nowe zadania
+- Prowadzący włączył KV cache na `strata-big` i przysłał notę o modelach i cache. Streszczenie: sekcja
+  „Wnioski z noty prowadzącego o modelach”.
+- Wyjaśnia nasze pomiary: `strata-big` ma sesje cache w 32 slotach wspólnych dla wszystkich (przy ruchu wypadają),
+  `large-reasoning` ma cache, ale go nie zgłasza.
+- Nowe odkrycie z naszych danych: dużą część tokenów wyjściowych zajmuje ukryte myślenie (Z4a).
+- Zadania sprintu 4 rozbite na Z1 do Z5 z opisami, co przygotować.
 
 ### 2026-11-03, Antek: zadania sprintu 4 i zasady serwera GPU
 - Co zrobione: zadania Z1 do Z4 z opisami, zasady serwera GPU (bez adresu). Prowadzący dodał klucze Antka i Krzyśka.
