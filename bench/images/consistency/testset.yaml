@@ -1,0 +1,44 @@
+# Zestaw testowy spójności obrazów (zadanie Z1).
+#
+# Każdy model najpierw rysuje obraz wzorcowy każdej postaci i lokacji (sam tekst),
+# potem każdą scenę w trzech wariantach:
+#   text    sam tekst (punkt odniesienia: czy postać się rozjeżdża)
+#   anchor  tekst + obrazy wzorcowe postaci i lokacji ze sceny
+#   chain   tekst + ostatni obraz, na którym była dana postać lub lokacja (czy błędy się kumulują)
+#
+# Opisy po angielsku, bo tak trenowano kodery tekstu modeli. Postacie i lokacje ze świata zaginiona_korona.
+# Zmiana treści = wyższe version (wyniki różnych wersji się nie mieszają).
+
+id: velgard_v1
+version: 1
+style: "visual novel illustration, painterly digital art, soft cinematic lighting, detailed, consistent character design"
+size: [1280, 720]
+
+characters:
+  aren:
+    description: "Aren, a young wandering mercenary, short dark brown hair, stubble, green eyes, worn brown leather armor, red scarf, silver sword on his back, thin scar on his left hand"
+  borwin:
+    description: "Borwin, a stout middle-aged innkeeper, red hair, bushy red beard, black eyepatch over his left eye, white apron over a grey shirt"
+  guard:
+    description: "a tall town guard, steel helmet with nose guard, chainmail, blue tabard with a white tower emblem, holding a spear"
+
+locations:
+  tavern:
+    description: "smoky wooden medieval tavern interior, stone fireplace, long tables, beer barrels, warm candlelight"
+  market:
+    description: "cobbled medieval town market square with colorful stalls, clock tower in the background, cloudy sky"
+  forest:
+    description: "dense pine forest with a narrow dirt path, mist between the trees, early morning"
+
+# Postać przechodzi przez różne miejsca i wraca do znanych. Aren jest w każdej scenie (k = 1 do 10).
+scenes:
+  - {location: tavern, characters: [aren, borwin], action: "Aren sits at the bar talking to Borwin"}
+  - {location: market, characters: [aren], action: "Aren walks between the stalls"}
+  - {location: market, characters: [aren, guard], action: "a guard stops Aren and asks questions"}
+  - {location: forest, characters: [aren], action: "Aren digs a hole under an old split oak"}
+  - {location: tavern, characters: [aren, borwin], action: "Borwin pours a mug of beer for Aren"}
+  - {location: forest, characters: [aren, guard], action: "Aren hides behind a tree while a guard passes"}
+  - {location: market, characters: [aren], action: "Aren buys bread at a stall"}
+  - {location: tavern, characters: [aren, borwin, guard], action: "a guard questions Borwin while Aren watches"}
+  - {location: forest, characters: [aren], action: "Aren rests by a small campfire"}
+  - {location: market, characters: [aren, borwin], action: "Aren and Borwin argue next to the clock tower"}

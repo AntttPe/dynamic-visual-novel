@@ -84,7 +84,7 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 
 | Kto | Zadanie | Wymaga | Od kiedy |
 |---|---|---|---|
-| (wolne) | Z1. Architektura pomiarowa obrazów (najpierw, blokuje Z2) | GPU | |
+| Antek | Z1. Architektura pomiarowa obrazów (najpierw, blokuje Z2) | GPU | 2026-11-03 |
 | (wolne) | Z2. Wybór modelu image-to-image (po Z1) | GPU | |
 | (wstrzymane) | Z4a. Myślenie narratora: wyłączyć albo ograniczyć. Wstrzymane 2026-11-03: nie zmieniamy parametrów modeli (Decyzje) | VPN | |
 | Krzysiek | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2). Wstępne wyniki w Dzienniku 2026-11-03, zostało dłuższe badanie (strata-big gry po kolei) | VPN | 2026-11-03 |
@@ -129,9 +129,11 @@ się rozjeżdżają, więc bohatera i inne postacie trzeba podawać jako obraz. 
   czas i VRAM. Do sprawdzenia: czy detektor twarzy działa na grafikach, inaczej same DINOv2/CLIP.
 - Wynik: jedna komenda uruchamia macierz modele × warianty × seedy i daje raport obok siebie.
 
-**Z2. Wybór modelu image-to-image.** Pomiar na Z1. Kandydaci: SDXL, rodzina FLUX, „Flux Klein” z zadania S2.
-`flux-schnell` wg `bench/images/README.md` zajmuje ok. 33 GB VRAM, a RTX 4090 ma 24 GB: potrzebne odciążenie
-albo lżejsza wersja. Wynik: decyzja, który model wpinamy do gry.
+**Z2. Wybór modelu image-to-image.** Pomiar na Z1 (`bench/images/consistency/`). Modele w adapterach:
+`sdxl-ip` (SDXL + IP-Adapter, punkt odniesienia), `flux2-klein-4b` (FLUX.2 [klein] 4B, Apache 2.0, ok. 13 GB VRAM,
+4 kroki) i `flux3-klein` (FLUX 3 Image Klein z 2026-10-15, 5,6B, do 10 obrazów wejściowych, licencja FLUX Kommunity,
+gated na HF; w pełnej precyzji ponad 24 GB, więc z odciążaniem do RAM). „NoGPU” z wyszukiwania to hasło reklamowe,
+nie osobny model. Wynik: decyzja, który model wpinamy do gry.
 
 **Z3. Pomiar KV cache przez TTFT.** Najpierw przeczytaj „Wnioski z noty prowadzącego o modelach” niżej.
 - Dodać do `app/llm/litellm_client.py` tryb strumieniowania i zapis TTFT (czas do pierwszego tokenu) w `turns`,
@@ -277,6 +279,14 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 - **Gry `full_cached` na `strata-big` po kolei, nie równolegle**, bo równoległe gry nadpisują sobie cache.
 
 ## Dziennik
+
+### 2026-11-03, Antek: stanowisko pomiaru spójności obrazów (Z1, kod bez pomiaru)
+- Co zrobione: `bench/images/consistency/`: zestaw testowy (3 postacie, 3 lokacje, 10 scen), runner z wariantami
+  `text`, `anchor`, `chain` i wznawianiem, adaptery `sdxl-ip`, `flux2-klein-4b`, `flux3-klein`, oceny DINOv2 i CLIP
+  (`score.py`), raport HTML (`report.py`), instrukcja na serwer GPU zgodna z jego zasadami (README w tym katalogu).
+- Testy logiki bez GPU: `tests/test_image_bench.py` (model na niby).
+- Uwaga dla następnych: adaptery FLUX nie były jeszcze uruchomione na GPU. Nazwy parametrów, repozytorium wersji
+  destylowanej FLUX 3 i API `ModularPipeline` sprawdzić na krótkim teście (README, krok 8).
 
 ### 2026-11-03, Krzysiek: pomiar KV cache (Z3) i wstępne badanie `full_cached` (Z4b)
 - Co zrobione: odpowiedź narratora strumieniem (`NARRATOR_STREAM`, domyślnie włączone), w `turns` nowe kolumny
