@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     narrator_max_tokens: int = 1200
     narrator_timeout_s: float = 180
     narrator_json_retries: int = 2
+    # Odpowiedź strumieniem: pozwala zmierzyć czas do pierwszego tokenu (TTFT), po którym widać cache promptu
+    narrator_stream: bool = True
 
     # Pamięć narratora: "full" (pełna historia), "window" (ostatnie N tur)
     # albo "full_cached" (pełna historia w układzie pod cache promptu serwera)

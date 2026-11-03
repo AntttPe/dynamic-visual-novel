@@ -109,6 +109,7 @@ class GameEngine:
         parsed, raw, error = None, "", None
         tokens_in = tokens_out = tokens_cached = 0
         latency_ms = 0.0
+        ttft_ms = first_answer_ms = None
         attempts = 0
         for _ in range(cfg["json_retries"] + 1):
             result = await self.llm.complete(
@@ -119,6 +120,8 @@ class GameEngine:
                 max_tokens=cfg["max_tokens"],
             )
             attempts += 1
+            if attempts == 1:  # ponowienie ma dłuższy prompt, więc liczy się czas pierwszej próby
+                ttft_ms, first_answer_ms = result.ttft_ms, result.first_answer_ms
             tokens_in += result.tokens_in
             tokens_out += result.tokens_out
             tokens_cached += result.tokens_cached
@@ -154,6 +157,8 @@ class GameEngine:
             tokens_out=tokens_out,
             tokens_cached=tokens_cached,
             latency_ms=latency_ms,
+            ttft_ms=ttft_ms,
+            first_answer_ms=first_answer_ms,
             prompt=prompt,
             accepted_updates=accepted,
             rejected_updates=rejected,

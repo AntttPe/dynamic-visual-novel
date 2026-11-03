@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS turns (
     state_after       TEXT NOT NULL,
     error             TEXT,
     tokens_cached     INTEGER NOT NULL DEFAULT 0,
+    ttft_ms           REAL,
+    first_answer_ms   REAL,
     PRIMARY KEY (run_id, t)
 );
 CREATE TABLE IF NOT EXISTS eval_runs (
@@ -62,6 +64,13 @@ CREATE TABLE IF NOT EXISTS eval_runs (
 """
 
 
+_ADDED_TURN_COLUMNS = {
+    "tokens_cached": "INTEGER NOT NULL DEFAULT 0",
+    "ttft_ms": "REAL",
+    "first_answer_ms": "REAL",
+}
+
+
 def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
@@ -76,12 +85,15 @@ class Store:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with closing(self._connect()) as conn, conn:
             conn.executescript(SCHEMA)
-            # Starsze bazy nie mają kolumny tokens_cached
-            if "tokens_cached" not in {row["name"] for row in conn.execute("PRAGMA table_info(turns)")}:
-                conn.execute("ALTER TABLE turns ADD COLUMN tokens_cached INTEGER NOT NULL DEFAULT 0")
+            # Starsze bazy nie mają nowszych kolumn
+            existing = {row["name"] for row in conn.execute("PRAGMA table_info(turns)")}
+            for column, ddl in _ADDED_TURN_COLUMNS.items():
+                if column not in existing:
+                    conn.execute(f"ALTER TABLE turns ADD COLUMN {column} {ddl}")
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.path)
+        # Kilka równoległych gier pisze do jednej bazy, więc czekamy dłużej niż domyślne 5 s
+        conn = sqlite3.connect(self.path, timeout=30)
         conn.row_factory = sqlite3.Row
         return conn
 
@@ -100,8 +112,9 @@ class Store:
             conn.execute(
                 "INSERT INTO turns (run_id, t, created_at, player_action, prompt, raw_output, json_ok_first_try,"
                 " retries, tokens_in, tokens_out, latency_ms, narration, dialogue, location_id, location,"
-                " scene_description, state_updates, rejected_updates, state_after, error, tokens_cached)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " scene_description, state_updates, rejected_updates, state_after, error, tokens_cached,"
+                " ttft_ms, first_answer_ms)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (run_id, rec.t, _now(), rec.player_action, _json(rec.prompt), rec.raw_output,
                  int(rec.json_ok_first_try), rec.retries, rec.tokens_in, rec.tokens_out,
                  rec.latency_ms,
@@ -113,7 +126,7 @@ class Store:
                  _json([u.model_dump() for u in r.state_updates]) if r else None,
                  _json([x.model_dump() for x in rec.rejected_updates]),
                  _json([f.model_dump() for f in rec.state_after]),
-                 rec.error, rec.tokens_cached),
+                 rec.error, rec.tokens_cached, rec.ttft_ms, rec.first_answer_ms),
             )
 
     def turns(self, run_id: str) -> list[dict]:

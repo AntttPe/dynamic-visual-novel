@@ -54,6 +54,8 @@ class TurnRecord(BaseModel):
     tokens_out: int
     tokens_cached: int = 0
     latency_ms: float
+    ttft_ms: float | None = None  # pierwsza próba, tylko przy strumieniowaniu
+    first_answer_ms: float | None = None
     prompt: list[dict]
     accepted_updates: list[StateUpdate] = Field(default_factory=list)
     rejected_updates: list[RejectedUpdate] = Field(default_factory=list)

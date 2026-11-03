@@ -7,10 +7,25 @@ import pytest
 from app.config import Settings
 from app.llm import litellm_client
 from app.llm.base import LLMError
-from app.llm.litellm_client import LiteLLMClient, resolve_api_base, resolve_api_key
+from app.llm.litellm_client import LiteLLMClient, answer_started, resolve_api_base, resolve_api_key
 
 S = Settings(_env_file=None, ollama_base_url="http://host.docker.internal:11434",
-             narrator_api_base="http://host.docker.internal:8001/v1", anthropic_api_key="sk-test")
+             narrator_api_base="http://host.docker.internal:8001/v1", anthropic_api_key="sk-test",
+             narrator_stream=False)
+S_STREAM = S.model_copy(update={"narrator_stream": True})
+
+
+def _chunk(content=None, reasoning=None, usage=None):
+    choices = [] if content is None and reasoning is None else [
+        SimpleNamespace(delta=SimpleNamespace(content=content, reasoning_content=reasoning))]
+    return SimpleNamespace(choices=choices, usage=usage)
+
+
+def _stream(chunks):
+    async def gen():
+        for c in chunks:
+            yield c
+    return gen()
 
 
 def test_api_base_and_key_per_provider():
@@ -55,6 +70,70 @@ async def test_client_passes_schema_and_reads_usage(monkeypatch):
     assert seen["api_base"] == "http://host.docker.internal:11434"
     assert seen["response_format"]["json_schema"]["schema"] == {"type": "object"}
     assert seen["seed"] == 7
+
+
+@pytest.mark.anyio
+async def test_stream_joins_text_and_measures_ttft(monkeypatch):
+    seen = {}
+    usage = SimpleNamespace(prompt_tokens=500, completion_tokens=9,
+                            prompt_tokens_details=SimpleNamespace(cached_tokens=400))
+
+    async def fake_acompletion(**kwargs):
+        seen.update(kwargs)
+        return _stream([_chunk(reasoning="myślę"), _chunk(content='{"ok"'), _chunk(content=": true}"),
+                        _chunk(usage=usage)])
+
+    monkeypatch.setattr(litellm_client.litellm, "acompletion", fake_acompletion)
+    result = await LiteLLMClient("openai/strata-big", S_STREAM).complete([{"role": "user", "content": "hej"}])
+    assert seen["stream"] is True and seen["stream_options"] == {"include_usage": True}
+    assert result.text == '{"ok": true}'
+    assert (result.tokens_in, result.tokens_out, result.tokens_cached) == (500, 9, 400)
+    assert result.ttft_ms is not None and result.first_answer_ms is not None
+    assert result.ttft_ms <= result.first_answer_ms <= result.latency_ms
+
+
+@pytest.mark.anyio
+async def test_stream_without_usage_and_answer(monkeypatch):
+    async def fake_acompletion(**kwargs):
+        return _stream([_chunk(reasoning="tylko myślenie")])
+
+    monkeypatch.setattr(litellm_client.litellm, "acompletion", fake_acompletion)
+    result = await LiteLLMClient("openai/x", S_STREAM).complete([{"role": "user", "content": "hej"}], max_tokens=1)
+    assert result.text == "" and result.tokens_in == 0
+    assert result.ttft_ms is not None and result.first_answer_ms is None
+
+
+@pytest.mark.anyio
+async def test_stream_ttft_falls_back_to_first_chunk(monkeypatch):
+    async def fake_acompletion(**kwargs):
+        return _stream([_chunk(content=""), _chunk(usage=SimpleNamespace(prompt_tokens=5, completion_tokens=1))])
+
+    monkeypatch.setattr(litellm_client.litellm, "acompletion", fake_acompletion)
+    result = await LiteLLMClient("openai/x", S_STREAM).complete([{"role": "user", "content": "hej"}], max_tokens=1)
+    assert result.ttft_ms is not None and result.first_answer_ms is None
+
+
+@pytest.mark.anyio
+async def test_stream_errors_become_llm_error(monkeypatch):
+    async def broken_stream():
+        yield _chunk(content="{")
+        raise ConnectionError("zerwane połączenie")
+
+    async def fake_acompletion(**kwargs):
+        return broken_stream()
+
+    monkeypatch.setattr(litellm_client.litellm, "acompletion", fake_acompletion)
+    with pytest.raises(LLMError):
+        await LiteLLMClient("openai/x", S_STREAM).complete([{"role": "user", "content": "hej"}])
+
+
+def test_answer_started_skips_think_block():
+    assert not answer_started("")
+    assert not answer_started("  <thi")
+    assert not answer_started("<think>planuję")
+    assert not answer_started("<think>planuję</think>\n")
+    assert answer_started("<think>planuję</think>{")
+    assert answer_started('{"narration"')
 
 
 @pytest.mark.anyio

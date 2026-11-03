@@ -255,6 +255,18 @@ python -m app.eval.extra_metrics --tag sprint1 --csv data/eval/sprint1_extra.csv
 | M3 dziwne komendy | czy model logicznie reaguje na nietypowe akcje | sędzia LLM (w przygotowaniu) |
 | M4 spójność lokacji | czy to samo miejsce ma zawsze ten sam `location_id` | porównanie z oczekiwaną lokacją albo między wizytami |
 
+**5. Pomiar cache promptu (KV cache)** (VPN, ok. 15 minut):
+```bash
+python -m app.eval.kv_cache --reps 3 --tag kv1                  # oba modele, prompty 2k, 4k, 8k, 11k tokenów
+python -m app.eval.kv_cache --summary data/eval/kv_cache.csv --tag kv1   # sama tabela z zapisanych wyników
+```
+Skrypt składa prompty z prawdziwej gry z bazy (jak pamięć `full_cached`) i mierzy czas do pierwszego tokenu (TTFT)
+w 4 scenariuszach: pierwszy raz (`cold`), powtórka (`warm`), dopisanie następnej tury (`append`)
+i zmiana początku (`invalidate`). Przed dłuższym pomiarem sprawdź obciążenie serwera na dashboardzie Grafana.
+
+Gra domyślnie odbiera odpowiedź strumieniem i zapisuje w każdej turze `ttft_ms` (koniec czytania promptu)
+i `first_answer_ms` (koniec myślenia modelu). Wyłączenie: `NARRATOR_STREAM=false` w `.env`.
+
 ---
 
 ## Gdy coś nie działa
