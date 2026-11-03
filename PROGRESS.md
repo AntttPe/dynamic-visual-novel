@@ -40,7 +40,8 @@ Wzór wpisu w dzienniku:
 - Narrator przez LiteLLM: tryb `demo` bez modelu, Ollama na hoście, modele prowadzącego
   `openai/strata-big` i `openai/large-reasoning` (wymagają VPN instytutu, klucz w `.env`).
 - Stan świata z faktami niezmiennymi i walidatorem, pamięć `full`, `window` i `full_cached` (pod cache serwera),
-  każda tura w `data/dvn.sqlite` (z `tokens_cached`).
+  każda tura w `data/dvn.sqlite` (z `tokens_cached`, `ttft_ms` i `first_answer_ms`, odpowiedź strumieniem).
+- Cache promptu działa na obu modelach. Pomiar TTFT na promptach z gry: `python -m app.eval.kv_cache` (Dziennik 2026-11-03).
 - Scenariusze badawcze (`app/eval/scenarios/`, aktualny `main_v2`), runner ze wznawianiem po zerwaniu VPN,
   metryki M1, M2 (bez gaslightingu), M4 i raport w terminalu. Opis komend: README, sekcja „Eksperymenty”.
 - Metryki dodatkowe X1 do X5 i porównanie „ze stanem minus bez stanu” na parach seedów (McNemar, bootstrap,
@@ -58,6 +59,10 @@ Wzór wpisu w dzienniku:
   na Windows wyłącz usypianie i wygaszacz. Runner i tak wznawia po powrocie VPN.
 - `large-reasoning` jest wolny (mediana 34 s, p95 150 s na turę) i w 2,6% tur nie daje poprawnego JSON.
 - `--no-state` ukrywa w prompcie także listę lokacji, nie tylko stan. Spadek M4 bez stanu wynika głównie z tego (zadanie P3).
+- `strata-big`: kilka gier naraz psuje sobie cache (wspólny początek promptu, sesje się nadpisują). 4 gry naraz: 0 trafień,
+  2 gry: trafia tylko jedna. Gry `full_cached` na `strata-big` uruchamiać po kolei.
+- `strata-big` z wymuszonym JSON oddaje całą odpowiedź naraz, mimo strumienia. Jego `ttft_ms` w grze to czas
+  całej tury (TTFT mierzyć skryptem `kv_cache`, bez JSON). Ważne dla Z4c. `large-reasoning` strumieniuje normalnie.
 
 ## Metryki sprintu (ustalone)
 
@@ -81,9 +86,8 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 |---|---|---|---|
 | (wolne) | Z1. Architektura pomiarowa obrazów (najpierw, blokuje Z2) | GPU | |
 | (wolne) | Z2. Wybór modelu image-to-image (po Z1) | GPU | |
-| Krzysiek | Z3. Pomiar KV cache przez TTFT na promptach z gry | VPN | 2026-11-03 |
-| Krzysiek | Z4a. Myślenie narratora: wyłączyć albo ograniczyć, zmierzyć czas i jakość | VPN | 2026-11-03 |
-| Krzysiek | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2) | VPN | 2026-11-03 |
+| (wstrzymane) | Z4a. Myślenie narratora: wyłączyć albo ograniczyć. Wstrzymane 2026-11-03: nie zmieniamy parametrów modeli (Decyzje) | VPN | |
+| Krzysiek | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2). Wstępne wyniki w Dzienniku 2026-11-03, zostało dłuższe badanie (strata-big gry po kolei) | VPN | 2026-11-03 |
 | (wolne) | Z4c. Strumieniowanie narracji do UI | nic (tryb `demo`) | |
 | (wolne) | Z4d. Obrazy w tle i cache po `location_id` w grze (po Z2) | GPU | |
 | (wolne) | Z5. Czy `large-reasoning` przyjmuje obrazy, sędzia spójności obrazów | VPN | |
@@ -243,7 +247,9 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ### Otwarte problemy i pytania
 
-- Cache na `large-reasoning` działa, ale nie jest zgłaszany w `cached_tokens` (vLLM). Mierzyć przez TTFT (Z3).
+- Cache na `large-reasoning` działa (zmierzone w Z3), ale nie jest zgłaszany w `cached_tokens` (vLLM). Widać go tylko po TTFT.
+- W `full_cached` każda stara wiadomość gracza niesie kopię stanu świata z tamtej tury, więc prompt rośnie szybko
+  (ok. 20k tokenów w turze 28 zamiast 5 do 7k przy `window/8`). Do sprawdzenia: stan tylko w ostatniej wiadomości.
 - Maszyna RTX 4090 prowadzącego jest niestabilna: tylko do testów, nie do gry ani długich badań.
 - VPN zrywa się przy wygaszaczu ekranu i bez powodu. Długie badania z `caffeinate -di` (macOS).
 - Dane badań są lokalne u każdego (`data/` nie jest w repo). Trzeba ustalić wspólny eksport (CSV) do raportu.
@@ -267,8 +273,54 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
   (Jaccard, trigramy) do czasu decyzji o embeddingach CLIP/tekstowych. X3 to heurystyka (precyzja ok. 55%).
 - **Model przy limicie:** gdy skończy się limit tokenów lub zapytań, przechodzimy dalej i raportujemy tyle gier,
   ile się wykonało.
+- **Parametrów modeli nie zmieniamy** (myślenie, `reasoning_effort`): optymalizujemy czas po naszej stronie (cache, prompt).
+- **Gry `full_cached` na `strata-big` po kolei, nie równolegle**, bo równoległe gry nadpisują sobie cache.
 
 ## Dziennik
+
+### 2026-11-03, Krzysiek: pomiar KV cache (Z3) i wstępne badanie `full_cached` (Z4b)
+- Co zrobione: odpowiedź narratora strumieniem (`NARRATOR_STREAM`, domyślnie włączone), w `turns` nowe kolumny
+  `ttft_ms` (koniec czytania promptu) i `first_answer_ms` (koniec myślenia), migracja starych baz. Skrypt
+  `app/eval/kv_cache.py`: 4 scenariusze z noty prowadzącego na promptach z prawdziwej gry, wznawianie, CSV.
+  Baza czeka na zapis do 30 s (było 5 s: 8 równoległych gier dawało `database is locked`).
+- Pliki: `app/llm/`, `app/core/engine.py`, `schemas.py`, `app/storage/db.py`, `app/config.py`, `app/eval/kv_cache.py`,
+  `tests/test_kv_cache.py`, `tests/test_llm.py`, README (sekcja „Eksperymenty”, punkt 5).
+- **Z3, TTFT w ms** (mediana z 3 powtórzeń, tag `kv1`, prompty z gry strata-big w układzie `full_cached`, bez wymuszonego JSON):
+
+  | model | prompt | bez cache | powtórka | przyspieszenie | dopisana tura | zmieniony początek |
+  |---|---|---|---|---|---|---|
+  | strata-big | 2k | 2 270 | 120 | 19x | 745 | 2 246 |
+  | strata-big | 4k | 2 359 | 120 | 20x | 882 | 2 392 |
+  | strata-big | 8k | 3 410 | 105 | 32x | 868 | 3 410 |
+  | strata-big | 11k | 5 033 | 118 | 43x | 838 | 5 033 |
+  | large-reasoning | 2k | 2 276 | 841 | 2,7x | 1 129 | 2 243 |
+  | large-reasoning | 4k | 5 520 | 922 | 6,0x | 1 182 | 5 503 |
+  | large-reasoning | 8k | 7 440 | 1 092 | 6,8x | 1 250 | 7 431 |
+  | large-reasoning | 11k | 8 764 | 975 | 9,0x | 1 272 | 8 772 |
+
+  Cache działa na obu modelach (wniosek z 2026-10-29 „large-reasoning nie ma cache” jest nieaktualny). Dopisanie tury
+  (`full_cached`) trzyma TTFT ok. 0,8 s / 1,2 s niezależnie od długości. Zmiana początku = brak cache. Serwer czyta prompt
+  dużo szybciej niż 2026-10-29 (11k tokenów: 5 s, wtedy 6k: 29 s), więc cache oszczędza 4 do 7,5 s na turze, nie więcej.
+- **Z4b wstępnie** (tag `z4b`, `main_v2` 28 tur, seedy 1001 i 1002, po 2 gry na wariant, 4 gry modelu naraz):
+
+  | model | pamięć | czas tury med / p95 | czas gry | prompt w turze 28 | TTFT med | myślenie med | JSON 1. raz | M1 | M2 | M4 |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | strata-big | full_cached | 27 / 82 s | 17 min | 19k | (całość) | ? | 100% | 9/10 | 6/6 | 16/16 |
+  | strata-big | window/8 | 23 / 87 s | 15 min | 5k | (całość) | ? | 100% | 8/10 | 6/6 | 16/16 |
+  | large-reasoning | full_cached | 35 / 98 s | 22 min | 20k | 1,2 s | 16,9 s | 89% | 10/10 | 6/6 | 16/16 |
+  | large-reasoning | window/8 | 46 / 121 s | 25 min | 7k | 2,2 s | 18,4 s | 61% | 5/10 | 6/6 | 16/16 |
+
+  - strata-big w tym badaniu NIE trafiał w cache (0 tokenów z cache we wszystkich turach), więc to porównanie
+    „długi prompt bez cache vs krótki”. Test wyjaśniający (`z4b-solo`, `z4b-pair`, po 8 tur): 1 gra sama trafia
+    w cache prawie co turę, przy 2 grach naraz trafia tylko jedna. Równoległe gry nadpisują sobie sesje cache.
+  - large-reasoning: cache działa w grze (TTFT 1,2 s przy promptach do 20k). Myślenie to ok. połowa tury (17 s),
+    czytanie promptu 3 do 6%. Pełna historia daje lepsze M1 (10/10 vs 5/10, fakty sprzed > 8 tur są w prompcie).
+  - 2 gry na wariant: czasy i M1 to pierwszy sygnał, nie wynik. Czas tury mocno zależy od obciążenia serwera.
+- Uwaga dla następnych: gry `full_cached` na strata-big tylko po kolei. Dłuższe badanie Z4b: strata-big sekwencyjnie
+  (ok. 5 do 10 min na grę, gdy cache trafia), large-reasoning może iść równolegle. Pytanie o myślenie (Z4a) odpada:
+  zespół nie zmienia parametrów modeli.
+- Jak sprawdzić: `python -m app.eval.kv_cache --summary data/eval/kv_cache.csv --tag kv1`, `python -m app.eval.report --tag z4b`.
+- Commit: a558571
 
 ### 2026-11-03, Antek: nota prowadzącego o modelach i nowe zadania
 - Prowadzący włączył KV cache na `strata-big` i przysłał notę o modelach i cache. Streszczenie: sekcja
