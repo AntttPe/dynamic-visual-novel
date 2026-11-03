@@ -84,7 +84,7 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 
 | Kto | Zadanie | Wymaga | Od kiedy |
 |---|---|---|---|
-| Antek | Z1. Architektura pomiarowa obrazów (najpierw, blokuje Z2) | GPU | 2026-11-03 |
+| Antek | Z1. Architektura pomiarowa obrazów. Kod gotowy do uruchomienia na GPU (`bench/images/consistency/README.md`), czeka na krótki test | GPU | 2026-11-03 |
 | (wolne) | Z2. Wybór modelu image-to-image (po Z1) | GPU | |
 | (wstrzymane) | Z4a. Myślenie narratora: wyłączyć albo ograniczyć. Wstrzymane 2026-11-03: nie zmieniamy parametrów modeli (Decyzje) | VPN | |
 | Krzysiek | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2). Wstępne wyniki w Dzienniku 2026-11-03, zostało dłuższe badanie (strata-big gry po kolei) | VPN | 2026-11-03 |
@@ -252,6 +252,9 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 - Cache na `large-reasoning` działa (zmierzone w Z3), ale nie jest zgłaszany w `cached_tokens` (vLLM). Widać go tylko po TTFT.
 - W `full_cached` każda stara wiadomość gracza niesie kopię stanu świata z tamtej tury, więc prompt rośnie szybko
   (ok. 20k tokenów w turze 28 zamiast 5 do 7k przy `window/8`). Do sprawdzenia: stan tylko w ostatniej wiadomości.
+  Uwaga (Antek): to złamie cache na `strata-big`. On trafia tylko wtedy, gdy nowy prompt to cały poprzedni prompt
+  plus dopisane wiadomości (Dziennik 2026-10-30). Jeśli stan zniknie ze starej wiadomości, prompt przestaje być
+  dopisaniem. `large-reasoning` (vLLM, najdłuższy wspólny początek) by na tym nie stracił. Mierzyć osobno dla obu modeli.
 - Maszyna RTX 4090 prowadzącego jest niestabilna: tylko do testów, nie do gry ani długich badań.
 - VPN zrywa się przy wygaszaczu ekranu i bez powodu. Długie badania z `caffeinate -di` (macOS).
 - Dane badań są lokalne u każdego (`data/` nie jest w repo). Trzeba ustalić wspólny eksport (CSV) do raportu.
