@@ -114,8 +114,10 @@ nvidia-smi
 OUT=~/data/dvn-results/short
 python run.py --testset testset_short.yaml --seeds 1 --models flux2-klein-4b --out $OUT
 python run.py --testset testset_short.yaml --seeds 1 --models sdxl-ip --out $OUT
-python run.py --testset testset_short.yaml --seeds 1 --models flux3-klein --out $OUT
+python run.py --testset testset_short.yaml --seeds 1 --models flux3-klein --out $OUT   # tylko z tokenem HF (krok 7)
 ```
+Bez tokenu Hugging Face pomiń linię `read -s HF_TOKEN` i model `flux3-klein`: FLUX.2 klein 4B i SDXL pobierają się
+bez logowania (ok. 25 GB).
 Szacunek: kilka minut na model po pobraniu, najdłużej FLUX 3. Pierwsze pobranie wszystkich modeli
 to ok. 50 GB, więc 15 do 40 minut zależnie od łącza serwera. Jeśli któryś model zgłosi błąd (nazwa parametru,
 repozytorium, brak pamięci), zapisz ostatnie ok. 30 linii dla agenta i uruchom kolejny model.
