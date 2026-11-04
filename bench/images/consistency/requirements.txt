@@ -9,3 +9,5 @@ protobuf
 pillow
 pyyaml
 huggingface_hub
+rembg
+onnxruntime

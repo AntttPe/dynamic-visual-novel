@@ -1,16 +1,21 @@
 # Zestaw testowy spójności obrazów (zadanie Z1).
 #
 # Każdy model najpierw rysuje obraz wzorcowy każdej postaci i lokacji (sam tekst),
-# potem każdą scenę w trzech wariantach:
-#   text    sam tekst (punkt odniesienia: czy postać się rozjeżdża)
+# potem każdą scenę w czterech wariantach:
+#   text    sam tekst (opis postaci w każdym prompcie, czyli „karta postaci” tylko tekstem)
 #   anchor  tekst + obrazy wzorcowe postaci i lokacji ze sceny
 #   chain   tekst + ostatni obraz, na którym była dana postać lub lokacja (czy błędy się kumulują)
+#   layers  jak w visual novel: tło = wzorzec lokacji (rysowany raz, z cache), postać rysowana osobno
+#           ze swojego wzorca na neutralnym tle, wycięta i nałożona na tło
+#
+# return_of: scena powtarza wcześniejszą (to samo miejsce, te same postacie, ta sama akcja).
+# Porównanie powrotu z pierwszą wizytą to główny test: czy bohater w rundzie 20 wygląda jak w rundzie 1.
 #
 # Opisy po angielsku, bo tak trenowano kodery tekstu modeli. Postacie i lokacje ze świata zaginiona_korona.
 # Zmiana treści = wyższe version (wyniki różnych wersji się nie mieszają).
 
-id: velgard_v1
-version: 1
+id: velgard
+version: 2
 style: "visual novel illustration, painterly digital art, soft cinematic lighting, detailed, consistent character design"
 size: [1280, 720]
 
@@ -29,16 +34,30 @@ locations:
     description: "cobbled medieval town market square with colorful stalls, clock tower in the background, cloudy sky"
   forest:
     description: "dense pine forest with a narrow dirt path, mist between the trees, early morning"
+  castle_gate:
+    description: "stone castle walls with a closed iron-bound oak gate between two towers, overcast day"
 
-# Postać przechodzi przez różne miejsca i wraca do znanych. Aren jest w każdej scenie (k = 1 do 10).
+# Aren jest w każdej scenie (k = 1 do 22). Powroty: 14 -> 4, 15 -> 2, 17 -> 5, 19 -> 3, 20 -> 1.
 scenes:
   - {location: tavern, characters: [aren, borwin], action: "Aren sits at the bar talking to Borwin"}
   - {location: market, characters: [aren], action: "Aren walks between the stalls"}
   - {location: market, characters: [aren, guard], action: "a guard stops Aren and asks questions"}
-  - {location: forest, characters: [aren], action: "Aren digs a hole under an old split oak"}
+  - {location: forest, characters: [aren], action: "Aren kneels and digs a hole under an old pine"}
+  - {location: castle_gate, characters: [aren, guard], action: "Aren talks to a guard in front of the gate"}
   - {location: tavern, characters: [aren, borwin], action: "Borwin pours a mug of beer for Aren"}
   - {location: forest, characters: [aren, guard], action: "Aren hides behind a tree while a guard passes"}
   - {location: market, characters: [aren], action: "Aren buys bread at a stall"}
+  - {location: castle_gate, characters: [aren], action: "Aren looks up at the castle walls"}
   - {location: tavern, characters: [aren, borwin, guard], action: "a guard questions Borwin while Aren watches"}
   - {location: forest, characters: [aren], action: "Aren rests by a small campfire"}
-  - {location: market, characters: [aren, borwin], action: "Aren and Borwin argue next to the clock tower"}
+  - {location: market, characters: [aren, borwin], action: "Aren and Borwin argue next to a stall"}
+  - {location: castle_gate, characters: [aren, guard], action: "a guard blocks the gate with his spear"}
+  - {location: forest, characters: [aren], action: "Aren kneels and digs a hole under an old pine", return_of: 4}
+  - {location: market, characters: [aren], action: "Aren walks between the stalls", return_of: 2}
+  - {location: tavern, characters: [aren, borwin], action: "Borwin wipes the counter and laughs at Aren"}
+  - {location: castle_gate, characters: [aren, guard], action: "Aren talks to a guard in front of the gate", return_of: 5}
+  - {location: forest, characters: [aren, guard], action: "a guard chases Aren along the path"}
+  - {location: market, characters: [aren, guard], action: "a guard stops Aren and asks questions", return_of: 3}
+  - {location: tavern, characters: [aren, borwin], action: "Aren sits at the bar talking to Borwin", return_of: 1}
+  - {location: forest, characters: [aren], action: "Aren walks along the path with a torch"}
+  - {location: castle_gate, characters: [aren], action: "Aren waits in front of the closed gate"}

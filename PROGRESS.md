@@ -84,7 +84,7 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 
 | Kto | Zadanie | Wymaga | Od kiedy |
 |---|---|---|---|
-| Antek | Z1. Architektura pomiarowa obrazów. Kod gotowy do uruchomienia na GPU (`bench/images/consistency/README.md`), czeka na krótki test | GPU | 2026-11-03 |
+| Antek | Z1. Architektura pomiarowa obrazów. Wersja 2 gotowa do uruchomienia na GPU (`bench/images/consistency/README.md`), czeka na krótki test | GPU | 2026-11-03 |
 | (wolne) | Z2. Wybór modelu image-to-image (po Z1) | GPU | |
 | (wstrzymane) | Z4a. Myślenie narratora: wyłączyć albo ograniczyć. Wstrzymane 2026-11-03: nie zmieniamy parametrów modeli (Decyzje) | VPN | |
 | Krzysiek | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2). Wstępne wyniki w Dzienniku 2026-11-03, zostało dłuższe badanie (strata-big gry po kolei) | VPN | 2026-11-03 |
@@ -282,6 +282,17 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 - **Gry `full_cached` na `strata-big` po kolei, nie równolegle**, bo równoległe gry nadpisują sobie cache.
 
 ## Dziennik
+
+### 2026-11-04, Antek: test spójności obrazów w wersji 2 (Z1, kod bez pomiaru)
+- Co zrobione: 22 sceny z zaplanowanymi powrotami (20 -> 1, 19 -> 3, 17 -> 5, 15 -> 2, 14 -> 4), osobny seed
+  na scenę (wcześniej jeden seed na wszystkie sceny zawyżał spójność wariantu bez obrazu), czwarty wariant
+  `layers` (tło z cache + postać ze swojego wzorca, wycięta przez rembg i nałożona, jak w visual novel),
+  oceny na wycinkach postaci (detektor osób OWLv2) zamiast całych obrazów: podobieństwo do pierwszego
+  pojawienia się postaci (k do 22), do wzorca, powroty kontra pierwsza wizyta, czy postać w ogóle jest.
+  Raport: ranking wariantów po powrotach, tabela w zależności od k, runda 1 i 20 obok siebie.
+- Pliki: `bench/images/consistency/` (`compose.py` nowy), `tests/test_image_bench.py`.
+- Pełny pomiar: ok. 980 obrazów na 3 seedach, szacunek 2 do 3 h (najdłużej FLUX 3). Na start `--seeds 2`.
+- Uwaga dla następnych: adaptery FLUX, OWLv2 i rembg nie były jeszcze uruchamiane na GPU, najpierw krótki test.
 
 ### 2026-11-03, Antek: stanowisko pomiaru spójności obrazów (Z1, kod bez pomiaru)
 - Co zrobione: `bench/images/consistency/`: zestaw testowy (3 postacie, 3 lokacje, 10 scen), runner z wariantami
