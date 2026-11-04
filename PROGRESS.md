@@ -84,9 +84,10 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 
 | Kto | Zadanie | Wymaga | Od kiedy |
 |---|---|---|---|
-| (wolne) | Z1. Architektura pomiarowa obrazów (najpierw, blokuje Z2) | GPU | |
+| Antek | Z1. Architektura pomiarowa obrazów. Kod gotowy do uruchomienia na GPU (`bench/images/consistency/README.md`), czeka na krótki test | GPU | 2026-11-03 |
 | (wolne) | Z2. Wybór modelu image-to-image (po Z1) | GPU | |
 | (wstrzymane) | Z4a. Myślenie narratora: wyłączyć albo ograniczyć. Wstrzymane 2026-11-03: nie zmieniamy parametrów modeli (Decyzje) | VPN | |
+| Krzysiek | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2). Wstępne wyniki w Dzienniku 2026-11-03, zostało dłuższe badanie (strata-big gry po kolei) | VPN | 2026-11-03 |
 | (wolne) | Z4c. Strumieniowanie narracji do UI | nic (tryb `demo`) | |
 | (wolne) | Z4d. Obrazy w tle i cache po `location_id` w grze (po Z2) | GPU | |
 | (wolne) | Z5. Czy `large-reasoning` przyjmuje obrazy, sędzia spójności obrazów | VPN | |
@@ -128,9 +129,11 @@ się rozjeżdżają, więc bohatera i inne postacie trzeba podawać jako obraz. 
   czas i VRAM. Do sprawdzenia: czy detektor twarzy działa na grafikach, inaczej same DINOv2/CLIP.
 - Wynik: jedna komenda uruchamia macierz modele × warianty × seedy i daje raport obok siebie.
 
-**Z2. Wybór modelu image-to-image.** Pomiar na Z1. Kandydaci: SDXL, rodzina FLUX, „Flux Klein” z zadania S2.
-`flux-schnell` wg `bench/images/README.md` zajmuje ok. 33 GB VRAM, a RTX 4090 ma 24 GB: potrzebne odciążenie
-albo lżejsza wersja. Wynik: decyzja, który model wpinamy do gry.
+**Z2. Wybór modelu image-to-image.** Pomiar na Z1 (`bench/images/consistency/`). Modele w adapterach:
+`sdxl-ip` (SDXL + IP-Adapter, punkt odniesienia), `flux2-klein-4b` (FLUX.2 [klein] 4B, Apache 2.0, ok. 13 GB VRAM,
+4 kroki) i `flux3-klein` (FLUX 3 Image Klein z 2026-10-15, 5,6B, do 10 obrazów wejściowych, licencja FLUX Kommunity,
+gated na HF; w pełnej precyzji ponad 24 GB, więc z odciążaniem do RAM). „NoGPU” z wyszukiwania to hasło reklamowe,
+nie osobny model. Wynik: decyzja, który model wpinamy do gry.
 
 **Z3. Pomiar KV cache przez TTFT.** Najpierw przeczytaj „Wnioski z noty prowadzącego o modelach” niżej.
 - Dodać do `app/llm/litellm_client.py` tryb strumieniowania i zapis TTFT (czas do pierwszego tokenu) w `turns`,
@@ -249,6 +252,9 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 - Cache na `large-reasoning` działa (zmierzone w Z3), ale nie jest zgłaszany w `cached_tokens` (vLLM). Widać go tylko po TTFT.
 - W `full_cached` każda stara wiadomość gracza niesie kopię stanu świata z tamtej tury, więc prompt rośnie szybko
   (ok. 20k tokenów w turze 28 zamiast 5 do 7k przy `window/8`). Do sprawdzenia: stan tylko w ostatniej wiadomości.
+  Uwaga (Antek): to złamie cache na `strata-big`. On trafia tylko wtedy, gdy nowy prompt to cały poprzedni prompt
+  plus dopisane wiadomości (Dziennik 2026-10-30). Jeśli stan zniknie ze starej wiadomości, prompt przestaje być
+  dopisaniem. `large-reasoning` (vLLM, najdłuższy wspólny początek) by na tym nie stracił. Mierzyć osobno dla obu modeli.
 - Maszyna RTX 4090 prowadzącego jest niestabilna: tylko do testów, nie do gry ani długich badań.
 - VPN zrywa się przy wygaszaczu ekranu i bez powodu. Długie badania z `caffeinate -di` (macOS).
 - Dane badań są lokalne u każdego (`data/` nie jest w repo). Trzeba ustalić wspólny eksport (CSV) do raportu.
@@ -277,33 +283,13 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ## Dziennik
 
-### 2026-11-04, Krzysiek: badanie `full_cached` vs `window/8`, 10 gier na wariant (Z4b, koniec)
-- Co zrobione: 40 gier `main_v2` (28 tur), tag `z4b10`, seedy 1001 do 1010, te same seedy w obu wariantach
-  (porównanie parami). strata-big: jedna gra naraz, warianty na przemian. large-reasoning: 4 gry naraz.
-  Wszystkie 40 gier ukończone, bez przerw.
-- Wyniki:
-
-  | model | pamięć | czas tury med / p95 | czas gry | prompt w turze 28 | z cache | TTFT med | myślenie med | JSON 1. raz | M1 | M2 | M4 |
-  |---|---|---|---|---|---|---|---|---|---|---|---|
-  | strata-big | full_cached | 6,0 / 13,6 s | 3,4 min | 18k | 94% | (całość) | ? | 100% | 49/50 | 30/30 | 80/80 |
-  | strata-big | window/8 | 7,9 / 20,1 s | 4,5 min | 4,5k | 23% | (całość) | ? | 100% | 36/50 | 30/30 | 80/80 |
-  | large-reasoning | full_cached | 33 / 122 s | 22 min | 14k | (nie zgłasza) | 1,2 s | 16,7 s | 82% | 47/50 | 30/30 | 79/80 |
-  | large-reasoning | window/8 | 41 / 168 s | 24 min | 4k | (nie zgłasza) | 2,3 s | 10,4 s | 68% | 30/46 | 30/30 | 80/80 |
-
-  - Czas gry parami (średnia różnica, 95% CI bootstrap): strata-big **-0,9 min [-1,3; -0,6]**, `full_cached` szybszy
-    w 10/10 parach. large-reasoning -2,9 min [-6,3; +0,6], szybszy w 7/10 (różnica niepewna, duży rozrzut obciążenia).
-  - Gry strata-big po kolei: tura 6 s zamiast 27 s w badaniu z 4 grami naraz (cache trafia, 94% tokenów wejścia).
-  - M1 najbardziej różni się dla faktów sprzed > 8 tur (k=18): strata-big 10/10 vs 3/10, large-reasoning 8/10 vs 0/7.
-  - large-reasoning `window/8`: więcej złych JSON (68% za 1. razem, 6 tur z błędem, 4 pytania M1 nieocenione).
-  - Koszt `full_cached`: ok. 2,5x więcej tokenów wejścia na grę (strata-big 257k vs 101k), ale prawie wszystkie z cache.
-- Wniosek: `full_cached` jest szybszy i lepiej pamięta fakty na obu modelach. Propozycja: domyślna pamięć gry
-  `full_cached` (decyzja zespołu). Warunek na strata-big: gry jedna po drugiej, a w grze z wieloma graczami
-  cache będzie trafiał gorzej.
-- Uwaga dla następnych: myślenie large-reasoning (ok. 17 s) to nadal większość tury. Następny krok czasowy to
-  krótszy prompt `full_cached` (stan tylko w ostatniej wiadomości, Otwarte problemy). Skrypty podsumowania są lokalnie
-  w `data/` (`z4b_summary.py`, `z4b_paired.py`, `TAG=z4b10`).
-- Jak sprawdzić: `python -m app.eval.report --tag z4b10`.
-- Commit: tylko ten wpis (bez zmian w kodzie)
+### 2026-11-03, Antek: stanowisko pomiaru spójności obrazów (Z1, kod bez pomiaru)
+- Co zrobione: `bench/images/consistency/`: zestaw testowy (3 postacie, 3 lokacje, 10 scen), runner z wariantami
+  `text`, `anchor`, `chain` i wznawianiem, adaptery `sdxl-ip`, `flux2-klein-4b`, `flux3-klein`, oceny DINOv2 i CLIP
+  (`score.py`), raport HTML (`report.py`), instrukcja na serwer GPU zgodna z jego zasadami (README w tym katalogu).
+- Testy logiki bez GPU: `tests/test_image_bench.py` (model na niby).
+- Uwaga dla następnych: adaptery FLUX nie były jeszcze uruchomione na GPU. Nazwy parametrów, repozytorium wersji
+  destylowanej FLUX 3 i API `ModularPipeline` sprawdzić na krótkim teście (README, krok 8).
 
 ### 2026-11-03, Krzysiek: pomiar KV cache (Z3) i wstępne badanie `full_cached` (Z4b)
 - Co zrobione: odpowiedź narratora strumieniem (`NARRATOR_STREAM`, domyślnie włączone), w `turns` nowe kolumny
