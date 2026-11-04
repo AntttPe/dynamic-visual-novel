@@ -4,8 +4,8 @@ Każdy adapter: load(), generate(prompt, refs, seed, out, size) -> dict z dodatk
 refs to lista ścieżek do obrazów wejściowych (pusta = sam tekst).
 torch i diffusers są importowane dopiero w load(), więc runner i testy działają bez nich.
 
-UWAGA: FLUX.2 klein i FLUX 3 Image Klein to nowe modele. Nazwy parametrów i repozytoriów sprawdzić
-na krótkim teście (README, krok „krótki test”), zanim pójdzie pełny pomiar.
+UWAGA: FLUX.2 klein i FLUX 3 Image Klein to nowe modele. Parametry sprawdzone w dokumentacji diffusers
+i na kartach modeli (2026-11-04), ale nie uruchomione na GPU: najpierw krótki test (README, krok 8).
 """
 
 import gc
@@ -123,9 +123,11 @@ class Flux2Klein(_Diffusers):
 class Flux3Klein(_Diffusers):
     """FLUX 3 Image Klein: 5,6B, do 10 obrazów wejściowych, licencja FLUX Kommunity (gated na HF).
 
-    Wersja destylowana: 16 kroków bez guidance. Pełna precyzja potrzebuje ponad 24 GB, dlatego
-    domyślnie odciążanie do RAM. Repozytorium wersji destylowanej i API ModularPipeline sprawdzić
-    na krótkim teście (na karcie modelu był tylko wariant bazowy).
+    Wersja destylowana (karta modelu, 2026-11-04): 16 kroków bez guidance, VAE w float32.
+    Bez „prompt upsamplera” (osobny model 9B, ok. 19 GB do pobrania i ok. 28 GB VRAM): nasze prompty to już pełne
+    opisy sceny, a karta modelu podaje usunięcie tego bloku jako sposób na wyłączenie.
+    Pełna precyzja zajmuje ok. 31 GB (pomiar producenta), więcej niż 24 GB RTX 4090, dlatego automatyczne
+    odciążanie do RAM (ComponentsManager): modele trafiają na GPU tylko na czas swojego kroku.
     """
 
     name = "flux3-klein"
@@ -133,11 +135,14 @@ class Flux3Klein(_Diffusers):
     repo = "black-forest-labs/flux-3-image-klein"
 
     def _load(self, torch):
-        from diffusers import ModularPipeline
+        from diffusers import ComponentsManager, ModularPipeline
 
-        pipe = ModularPipeline.from_pretrained(self.repo)
-        pipe.load_components(torch_dtype=torch.bfloat16)
-        pipe.enable_model_cpu_offload()
+        manager = ComponentsManager()
+        manager.enable_auto_cpu_offload(device="cuda")
+        blocks = ModularPipeline.from_pretrained(self.repo).blocks
+        blocks.sub_blocks.pop("prompt_upsampler")
+        pipe = blocks.init_pipeline(self.repo, components_manager=manager)
+        pipe.load_components(dtype={"vae": torch.float32, "default": torch.bfloat16})
         return pipe
 
     def _generate(self, prompt, images, generator, size):

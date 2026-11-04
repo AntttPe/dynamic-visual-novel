@@ -41,8 +41,11 @@ nano /PROJECT.md
 ```bash
 nvidia-smi          # zajętość GPU i wersja CUDA (prawy górny róg)
 top                 # CPU i RAM (wyjście: q)
-df -h ~ ~/data      # miejsce na dysku domowym i na ~/data
+df -h ~ ~/data      # miejsce na dysku domowym i na ~/data, potrzeba ok. 80 GB na ~/data
+which conda git tmux
 ```
+Jeśli brakuje `conda`, nie instaluj niczego na własną rękę, tylko zapytaj prowadzącego (regulamin:
+niestandardowe wymagania konsultujemy). Bez `tmux` użyj `screen` albo `nohup` (krok 8).
 
 **4. Wszystko duże w `~/data`.** Dysk domowy jest mały, więc środowisko Conda, cache pip
 i modele z Hugging Face (kilkadziesiąt GB) też idą do `~/data`. Te 3 linie wpisz przy każdym logowaniu
@@ -55,6 +58,7 @@ export CONDA_PKGS_DIRS=~/data/cache/conda-pkgs
 
 **5. Środowisko Conda** (raz). Bez `sudo`, pakiety tylko wewnątrz środowiska:
 ```bash
+eval "$(conda shell.bash hook)"     # potrzebne, jeśli conda activate zgłasza błąd
 conda create -p ~/data/conda/dvn-images python=3.12 -y
 conda activate ~/data/conda/dvn-images
 conda install pip -y
@@ -70,16 +74,17 @@ pip install -r requirements.txt
 python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 ```
 
-**7. Hugging Face** (raz). Na stronie [FLUX 3 Image Klein](https://huggingface.co/black-forest-labs/flux-3-image-klein-base)
+**7. Hugging Face** (raz). Na stronie [FLUX 3 Image Klein](https://huggingface.co/black-forest-labs/flux-3-image-klein)
 zaakceptuj licencję, potem utwórz token „Read” w ustawieniach konta. Token wklejasz tylko na serwerze, nie do repo:
 ```bash
-hf auth login
+hf auth login            # starsza wersja: huggingface-cli login
 ```
 
 **8. Krótki test** (ok. 10 do 15 minut, z pobieraniem modeli dłużej). Uruchamiaj w `tmux`, żeby zerwanie VPN
 nie przerwało pomiaru:
 ```bash
-tmux new -s dvn                 # powrót po zerwaniu: tmux attach -t dvn
+tmux new -s dvn                 # powrót po zerwaniu: tmux attach -t dvn (bez tmux: screen -S dvn)
+export HF_HOME=~/data/cache/huggingface PIP_CACHE_DIR=~/data/cache/pip
 conda activate ~/data/conda/dvn-images
 cd ~/data/dvn/bench/images/consistency
 python run.py --models flux2-klein-4b --seeds 1 --scenes 3 --out ~/data/dvn-results/consistency-test
