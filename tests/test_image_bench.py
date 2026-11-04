@@ -126,3 +126,13 @@ def test_report_renders_with_and_without_scores(tmp_path):
         writer.writerows(rows)
     page = report.build(tmp_path)
     assert "Postać w kolejnych rundach" in page and "0.700" in page
+
+
+def test_short_game_returns_to_first_scene(tmp_path):
+    short = load_testset(BENCH / "testset_short.yaml")
+    run(short, ["fake"], [1001], list(VARIANTS), tmp_path, adapters={"fake": FakeAdapter()},
+        composer=FakeComposer(), log=lambda _: None)
+    rows = records(tmp_path)
+    assert len(rows) == 39  # 33 obrazy z modelu i 6 scen złożonych z warstw
+    assert {r["scene"] for r in rows if r.get("return_of") == 1 and r["kind"] == "scene"} == {6}
+    assert "Runda 1 i runda 6" in report.build(tmp_path)

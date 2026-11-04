@@ -102,31 +102,31 @@ zaakceptuj licencję, potem utwórz token „Read” w ustawieniach konta. Token
 hf auth login            # starsza wersja: huggingface-cli login
 ```
 
-**8. Krótki test** (3 sceny, 1 seed: ok. 15 do 40 minut razem z pobieraniem modeli). W `tmux`,
-żeby zerwanie VPN nie przerwało pomiaru (powrót: `tmux attach -t dvn`):
+**8. Krótka gra na każdym modelu** (ta sesja). `testset_short.yaml`: 6 scen, runda 6 wraca do rundy 1,
+1 seed, 4 warianty. Na model 33 obrazy i 6 scen złożonych z warstw. Każdy model osobno, żeby błąd jednego
+nie zatrzymał reszty. W `tmux`, żeby zerwanie VPN nie przerwało pomiaru (powrót: `tmux attach -t dvn`):
 ```bash
 tmux new -s dvn
 eval "$(conda shell.bash hook)" && conda activate ~/data/conda/dvn-images
-cd ~/data/dvn/bench/images/consistency
+cd ~/data/dvn && git pull && cd bench/images/consistency
 nvidia-smi
-python run.py --models flux2-klein-4b --seeds 1 --scenes 3 --out ~/data/dvn-results/consistency-test
-python run.py --models sdxl-ip --seeds 1 --scenes 3 --out ~/data/dvn-results/consistency-test
-python run.py --models flux3-klein --seeds 1 --scenes 3 --out ~/data/dvn-results/consistency-test
-python score.py --out ~/data/dvn-results/consistency-test
-python report.py --out ~/data/dvn-results/consistency-test
+OUT=~/data/dvn-results/short
+python run.py --testset testset_short.yaml --seeds 1 --models flux2-klein-4b --out $OUT
+python run.py --testset testset_short.yaml --seeds 1 --models sdxl-ip --out $OUT
+python run.py --testset testset_short.yaml --seeds 1 --models flux3-klein --out $OUT
 ```
-Jeśli któryś krok zgłosi błąd (nazwa parametru, repozytorium, brak pamięci), skopiuj ostatnie ok. 30 linii
-do agenta. Adaptery FLUX nie były jeszcze uruchamiane na GPU.
+Szacunek: kilka minut na model po pobraniu, najdłużej FLUX 3. Pierwsze pobranie wszystkich modeli
+to ok. 50 GB, więc 15 do 40 minut zależnie od łącza serwera. Jeśli któryś model zgłosi błąd (nazwa parametru,
+repozytorium, brak pamięci), zapisz ostatnie ok. 30 linii dla agenta i uruchom kolejny model.
 
-**9. Pełny pomiar.** Ok. 980 obrazów na 3 seedach (109 na model i seed). Szacunek: 2 do 3 godzin, z czego najwięcej
-FLUX 3 (odciążanie do RAM). Na start można `--seeds 2` (ok. 1,5 do 2 godzin). Ta sama komenda po przerwaniu
-wznawia od miejsca, gdzie stanęła:
+**9. Oceny i raport** (ok. 5 minut, pobiera jeszcze detektor osób i modele ocen, ok. 3 GB):
 ```bash
-python run.py --models flux2-klein-4b sdxl-ip flux3-klein --seeds 2 --out ~/data/dvn-results/consistency
-python score.py --out ~/data/dvn-results/consistency
-python report.py --out ~/data/dvn-results/consistency
-pip freeze > ~/data/dvn-results/consistency/pip-freeze.txt
+python score.py --out $OUT
+python report.py --out $OUT
+pip freeze > $OUT/pip-freeze.txt
 ```
+Pełny pomiar (`testset.yaml`, 22 sceny, kilka seedów, 2 do 3 h) zostaje na następny sprint:
+ta sama komenda bez `--testset`, z `--seeds 2` i innym `--out`.
 
 **10. Po każdej sesji: sprzątanie** (obowiązkowe):
 ```bash
@@ -140,7 +140,7 @@ Konto jest wspólne z Krzyśkiem: zatrzymuj tylko swój proces przez `kill <PID>
 **11. Wyniki na laptop** (z laptopa). Konto i dane są usuwane na końcu semestru:
 ```bash
 rsync -av -e "ssh -i ~/.ssh/id_ed25519" antpie@<adres serwera>:~/data/dvn-results/ data/dvn-results/
-open data/dvn-results/consistency/report.html
+open data/dvn-results/short/report.html
 ```
 
 **Koniec projektu:** usuń `~/data/dvn`, `~/data/dvn-results`, `~/data/cache` i `~/data/conda/dvn-images`.

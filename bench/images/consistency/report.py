@@ -64,6 +64,7 @@ def build(out: Path) -> str:
         chars = [s for s in scores if s["entity_kind"] == "character"]
         # Powroty: najważniejsza tabela
         if returns:
+            pairs_text = ", ".join(sorted({f"{r['scene']}/{r['return_of']}" for r in returns}, reverse=True))
             rows = []
             for m, v in pairs:
                 mine = [r for r in returns if r["model"] == m and r["variant"] == v]
@@ -74,7 +75,7 @@ def build(out: Path) -> str:
                              f"{sum(found)}/{len(found)}" if found else "-"])
             rows.sort(key=lambda r: r[2], reverse=True)
             parts += ["<h2>Powrót w to samo miejsce: runda późniejsza kontra pierwsza wizyta</h2>",
-                      ("<p>Pary scen 20/1, 19/3, 17/5, 15/2, 14/4 (to samo miejsce, postacie i akcja). "
+                      ("<p>Pary scen " + html.escape(pairs_text) + " (to samo miejsce, postacie i akcja). "
                        "Posortowane od najbardziej spójnych postaci.</p>"),
                       table(["model", "wariant", "postacie (dino)", "cała scena (dino)", "postacie znalezione"], rows)]
         # Rozjeżdżanie się w czasie
@@ -85,7 +86,7 @@ def build(out: Path) -> str:
             found = [int(s["detected"]) for s in mine]
             rows.append([m, VARIANT_NAMES[v], *cells, f"{100 * sum(found) / len(found):.0f}%" if found else "-"])
         parts += ["<h2>Postać w kolejnych rundach: podobieństwo do pierwszego pojawienia się</h2>",
-                  "<p>k = które pojawienie się postaci (Aren jest w każdej scenie, więc k dochodzi do 22).</p>",
+                  "<p>k = które pojawienie się postaci (Aren jest w każdej scenie).</p>",
                   table(["model", "wariant", *[f"k {lo} do {hi}" for lo, hi in K_BUCKETS], "postać znaleziona"], rows)]
         # Zgodność ze wzorcem i z opisem
         rows = []

@@ -1,0 +1,33 @@
+# Krótka gra do pierwszego testu na GPU: co działa, a co nie, i pierwsze wnioski.
+# 6 scen, runda 6 wraca do rundy 1 (to samo miejsce, postacie i akcja). Opis wariantów w testset.yaml.
+# Na jeden model i jeden seed: 6 wzorców, 18 scen (text, anchor, chain) i 9 postaci do warstw, razem 33 obrazy
+# z modelu, plus 6 scen złożonych z warstw (bez modelu).
+
+id: velgard_short
+version: 1
+style: "visual novel illustration, painterly digital art, soft cinematic lighting, detailed, consistent character design"
+size: [1280, 720]
+
+characters:
+  aren:
+    description: "Aren, a young wandering mercenary, short dark brown hair, stubble, green eyes, worn brown leather armor, red scarf, silver sword on his back, thin scar on his left hand"
+  borwin:
+    description: "Borwin, a stout middle-aged innkeeper, red hair, bushy red beard, black eyepatch over his left eye, white apron over a grey shirt"
+  guard:
+    description: "a tall town guard, steel helmet with nose guard, chainmail, blue tabard with a white tower emblem, holding a spear"
+
+locations:
+  tavern:
+    description: "smoky wooden medieval tavern interior, stone fireplace, long tables, beer barrels, warm candlelight"
+  market:
+    description: "cobbled medieval town market square with colorful stalls, clock tower in the background, cloudy sky"
+  forest:
+    description: "dense pine forest with a narrow dirt path, mist between the trees, early morning"
+
+scenes:
+  - {location: tavern, characters: [aren, borwin], action: "Aren sits at the bar talking to Borwin"}
+  - {location: market, characters: [aren], action: "Aren walks between the stalls"}
+  - {location: forest, characters: [aren], action: "Aren kneels and digs a hole under an old pine"}
+  - {location: market, characters: [aren, guard], action: "a guard stops Aren and asks questions"}
+  - {location: forest, characters: [aren], action: "Aren rests by a small campfire"}
+  - {location: tavern, characters: [aren, borwin], action: "Aren sits at the bar talking to Borwin", return_of: 1}

@@ -84,7 +84,7 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 
 | Kto | Zadanie | Wymaga | Od kiedy |
 |---|---|---|---|
-| Antek | Z1. Architektura pomiarowa obrazów. Wersja 2 gotowa do uruchomienia na GPU (`bench/images/consistency/README.md`), czeka na krótki test | GPU | 2026-11-03 |
+| Antek | Z1. Architektura pomiarowa obrazów. Kod gotowy. W tym sprincie tylko krótka gra na GPU (`testset_short.yaml`, 6 scen, runda 6 wraca do 1), pełny pomiar w następnym | GPU | 2026-11-03 |
 | (wolne) | Z2. Wybór modelu image-to-image (po Z1) | GPU | |
 | (wstrzymane) | Z4a. Myślenie narratora: wyłączyć albo ograniczyć. Wstrzymane 2026-11-03: nie zmieniamy parametrów modeli (Decyzje) | VPN | |
 | Krzysiek | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2). Wstępne wyniki w Dzienniku 2026-11-03, zostało dłuższe badanie (strata-big gry po kolei) | VPN | 2026-11-03 |
