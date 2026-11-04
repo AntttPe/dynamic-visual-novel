@@ -82,10 +82,10 @@ source ~/.bashrc
 **5. Środowisko Conda** (raz). Bez `sudo`, pakiety tylko wewnątrz środowiska:
 ```bash
 eval "$(conda shell.bash hook)"
-conda create -p ~/data/conda/dvn-images python=3.12 -y
+# tylko conda-forge: kanały Anaconda (repo.anaconda.com) wymagają akceptacji ich warunków (ToS), conda-forge nie.
+# git i tmux z Condy, bo na serwerze instytutu ich nie ma, a sudo nie wolno.
+conda create -p ~/data/conda/dvn-images --override-channels -c conda-forge python=3.12 pip git tmux -y
 conda activate ~/data/conda/dvn-images
-conda install pip -y
-conda install -c conda-forge git tmux -y    # na serwerze instytutu nie ma git ani tmux
 # torch pod wersję CUDA z nvidia-smi: CUDA 12.8 lub nowsza -> cu128, 12.6 -> cu126, 12.4 -> cu124
 pip install torch --index-url https://download.pytorch.org/whl/cu128
 ```
