@@ -49,11 +49,11 @@ Zasady serwera są w `PROGRESS.md` (sekcja „Zasady serwera GPU instytutu”). 
 ssh -i ~/.ssh/id_ed25519 antpie@<adres serwera>
 ```
 
-**2. Na samym początku: `PROJECT.md`** w katalogu głównym serwera. Najpierw zobacz format pliku,
-potem dopisz swoje dane tak jak inni (imię i nazwisko, projekt, kontakt):
+**2. Na samym początku: `PROJECT.md`.** W `/` go nie ma (2026-11-04), więc w katalogu domowym. Jeśli nie istnieje,
+utwórz go: kto, projekt, kontakt, co uruchamiacie:
 ```bash
-cat /PROJECT.md
-nano /PROJECT.md
+ls -la ~
+nano ~/PROJECT.md
 ```
 
 **3. Czy można zaczynać.** Jeśli GPU jest zajęte przez kogoś innego, poczekaj:
@@ -61,7 +61,8 @@ nano /PROJECT.md
 nvidia-smi          # zajętość GPU i wersja CUDA (prawy górny róg)
 top                 # CPU i RAM (wyjście: q)
 df -h ~ ~/data      # na ~/data potrzeba ok. 80 GB
-which conda git tmux
+which conda git tmux     # git i tmux nie ma na serwerze, instalujemy je w Condzie (krok 5)
+ollama ps                # systemowa Ollama innych użytkowników potrafi trzymać 16 GB VRAM
 ```
 Jeśli brakuje `conda`, nie instaluj niczego na własną rękę, tylko zapytaj prowadzącego (regulamin:
 niestandardowe wymagania konsultujemy). Bez `tmux` użyj `screen -S dvn`.
@@ -84,6 +85,7 @@ eval "$(conda shell.bash hook)"
 conda create -p ~/data/conda/dvn-images python=3.12 -y
 conda activate ~/data/conda/dvn-images
 conda install pip -y
+conda install -c conda-forge git tmux -y    # na serwerze instytutu nie ma git ani tmux
 # torch pod wersję CUDA z nvidia-smi: CUDA 12.8 lub nowsza -> cu128, 12.6 -> cu126, 12.4 -> cu124
 pip install torch --index-url https://download.pytorch.org/whl/cu128
 ```
@@ -106,7 +108,8 @@ sesji (krok 8) i unieważniasz po sesji (krok 10).
 1 seed, 4 warianty. Na model 33 obrazy i 6 scen złożonych z warstw. Każdy model osobno, żeby błąd jednego
 nie zatrzymał reszty. W `tmux`, żeby zerwanie VPN nie przerwało pomiaru (powrót: `tmux attach -t dvn`):
 ```bash
-tmux new -s dvn
+eval "$(conda shell.bash hook)" && conda activate ~/data/conda/dvn-images
+tmux new -s dvn                        # tmux jest w środowisku Conda; dalej już w tmux:
 eval "$(conda shell.bash hook)" && conda activate ~/data/conda/dvn-images
 read -s HF_TOKEN && export HF_TOKEN    # wklej token, nic się nie wyświetli; nie trafia na dysk ani do historii
 cd ~/data/dvn && git pull && cd bench/images/consistency
