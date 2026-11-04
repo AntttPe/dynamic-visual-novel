@@ -96,11 +96,11 @@ pip install -r requirements.txt
 python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 ```
 
-**7. Hugging Face** (raz). Na stronie [FLUX 3 Image Klein](https://huggingface.co/black-forest-labs/flux-3-image-klein)
-zaakceptuj licencję, potem utwórz token „Read” w ustawieniach konta. Token wklejasz tylko na serwerze, nie do repo:
-```bash
-hf auth login            # starsza wersja: huggingface-cli login
-```
+**7. Hugging Face** (na laptopie, raz). Na stronie [FLUX 3 Image Klein](https://huggingface.co/black-forest-labs/flux-3-image-klein)
+zaakceptuj licencję. Potem w ustawieniach konta, „Access Tokens”, utwórz token „Fine-grained” tylko z prawem
+odczytu publicznych repozytoriów z ograniczonym dostępem (public gated repos). Nie twórz tokenu „Write”.
+Nie używaj `hf auth login`: zapisuje token jawnym tekstem na wspólnym serwerze. Token podajesz tylko na czas
+sesji (krok 8) i unieważniasz po sesji (krok 10).
 
 **8. Krótka gra na każdym modelu** (ta sesja). `testset_short.yaml`: 6 scen, runda 6 wraca do rundy 1,
 1 seed, 4 warianty. Na model 33 obrazy i 6 scen złożonych z warstw. Każdy model osobno, żeby błąd jednego
@@ -108,6 +108,7 @@ nie zatrzymał reszty. W `tmux`, żeby zerwanie VPN nie przerwało pomiaru (powr
 ```bash
 tmux new -s dvn
 eval "$(conda shell.bash hook)" && conda activate ~/data/conda/dvn-images
+read -s HF_TOKEN && export HF_TOKEN    # wklej token, nic się nie wyświetli; nie trafia na dysk ani do historii
 cd ~/data/dvn && git pull && cd bench/images/consistency
 nvidia-smi
 OUT=~/data/dvn-results/short
@@ -132,9 +133,12 @@ ta sama komenda bez `--testset`, z `--seeds 2` i innym `--out`.
 ```bash
 nvidia-smi                                   # na liście nie może być naszego python
 ps -u antpie -o pid,etime,cmd | grep python  # nic naszego nie zostało?
+unset HF_TOKEN
 tmux kill-session -t dvn
 exit
 ```
+Potem na Hugging Face unieważnij token („Access Tokens”, „Invalidate”). Modele zostają pobrane w `~/data/cache`,
+więc kolejna sesja z tymi samymi modelami nie potrzebuje tokenu.
 Konto jest wspólne z Krzyśkiem: zatrzymuj tylko swój proces przez `kill <PID>`, bez `pkill` i `killall`.
 
 **11. Wyniki na laptop** (z laptopa). Konto i dane są usuwane na końcu semestru:
