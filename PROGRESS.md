@@ -84,7 +84,7 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 
 | Kto | Zadanie | Wymaga | Od kiedy |
 |---|---|---|---|
-| Antek | Z1. Architektura pomiarowa obrazów. Kod gotowy. W tym sprincie tylko krótka gra na GPU (`testset_short.yaml`, 6 scen, runda 6 wraca do 1), pełny pomiar w następnym | GPU | 2026-11-03 |
+| Antek | Z1. Architektura pomiarowa obrazów. Krótka gra zrobiona 2026-11-05 (Dziennik). Zostało: poprawić `layers` i pełny pomiar z FLUX 3 | GPU | 2026-11-03 |
 | (wolne) | Z2. Wybór modelu image-to-image (po Z1) | GPU | |
 | (wstrzymane) | Z4a. Myślenie narratora: wyłączyć albo ograniczyć. Wstrzymane 2026-11-03: nie zmieniamy parametrów modeli (Decyzje) | VPN | |
 | Krzysiek | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2). Wstępne wyniki w Dzienniku 2026-11-03, zostało dłuższe badanie (strata-big gry po kolei) | VPN | 2026-11-03 |
@@ -282,6 +282,33 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 - **Gry `full_cached` na `strata-big` po kolei, nie równolegle**, bo równoległe gry nadpisują sobie cache.
 
 ## Dziennik
+
+### 2026-11-05, Antek: pierwszy test obrazów na serwerze GPU (Z1, krótka gra)
+- Co zrobione: `testset_short.yaml` (6 scen, runda 6 wraca do rundy 1), 1 seed, 4 warianty, 2 modele bez tokenu HF:
+  FLUX.2 klein 4B i SDXL + IP-Adapter, RTX 4090. Wyniki tylko lokalnie u Antka (`data/dvn-results/short`, 116 MB).
+- Serwer: brak `git` i `tmux` (są w środowisku Conda z conda-forge), kanały Anacondy wymagają akceptacji ToS
+  (używamy tylko conda-forge), GPU bywa zajęte przez innych (systemowa Ollama, trening innego studenta).
+- Czas i pamięć:
+
+  | model | sam tekst | z obrazami wejściowymi | VRAM | wczytanie |
+  |---|---|---|---|---|
+  | flux2-klein-4b | 1,5 s | 4,1 s (2 obrazy), 5,7 s (3 obrazy) | 17 GB | 127 s z pobraniem 16 GB |
+  | sdxl-ip | 3,7 s | 3,9 s | 12,8 GB | 114 s z pobraniem |
+
+- Spójność (DINOv2 na wycinkach postaci, 1 gra, wyniki orientacyjne). Powrót runda 6 kontra runda 1, postacie:
+  FLUX anchor 0,86 (Aren) i 0,92 (Borwin), SDXL anchor 0,80 i 0,82, SDXL sam tekst 0,55 (Aren).
+  Aren kontra pierwsze pojawienie się, średnio: FLUX text 0,71, anchor 0,78, SDXL text 0,40, anchor 0,73.
+- Wnioski z obrazów (ocena wzrokowa, zgodna z liczbami):
+  - FLUX.2 klein wyraźnie lepszy: Aren i Borwin rozpoznawalni w każdej scenie (szalik, opaska, broda).
+    SDXL gubi wygląd, Borwin w ogóle nie ma rudych włosów ani opaski, bo SDXL czyta tylko 77 tokenów promptu.
+  - Wzorzec lokacji „no people” jako obraz wejściowy daje puste miejsca (rynek bez ludzi w wariancie anchor),
+    w wariancie sam tekst FLUX rysuje tłum.
+  - Błędy do poprawy: FLUX w anchor potrafi podwoić postać (scena 5: dwóch Arenów), `chain` kopiuje poprzedni obraz
+    (runda 6 prawie identyczna z rundą 1: 0,99), błąd wzorca się utrwala (blizna na twarzy zamiast na lewej dłoni
+    we wszystkich scenach). `layers` w tym przebiegu nieważny: prompt postaci zawierał akcję z drugą osobą
+    („talking to Borwin”), więc model rysował dwie postacie na jednym sprite.
+- Uwaga dla następnych: przed pełnym pomiarem poprawić prompt postaci w `layers` (bez innych postaci w akcji)
+  i rozważyć wzorce lokacji z ludźmi w tle. Miary DINO na wycinkach są czułe na pozę, potrzebny sędzia obrazów (Z5).
 
 ### 2026-11-04, Antek: test spójności obrazów w wersji 2 (Z1, kod bez pomiaru)
 - Co zrobione: 22 sceny z zaplanowanymi powrotami (20 -> 1, 19 -> 3, 17 -> 5, 15 -> 2, 14 -> 4), osobny seed
