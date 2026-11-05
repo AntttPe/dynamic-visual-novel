@@ -283,6 +283,18 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ## Dziennik
 
+### 2026-11-05, Antek: krótka gra v2 na 3 modelach (Z1)
+- Co zrobione: `testset_short` v2 (poprawione warstwy), 1 seed, `~/data/dvn-results/short-v2`. Lokalnie u Antka.
+- Czas sceny (mediana) i VRAM: FLUX.2 klein 1,4 s tekst / 4,9 s z obrazami / 4,6 s warstwy, 17 GB.
+  Qwen-Image-2.1-Turbo 14,7 / 18,4 / 24 s, 22 GB (z odciążaniem do RAM, obrazy wejściowe zmniejszone do 768 px,
+  bo pełne dały brak pamięci). SDXL 3,7 / 3,9 / 6,5 s, 12,7 GB. Do Qwena trzeba było doinstalować torchvision.
+- Powrót runda 6 kontra 1, postacie, wariant z obrazem wzorcowym: FLUX 0,87 / 0,92, SDXL 0,81 / 0,80.
+  Warstwy po poprawce: FLUX 0,98 / 0,98 (wcześniej dwie postacie na jednym sprite).
+- Wzrokowo: Qwen najdokładniejszy i najwierniejszy opisowi (blizna na lewej dłoni, którą FLUX rysował na twarzy),
+  FLUX dobry i najszybszy, SDXL często podwaja osoby i gubi wygląd Borwina.
+- Problem: detektor osób (OWLv2) nie znalazł postaci na większości obrazów Qwena (np. anchor 1 z 9), więc liczby
+  dla Qwena na wycinkach są niewiarygodne. Do sprawdzenia: obrazy Qwena są RGBA i 1280x704.
+
 ### 2026-11-05, Antek: Qwen-Image-2.1-Turbo i poprawka wariantu warstw
 - Co zrobione: adapter `qwen-image-21-turbo` (Qwen-Image-2.1-Turbo, 7B, 8 kroków, do 10 obrazów wejściowych,
   Qwen Research License, odciążanie do RAM). Qwen-Image 3.0 nie ma otwartych wag (tylko API Alibaby), więc lokalnie
