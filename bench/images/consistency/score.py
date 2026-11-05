@@ -89,13 +89,16 @@ def main() -> None:
     @torch.no_grad()
     def embed(image) -> tuple:
         d = dino(**dino_proc(images=image, return_tensors="pt").to(device)).pooler_output[0]
-        c = clip.get_image_features(**clip_proc(images=image, return_tensors="pt").to(device))[0]
+        # Wprost przez model wizji i projekcję: get_image_features zwraca co innego w transformers 4 i 5
+        pixels = clip_proc(images=image, return_tensors="pt").to(device)["pixel_values"]
+        c = clip.visual_projection(clip.vision_model(pixel_values=pixels).pooler_output)[0]
         return norm(d, dim=0), norm(c, dim=0)
 
     @torch.no_grad()
     def text_embed(text: str):
         t = clip_proc(text=[text], return_tensors="pt", truncation=True, max_length=77).to(device)
-        return norm(clip.get_text_features(**t)[0], dim=0)
+        pooled = clip.text_model(input_ids=t["input_ids"], attention_mask=t["attention_mask"]).pooler_output
+        return norm(clip.text_projection(pooled)[0], dim=0)
 
     @torch.no_grad()
     def people(image, limit: int) -> list[list[float]]:
