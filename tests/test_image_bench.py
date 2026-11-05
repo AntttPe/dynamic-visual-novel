@@ -136,3 +136,18 @@ def test_short_game_returns_to_first_scene(tmp_path):
     assert len(rows) == 39  # 33 obrazy z modelu i 6 scen złożonych z warstw
     assert {r["scene"] for r in rows if r.get("return_of") == 1 and r["kind"] == "scene"} == {6}
     assert "Runda 1 i runda 6" in report.build(tmp_path)
+
+
+def test_sprite_prompt_has_only_one_character():
+    from run import sprite_prompt
+    scene = TS["scenes"][0]  # „Aren sits at the bar talking to Borwin”
+    prompt = sprite_prompt(TS, scene, "aren")
+    assert "Borwin" not in prompt and "exactly one person" in prompt
+
+
+def test_refuses_to_mix_testsets_in_one_folder(tmp_path):
+    play(tmp_path, FakeAdapter(), n_scenes=1)
+    short = load_testset(BENCH / "testset_short.yaml")
+    with pytest.raises(SystemExit):
+        run(short, ["fake"], [1001], list(VARIANTS), tmp_path, adapters={"fake": FakeAdapter()},
+            composer=FakeComposer(), log=lambda _: None)

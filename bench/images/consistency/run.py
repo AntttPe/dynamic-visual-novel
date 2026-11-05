@@ -56,8 +56,12 @@ def scene_prompt(ts: dict, scene: dict) -> str:
 
 
 def sprite_prompt(ts: dict, scene: dict, character: str) -> str:
-    return (f"{ts['style']}. Character sprite: {ts['characters'][character]['description']}. "
-            f"Pose for the scene: {scene['action']}. Full body, plain light grey background, no scenery")
+    """Tylko ta jedna postać i jej poza. Akcja sceny tu nie trafia: „talking to Borwin” w prompcie postaci
+    sprawiało, że model rysował dwie osoby na jednym obrazie (test 2026-11-05)."""
+    pose = scene.get("poses", {}).get(character, "standing, relaxed pose")
+    return (f"{ts['style']}. Character sprite of exactly one person, alone: "
+            f"{ts['characters'][character]['description']}. Pose: {pose}. "
+            "Full body, plain light grey background, no other people, no scenery")
 
 
 class Results:
@@ -131,6 +135,10 @@ def run(ts: dict, models: list[str], seeds: list[int], variants: list[str], out:
         n_scenes: int | None = None, adapters: dict | None = None, composer=None, log=print) -> Results:
     out.mkdir(parents=True, exist_ok=True)
     results = Results(out / "results.jsonl")
+    other = {r["testset"] for r in results.records.values()} - {f"{ts['id']}/v{ts['version']}"}
+    if other:
+        raise SystemExit(f"W {out} są wyniki innego zestawu testowego ({', '.join(sorted(other))}). "
+                         "Użyj innego katalogu --out, żeby wyniki się nie mieszały.")
     n_scenes = n_scenes or len(ts["scenes"])
     size = tuple(ts["size"])
     composer = composer or Composer()

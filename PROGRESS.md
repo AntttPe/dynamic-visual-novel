@@ -283,6 +283,14 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ## Dziennik
 
+### 2026-11-05, Antek: Qwen-Image-2.1-Turbo i poprawka wariantu warstw
+- Co zrobione: adapter `qwen-image-21-turbo` (Qwen-Image-2.1-Turbo, 7B, 8 kroków, do 10 obrazów wejściowych,
+  Qwen Research License, odciążanie do RAM). Qwen-Image 3.0 nie ma otwartych wag (tylko API Alibaby), więc lokalnie
+  testujemy 2.1. Prompt postaci w `layers` zawiera teraz tylko tę jedną postać i jej pozę, bez akcji z innymi osobami.
+  Wersje: `testset_short` v2, `testset` v3. `run.py` nie miesza wyników różnych zestawów w jednym katalogu.
+- Uwaga dla następnych: nowy przebieg krótkiej gry do `~/data/dvn-results/short-v2` (wszystkie 3 modele).
+  Adapter Qwen nie był jeszcze uruchamiany na GPU. Czy model wymaga akceptacji licencji na HF, nie wiadomo.
+
 ### 2026-11-05, Antek: pierwszy test obrazów na serwerze GPU (Z1, krótka gra)
 - Co zrobione: `testset_short.yaml` (6 scen, runda 6 wraca do rundy 1), 1 seed, 4 warianty, 2 modele bez tokenu HF:
   FLUX.2 klein 4B i SDXL + IP-Adapter, RTX 4090. Wyniki tylko lokalnie u Antka (`data/dvn-results/short`, 116 MB).

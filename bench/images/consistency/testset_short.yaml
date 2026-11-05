@@ -4,7 +4,7 @@
 # z modelu, plus 6 scen złożonych z warstw (bez modelu).
 
 id: velgard_short
-version: 1
+version: 2
 style: "visual novel illustration, painterly digital art, soft cinematic lighting, detailed, consistent character design"
 size: [1280, 720]
 

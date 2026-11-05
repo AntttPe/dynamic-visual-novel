@@ -21,6 +21,7 @@ Każda scena ma własny seed (seed + numer sceny), taki sam we wszystkich warian
 | `sdxl-ip` | SDXL z IP-Adapterem, punkt odniesienia |
 | `flux2-klein-4b` | FLUX.2 [klein] 4B, 4 kroki, Apache 2.0 |
 | `flux3-klein` | FLUX 3 Image Klein, do 10 obrazów wejściowych, wymaga akceptacji licencji na Hugging Face |
+| `qwen-image-21-turbo` | Qwen-Image-2.1-Turbo, 7B, 8 kroków, do 10 obrazów wejściowych, Qwen Research License, z odciążaniem do RAM |
 
 Pliki: `run.py` (generowanie, wznawianie), `compose.py` (składanie warstw, wycinanie tła),
 `score.py` (wycinki postaci i oceny), `report.py` (raport HTML), `models.py` (adaptery modeli),
@@ -114,9 +115,10 @@ eval "$(conda shell.bash hook)" && conda activate ~/data/conda/dvn-images
 read -s HF_TOKEN && export HF_TOKEN    # wklej token, nic się nie wyświetli; nie trafia na dysk ani do historii
 cd ~/data/dvn && git pull && cd bench/images/consistency
 nvidia-smi
-OUT=~/data/dvn-results/short
+OUT=~/data/dvn-results/short-v2
 python run.py --testset testset_short.yaml --seeds 1 --models flux2-klein-4b --out $OUT
 python run.py --testset testset_short.yaml --seeds 1 --models sdxl-ip --out $OUT
+python run.py --testset testset_short.yaml --seeds 1 --models qwen-image-21-turbo --out $OUT
 python run.py --testset testset_short.yaml --seeds 1 --models flux3-klein --out $OUT   # tylko z tokenem HF (krok 7)
 ```
 Bez tokenu Hugging Face pomiń linię `read -s HF_TOKEN` i model `flux3-klein`: FLUX.2 klein 4B i SDXL pobierają się

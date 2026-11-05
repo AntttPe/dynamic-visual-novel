@@ -15,7 +15,7 @@
 # Zmiana treści = wyższe version (wyniki różnych wersji się nie mieszają).
 
 id: velgard
-version: 2
+version: 3
 style: "visual novel illustration, painterly digital art, soft cinematic lighting, detailed, consistent character design"
 size: [1280, 720]
 

@@ -151,7 +151,31 @@ class Flux3Klein(_Diffusers):
                          generator=generator, output="images", **kwargs)[0]
 
 
-ADAPTERS = {cls.name: cls for cls in (SDXLIPAdapter, Flux2Klein, Flux3Klein)}
+class Qwen21Turbo(_Diffusers):
+    """Qwen-Image-2.1-Turbo: 7B, 8 kroków (harmonogram zapisany w modelu), do 10 obrazów wejściowych,
+    zachowanie tożsamości osób, Qwen Research License (badania). Rozmiar w VRAM bez odciążania nie jest podany
+    na karcie modelu, a razem z koderem tekstu przekracza 24 GB, dlatego odciążanie do RAM (części modelu
+    trafiają na GPU tylko na czas swojego kroku). Model trenowany na ok. 2K, my generujemy 1280x720.
+    """
+
+    name = "qwen-image-21-turbo"
+    max_refs = 10
+    repo = "Qwen/Qwen-Image-2.1-Turbo"
+
+    def _load(self, torch):
+        from diffusers import QwenImage21Pipeline
+
+        pipe = QwenImage21Pipeline.from_pretrained(self.repo, torch_dtype=torch.bfloat16)
+        pipe.enable_model_cpu_offload()
+        return pipe
+
+    def _generate(self, prompt, images, generator, size):
+        # Liczby kroków nie podajemy: Turbo ma zapisany harmonogram 8 kroków (karta modelu)
+        kwargs = {"image": images} if images else {}
+        return self.pipe(prompt=prompt, width=size[0], height=size[1], generator=generator, **kwargs).images[0]
+
+
+ADAPTERS = {cls.name: cls for cls in (SDXLIPAdapter, Flux2Klein, Flux3Klein, Qwen21Turbo)}
 
 
 def make_adapter(name: str, repo: str | None = None):
