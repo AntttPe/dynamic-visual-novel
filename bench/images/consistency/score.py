@@ -102,8 +102,12 @@ def main() -> None:
         inputs = det_proc(text=[["a person"]], images=image, return_tensors="pt").to(device)
         outputs = det(**inputs)
         side = max(image.size)  # OWLv2 dopełnia obraz do kwadratu, ramki są w układzie tego kwadratu
-        res = det_proc.post_process_object_detection(outputs, threshold=args.threshold,
-                                                     target_sizes=torch.tensor([[side, side]]).to(device))[0]
+        sizes = torch.tensor([[side, side]]).to(device)
+        if hasattr(det_proc, "post_process_grounded_object_detection"):  # transformers 5
+            res = det_proc.post_process_grounded_object_detection(outputs, threshold=args.threshold,
+                                                                  target_sizes=sizes)[0]
+        else:
+            res = det_proc.post_process_object_detection(outputs, threshold=args.threshold, target_sizes=sizes)[0]
         w, h = image.size
         boxes = []
         for s, b in zip(res["scores"], res["boxes"], strict=True):
