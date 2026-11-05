@@ -88,7 +88,7 @@ eval "$(conda shell.bash hook)"
 conda create -p ~/data/conda/dvn-images --override-channels -c conda-forge python=3.12 pip git tmux -y
 conda activate ~/data/conda/dvn-images
 # torch pod wersję CUDA z nvidia-smi: CUDA 12.8 lub nowsza -> cu128, 12.6 -> cu126, 12.4 -> cu124
-pip install torch --index-url https://download.pytorch.org/whl/cu128
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128   # torchvision: Qwen-Image
 ```
 
 **6. Kod** (raz, potem tylko `cd ~/data/dvn && git pull`):

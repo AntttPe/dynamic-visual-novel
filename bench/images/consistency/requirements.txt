@@ -1,4 +1,5 @@
-# Instalowane tylko na maszynie z GPU, w środowisku Conda (README). torch instalowany osobno, pod wersję CUDA.
+# Instalowane tylko na maszynie z GPU, w środowisku Conda (README). torch i torchvision instalowane osobno,
+# pod wersję CUDA (torchvision potrzebuje koder tekstu Qwen-Image).
 # FLUX.2 klein i FLUX 3 Image Klein wymagają diffusers z GitHuba (nowsze niż wydanie na PyPI).
 git+https://github.com/huggingface/diffusers
 transformers
