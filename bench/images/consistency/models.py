@@ -9,7 +9,11 @@ i na kartach modeli (2026-11-04), ale nie uruchomione na GPU: najpierw krótki t
 """
 
 import gc
+import os
 from pathlib import Path
+
+# Mniej marnowanej pamięci GPU przy obrazach różnej wielkości (ustawione przed pierwszym importem torch)
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 
 class FakeAdapter:
@@ -39,6 +43,7 @@ class _Diffusers:
     name = ""
     max_refs = 0
     repo = ""
+    ref_max_side: int | None = None  # zmniejszanie obrazów wejściowych (mniej pamięci GPU), None = bez zmian
 
     def __init__(self, repo: str | None = None):
         self.repo = repo or self.repo
@@ -58,6 +63,9 @@ class _Diffusers:
         torch = self.torch
         torch.cuda.reset_peak_memory_stats()
         images = [Image.open(r).convert("RGB") for r in refs[: self.max_refs]]
+        if self.ref_max_side:
+            for im in images:
+                im.thumbnail((self.ref_max_side, self.ref_max_side))
         generator = torch.Generator("cpu").manual_seed(seed)
         image = self._generate(prompt, images, generator, size)
         torch.cuda.synchronize()
@@ -161,6 +169,8 @@ class Qwen21Turbo(_Diffusers):
     name = "qwen-image-21-turbo"
     max_refs = 10
     repo = "Qwen/Qwen-Image-2.1-Turbo"
+    # Pełnowymiarowe obrazy wejściowe (3 x 1280x720) przekroczyły 24 GB przy wariancie anchor (2026-11-05)
+    ref_max_side = 768
 
     def _load(self, torch):
         from diffusers import QwenImage21Pipeline
