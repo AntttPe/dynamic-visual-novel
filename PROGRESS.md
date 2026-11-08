@@ -77,6 +77,24 @@ Wzór wpisu w dzienniku:
 
 Wpisz się w kolumnę „Kto”, zanim zaczniesz (osobny mały commit i push). Opisy zadań są niżej.
 
+**Sprint 5 (od 2026-11-08), wymagania prowadzącego (DoD: więcej testów grafik, inne modele i adaptery,
+testy całości narrator + grafika, screenshoty GUI):**
+
+Kod pomiaru obrazów: `bench/images/consistency/` (README tam, strona z komendami na serwer u Antka).
+Nowy model = nowa klasa w `models.py` (wzór: `Flux2Klein`, `Qwen21Turbo`) i test na modelu na niby.
+Na serwerze GPU pobrane są już: FLUX.2 klein 4B, SDXL + IP-Adapter, Qwen-Image-2.1-Turbo i modele ocen.
+
+| Kto | Zadanie | Wymaga | Od kiedy |
+|---|---|---|---|
+| (wolne) | G1a. Naprawić wykrywanie postaci na obrazach Qwena (najpierw, blokuje G1b) | nic, potem GPU | |
+| (wolne) | G1b. Pełny pomiar obrazów: 22 sceny, powrót 20 do 1, 2 do 3 seedy | GPU | |
+| (wolne) | G1c. Nowe miary: duplikaty postaci i sędzia obrazów (łączy się z Z5) | VPN, GPU | |
+| (wolne) | G2a. Nowe modele obrazów (lista niżej) | GPU | |
+| (wolne) | G2b. Adaptery tożsamości postaci (IP-Adapter Face, PuLID, InstantID i podobne) | GPU | |
+| (wolne) | G3a. Eksport prawdziwej gry do zestawu scen dla obrazów | VPN | |
+| (wolne) | G3b. Test całości: gra z narratorem, potem obrazy do każdej tury, czas i spójność | VPN, GPU, po G3a | |
+| (wolne) | G4. Screenshoty GUI do raportu | nic (tryb `demo`) albo VPN | |
+
 **Sprint 4 (od 2026-11-03), wymagania prowadzącego (DoD: KV cache, model image-to-image, optymalizacja czasu):**
 
 Zadania oznaczone „GPU” wymagają serwera GPU instytutu (dostęp: Antek, Krzysiek). Reszta wymaga tylko
@@ -84,10 +102,10 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 
 | Kto | Zadanie | Wymaga | Od kiedy |
 |---|---|---|---|
-| Antek | Z1. Architektura pomiarowa obrazów. Krótka gra zrobiona 2026-11-05 (Dziennik). Zostało: poprawić `layers` i pełny pomiar z FLUX 3 | GPU | 2026-11-03 |
-| (wolne) | Z2. Wybór modelu image-to-image (po Z1) | GPU | |
+| Antek | Z1. Architektura pomiarowa obrazów. Zrobione: krótka gra na 3 modelach (Dziennik 2026-11-05), dalej w G1 | GPU | 2026-11-03 |
+| (wstępnie) | Z2. Wybór modelu image-to-image: FLUX.2 klein (szybki) albo Qwen-Image 2.1 (dokładniejszy), rozstrzygnie G1 | GPU | |
 | (wstrzymane) | Z4a. Myślenie narratora: wyłączyć albo ograniczyć. Wstrzymane 2026-11-03: nie zmieniamy parametrów modeli (Decyzje) | VPN | |
-| Krzysiek | Z4b. Badanie `full_cached` vs `window/8` na obu modelach (zastępuje P2). Wstępne wyniki w Dzienniku 2026-11-03, zostało dłuższe badanie (strata-big gry po kolei) | VPN | 2026-11-03 |
+| Krzysiek | Z4b. Badanie `full_cached` vs `window/8`. Zrobione: 40 gier (Dziennik 2026-11-04) | VPN | 2026-11-03 |
 | (wolne) | Z4c. Strumieniowanie narracji do UI | nic (tryb `demo`) | |
 | (wolne) | Z4d. Obrazy w tle i cache po `location_id` w grze (po Z2) | GPU | |
 | (wolne) | Z5. Czy `large-reasoning` przyjmuje obrazy, sędzia spójności obrazów | VPN | |
@@ -112,6 +130,51 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 | (wolne) | P4. Wykresy i raport z `long50` | |
 
 ### Opisy zadań
+
+**G1a. Wykrywanie postaci na obrazach Qwena.** W krótkiej grze v2 detektor osób OWLv2 (`score.py`) znalazł postacie
+tylko na części obrazów Qwena (np. 1 z 9 w wariancie z obrazem wzorcowym), na FLUX i SDXL na wszystkich.
+Obrazy Qwena są RGBA i 1280x704. Sprawdzić: konwersję kanału alfa (czy tło nie jest przezroczyste), próg detektora,
+wymiary. Dane do debugowania: `data/dvn-results/short-v2` u Antka (nie ma ich w repo).
+Wynik: `score.py` znajduje postacie na obrazach wszystkich modeli, test na małym obrazie, jeśli się da bez GPU.
+
+**G1b. Pełny pomiar obrazów.** `testset.yaml` (22 sceny, powroty 20 do 1, 19 do 3, 17 do 5, 15 do 2, 14 do 4),
+modele: `flux2-klein-4b`, `qwen-image-21-turbo` (ok. 18 s na scenę, ok. 2 h na seed) i `sdxl-ip` jako punkt odniesienia.
+Najpierw `--seeds 1`, potem dorobić seedy tą samą komendą. Wynik: raport, wnioski w Dzienniku, wybór modelu (Z2).
+
+**G1c. Nowe miary spójności.**
+- Duplikaty: na obrazie jest więcej osób niż postaci w scenie (SDXL robi to często, FLUX czasem). Detektor już zwraca ramki,
+  trzeba zliczać osoby i porównać z liczbą postaci. Uwaga: w tle mogą być przechodnie, więc liczyć tylko duże ramki.
+- Sędzia obrazów: model multimodalny dostaje wzorzec postaci i wycinek ze sceny i ocenia „ta sama osoba?” (zadanie Z5,
+  najpierw sprawdzić, czy `large-reasoning` przyjmuje obrazy). Ręczna weryfikacja ok. 20 ocen.
+- Zgodność z kartą postaci: czy szczegóły z opisu są na obrazie (np. blizna na lewej dłoni, opaska na oku).
+  W krótkiej grze FLUX rysował bliznę na twarzy, Qwen na dłoni. Kandydat do sędziego obrazów.
+
+**G2a. Nowe modele obrazów.** Każdy: licencja, VRAM, czas, czy przyjmuje kilka obrazów wejściowych. Kandydaci:
+- FLUX 3 Image Klein (`flux3-klein`, adapter już jest): do 10 obrazów wejściowych, wymaga akceptacji licencji i tokenu
+  Hugging Face (token tylko na czas sesji, instrukcja w README pomiaru).
+- Qwen-Image-2.1 bez Turbo (40 kroków): czy lepsza jakość jest warta czasu.
+- Qwen-Image-Edit-2511 (20B, Apache 2.0): deklarowana poprawa spójności postaci, na 24 GB tylko z odciążaniem.
+- FLUX.2 klein 9B (licencja niekomercyjna, ok. 29 GB): z odciążaniem do RAM.
+- Inne otwarte modele edycji z wieloma obrazami wejściowymi, jeśli się pojawią. Qwen-Image 3.0 nie ma otwartych wag.
+
+**G2b. Adaptery tożsamości postaci.** Moduły dokładane do modelu, które trzymają wygląd konkretnej osoby:
+IP-Adapter Plus Face i FaceID (SDXL), PuLID (FLUX), InstantID (SDXL), ewentualnie LoRA trenowana na wzorcach postaci
+(cięższe, osobne zadanie). Ten sam test i te same miary co G1, żeby porównać z obrazem wzorcowym bez adaptera.
+
+**G3a. Eksport gry do scen.** Skrypt (np. `app/eval/export_scenes.py`): bierze rozegraną grę z bazy (`turns`: `location`,
+`scene_description`, `characters_present`, narracja) i zapisuje zestaw scen w formacie `testset.yaml` (postacie,
+lokacje, sceny, powroty wykryte po `location_id`). Opis wyglądu postaci: ze świata (`app/worlds/`) albo z pierwszego
+opisu w narracji. Test bez modelu na zapisanej grze z FakeLLM.
+
+**G3b. Test całości (narrator + grafika).** Gra `main_v2` na `strata-big` z `full_cached`, eksport (G3a), potem obrazy
+na serwerze GPU tym samym `run.py`. Mierzyć: czas od komendy gracza do tekstu i do obrazu (suma, bo obrazy liczymy
+partiami), spójność postaci i lokacji w prawdziwej grze, ile tur zmienia lokację (cache tła po `location_id`).
+Na serwerze GPU nie uruchamiamy usług na stałe (regulamin), dlatego obrazy liczymy partiami po grze, a nie na żywo.
+
+**G4. Screenshoty GUI.** Zrzuty ekranu gry w przeglądarce: start gry, kilka tur, panel z promptem i stanem świata,
+wybór modelu. Najlepiej z prawdziwym modelem (`strata-big`), awaryjnie tryb `demo`. Do `docs/screenshots/`
+z krótkim opisem w `docs/screenshots/README.md`. Sprawdzić przed commitem, czy na zrzutach nie ma klucza API
+ani adresów serwerów uczelni (repo jest publiczne). Jeśli powstaną obrazy z G3b, dodać zrzut gry z tłem.
 
 **Z1. Architektura pomiarowa obrazów.** Powtarzalne stanowisko do porównywania modeli pod spójność postaci
 i lokacji. Założenie od innej grupy badawczej (u nas jeszcze niezmierzone): bez obrazu wejściowego modele szybko
@@ -282,6 +345,10 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 - **Gry `full_cached` na `strata-big` po kolei, nie równolegle**, bo równoległe gry nadpisują sobie cache.
 
 ## Dziennik
+
+### 2026-11-08, Antek: zadania sprintu 5 z DoD prowadzącego
+- DoD: więcej testów grafik, inne modele i adaptery, testy całości (narrator + grafika), screenshoty GUI.
+- Zadania G1a do G4 z opisami. Z1 i Z4b oznaczone jako zrobione, Z2 wstępnie: FLUX.2 klein albo Qwen-Image 2.1.
 
 ### 2026-11-05, Antek: krótka gra v2 na 3 modelach (Z1)
 - Co zrobione: `testset_short` v2 (poprawione warstwy), 1 seed, `~/data/dvn-results/short-v2`. Lokalnie u Antka.
