@@ -64,7 +64,8 @@ def assign(sim: list[list[float]]) -> dict[int, int]:
 def main() -> None:
     p = argparse.ArgumentParser(description="Oceny spójności postaci (wycinki) i lokacji dla wyników run.py.")
     p.add_argument("--out", required=True)
-    p.add_argument("--threshold", type=float, default=0.15, help="próg pewności detektora osób")
+    # 0.1, bo przy 0.15 detektor gubił postacie na obrazach Qwena (mediana najlepszego wyniku ok. 0.14, FLUX i SDXL ok. 0.27)
+    p.add_argument("--threshold", type=float, default=0.1, help="próg pewności detektora osób")
     args = p.parse_args()
     out = Path(args.out).expanduser()
 

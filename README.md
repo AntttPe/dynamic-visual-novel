@@ -203,6 +203,31 @@ Wersja LiteLLM jest przypięta w `pyproject.toml`. Nie aktualizuj jej bez sprawd
 
 ---
 
+## Gra z obrazami (serwer GPU instytutu)
+
+Obrazy powstają w trakcie gry. Gra nie czeka na nie: tekst pojawia się od razu, a obraz po chwili.
+Każda lokacja ma jedno stałe tło (wzorzec miejsca), a każda tura osobny obraz sceny rysowany na jego podstawie.
+Bez serwera obrazów gra działa jak zwykle.
+
+1. W `.env` ustaw `IMAGE_SERVER_URL=http://host.docker.internal:8420` i wykonaj `docker compose up -d --force-recreate app`.
+2. Na serwerze GPU, przy wolnym GPU (`nvidia-smi`), uruchom serwer obrazów w `tmux`:
+   ```bash
+   eval "$(conda shell.bash hook)" && conda activate ~/data/conda/dvn-images
+   cd ~/data/dvn && git pull && cd bench/images/consistency
+   python serve.py
+   ```
+3. Na laptopie, przy włączonym VPN, w osobnym oknie terminala zestaw tunel i zostaw go otwartego:
+   ```bash
+   ssh -N -L 8420:127.0.0.1:8420 -i ~/.ssh/id_ed25519 <login>@<adres serwera>
+   ```
+4. Graj na http://localhost:8000. Generator grafiki wybierzesz w oknie „Nowa gra” (domyślny ustawia `IMAGE_MODEL` w `.env`).
+   Na GPU mieści się jeden model naraz, więc po zmianie generatora serwer wczytuje inny model i pierwszy obraz powstaje dłużej.
+   Obrazy zapisują się w `data/images/`, a czasy i prompty w tabeli `images` bazy.
+5. Po graniu obowiązkowo wyłącz serwer obrazów przez `Ctrl+C` (regulamin: żadnych usług działających na stałe).
+   Dla pewności sam wyłączy się po 30 minutach bez zadań.
+
+Obrazy i pomiary na jednym GPU się nie mieszczą: nie uruchamiaj gry z obrazami w trakcie pomiaru.
+
 ## Eksperymenty (badanie modeli)
 
 Scenariusze badawcze leżą w `app/eval/scenarios/`. Każdy to z góry napisana lista akcji gracza

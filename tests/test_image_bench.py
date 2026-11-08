@@ -13,7 +13,7 @@ sys.path.insert(0, str(BENCH))
 import report
 import score
 from compose import FakeComposer
-from models import FakeAdapter
+from models import ADAPTERS, FakeAdapter
 from run import VARIANTS, load_testset, run
 
 TS = load_testset(BENCH / "testset.yaml")
@@ -87,6 +87,16 @@ def test_layers_uses_location_anchor_as_background_and_character_anchors_for_spr
     scene = next(r for r in rows if r["kind"] == "scene" and r["variant"] == "layers" and r["scene"] == 3)
     assert scene["refs"][0] == "fake/seed1001/anchors/market.png"
     assert scene["seconds_total"] >= scene["seconds"]
+
+
+def test_face_adapter_gets_only_character_references(tmp_path):
+    fake = FakeAdapter()
+    fake.location_refs = False
+    run(TS, ["fake"], [1001], ["anchor"], tmp_path, adapters={"fake": fake}, composer=FakeComposer(), log=lambda _: None)
+    scene_refs = [Path(r).stem for call in fake.calls for r in call["refs"]]
+    assert scene_refs
+    assert not set(scene_refs) & set(TS["locations"])
+    assert "sdxl-ip-face" in ADAPTERS
 
 
 def test_rerun_skips_finished_images(tmp_path):

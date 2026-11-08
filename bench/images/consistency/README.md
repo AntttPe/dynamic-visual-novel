@@ -19,6 +19,7 @@ Każda scena ma własny seed (seed + numer sceny), taki sam we wszystkich warian
 | Model (`--models`) | Co to jest |
 |---|---|
 | `sdxl-ip` | SDXL z IP-Adapterem, punkt odniesienia |
+| `sdxl-ip-face` | SDXL z IP-Adapter Plus Face (adapter tożsamości postaci), dostaje tylko wzorce postaci |
 | `flux2-klein-4b` | FLUX.2 [klein] 4B, 4 kroki, Apache 2.0 |
 | `flux3-klein` | FLUX 3 Image Klein, do 10 obrazów wejściowych, wymaga akceptacji licencji na Hugging Face |
 | `qwen-image-21-turbo` | Qwen-Image-2.1-Turbo, 7B, 8 kroków, do 10 obrazów wejściowych, Qwen Research License, z odciążaniem do RAM |

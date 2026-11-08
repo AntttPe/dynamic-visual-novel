@@ -44,6 +44,7 @@ class _Diffusers:
     max_refs = 0
     repo = ""
     ref_max_side: int | None = None  # zmniejszanie obrazów wejściowych (mniej pamięci GPU), None = bez zmian
+    location_refs = True  # False: model dostaje tylko wzorce postaci (adaptery twarzy)
 
     def __init__(self, repo: str | None = None):
         self.repo = repo or self.repo
@@ -108,6 +109,31 @@ class SDXLIPAdapter(_Diffusers):
         refs = images or [Image.new("RGB", (224, 224), (128, 128, 128))]
         return self.pipe(prompt=prompt, ip_adapter_image=[refs], width=size[0], height=size[1],
                          num_inference_steps=30, guidance_scale=6.0, generator=generator).images[0]
+
+
+class SDXLIPFace(SDXLIPAdapter):
+    """SDXL z IP-Adapter Plus Face: pierwszy adapter tożsamości (G2b), porównywany z sdxl-ip na tym samym teście.
+    Patrzy na twarz, więc dostaje tylko wzorce postaci, bez lokacji. Przy kilku postaciach w scenie twarze
+    mieszają się ze sobą, bo adapter działa na cały obraz (osobne maski dla postaci to kolejny krok).
+    """
+
+    name = "sdxl-ip-face"
+    location_refs = False
+    scale = 0.7
+
+    def _load(self, torch):
+        from diffusers import AutoencoderKL, StableDiffusionXLPipeline
+        from transformers import CLIPVisionModelWithProjection
+
+        # Wersje vit-h wymagają kodera obrazu ViT-H, a nie domyślnego z katalogu sdxl_models
+        encoder = CLIPVisionModelWithProjection.from_pretrained(
+            "h94/IP-Adapter", subfolder="models/image_encoder", torch_dtype=torch.float16)
+        vae = AutoencoderKL.from_pretrained("madebyollin/sdxl-vae-fp16-fix", torch_dtype=torch.float16)
+        pipe = StableDiffusionXLPipeline.from_pretrained(self.repo, vae=vae, image_encoder=encoder,
+                                                         torch_dtype=torch.float16, variant="fp16")
+        pipe.load_ip_adapter("h94/IP-Adapter", subfolder="sdxl_models",
+                             weight_name="ip-adapter-plus-face_sdxl_vit-h.safetensors")
+        return pipe.to("cuda")
 
 
 class Flux2Klein(_Diffusers):
@@ -185,7 +211,7 @@ class Qwen21Turbo(_Diffusers):
         return self.pipe(prompt=prompt, width=size[0], height=size[1], generator=generator, **kwargs).images[0]
 
 
-ADAPTERS = {cls.name: cls for cls in (SDXLIPAdapter, Flux2Klein, Flux3Klein, Qwen21Turbo)}
+ADAPTERS = {cls.name: cls for cls in (SDXLIPAdapter, SDXLIPFace, Flux2Klein, Flux3Klein, Qwen21Turbo)}
 
 
 def make_adapter(name: str, repo: str | None = None):

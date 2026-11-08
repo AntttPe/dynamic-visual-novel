@@ -61,6 +61,20 @@ CREATE TABLE IF NOT EXISTS eval_runs (
     updated_at       TEXT NOT NULL,
     note             TEXT
 );
+CREATE TABLE IF NOT EXISTS images (
+    run_id      TEXT NOT NULL REFERENCES runs(run_id),
+    location_id TEXT NOT NULL,
+    t           INTEGER NOT NULL,
+    created_at  TEXT NOT NULL,
+    prompt      TEXT NOT NULL,
+    seed        INTEGER NOT NULL,
+    model       TEXT,
+    status      TEXT NOT NULL,
+    seconds     REAL,
+    path        TEXT,
+    error       TEXT,
+    kind        TEXT NOT NULL DEFAULT 'background'
+);
 """
 
 
@@ -90,6 +104,9 @@ class Store:
             for column, ddl in _ADDED_TURN_COLUMNS.items():
                 if column not in existing:
                     conn.execute(f"ALTER TABLE turns ADD COLUMN {column} {ddl}")
+            image_columns = {row["name"] for row in conn.execute("PRAGMA table_info(images)")}
+            if "kind" not in image_columns:
+                conn.execute("ALTER TABLE images ADD COLUMN kind TEXT NOT NULL DEFAULT 'background'")
 
     def _connect(self) -> sqlite3.Connection:
         # Kilka równoległych gier pisze do jednej bazy, więc czekamy dłużej niż domyślne 5 s
@@ -133,6 +150,21 @@ class Store:
         with closing(self._connect()) as conn:
             rows = conn.execute("SELECT * FROM turns WHERE run_id = ? ORDER BY t", (run_id,))
             return [dict(row) for row in rows]
+
+    # --- Tła lokacji (app/images.py) ---
+
+    def save_image(self, run_id: str, location_id: str, t: int, kind: str, prompt: str, seed: int, model: str,
+                   status: str, seconds: float, path: str | None, error: str | None) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "INSERT INTO images (run_id, location_id, t, created_at, prompt, seed, model, status, seconds, path,"
+                " error, kind) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (run_id, location_id, t, _now(), prompt, seed, model, status, seconds, path, error, kind),
+            )
+
+    def images(self, run_id: str) -> list[dict]:
+        with closing(self._connect()) as conn:
+            return [dict(r) for r in conn.execute("SELECT * FROM images WHERE run_id = ? ORDER BY rowid", (run_id,))]
 
     # --- Eksperymenty (app/eval) ---
 

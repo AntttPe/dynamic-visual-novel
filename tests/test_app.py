@@ -8,6 +8,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from app.images import BackgroundImages
 from app.llm.base import LLMError
 from app.llm.fake import FakeLLM
 from app.main import app
@@ -28,17 +29,27 @@ def narrator_json(location_id="tavern", updates=None, narration="Borwin kiwa gł
 def env(tmp_path):
     """Klient API z FakeLLM i bazą w katalogu tymczasowym."""
     fake = FakeLLM()
-    old_factory, old_store = app.state.llm_factory, app.state.store
+    old_factory, old_store, old_images = app.state.llm_factory, app.state.store, app.state.images
     app.state.llm_factory = lambda model, world: fake
     app.state.store = Store(tmp_path / "test.sqlite")
+    app.state.images = BackgroundImages(None, tmp_path / "images")  # testy nie łączą się z serwerem obrazów
     yield TestClient(app), fake
-    app.state.llm_factory, app.state.store = old_factory, old_store
+    app.state.llm_factory, app.state.store, app.state.images = old_factory, old_store, old_images
 
 
 def new_game(client, **kwargs):
     resp = client.post("/api/games", json=kwargs)
     assert resp.status_code == 200
     return resp.json()
+
+
+def test_ui_offers_cached_memory_and_is_revalidated():
+    client = TestClient(app)
+    page = client.get("/")
+    assert 'value="full_cached"' in page.text
+    assert 'id="fImageModel"' in page.text
+    assert page.headers["cache-control"] == "no-cache"
+    assert client.get("/app.js").headers["cache-control"] == "no-cache"
 
 
 def test_health():

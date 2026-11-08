@@ -162,7 +162,10 @@ def run(ts: dict, models: list[str], seeds: list[int], variants: list[str], out:
                     refs = job["refs"]
                     extra = composer.compose(out / refs[0], [out / r for r in refs[1:]], path, size)
                 else:
-                    refs = job["refs"][: adapter.max_refs]
+                    refs = job["refs"]
+                    if not getattr(adapter, "location_refs", True):
+                        refs = [r for r in refs if Path(r).stem not in ts["locations"]]
+                    refs = refs[: adapter.max_refs]
                     extra = adapter.generate(job["prompt"], [out / r for r in refs], job["image_seed"], path, size)
                 seconds = round(time.perf_counter() - t1, 2)
                 record = {"key": key_of(ts, model, seed, job), "testset": f"{ts['id']}/v{ts['version']}",

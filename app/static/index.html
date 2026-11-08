@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dynamic Visual Novel</title>
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/style.css?v=2" />
 </head>
 <body>
   <header class="topbar">
@@ -15,6 +15,7 @@
     <div class="chips" id="chips"></div>
     <div class="actions">
       <button type="button" id="btnNew" class="btn">Nowa gra</button>
+      <button type="button" id="btnTech" class="btn" aria-pressed="false">Dane techniczne</button>
       <button type="button" id="btnPanel" class="btn" aria-pressed="true">Panel badawczy</button>
     </div>
   </header>
@@ -27,6 +28,7 @@
         <div class="bg" id="bg"></div>
         <div class="loc" id="loc"></div>
         <div class="viewing" id="viewing" hidden></div>
+        <div class="bgnote" id="bgNote" hidden></div>
 
         <div class="start" id="start" hidden>
           <p class="eyebrow">Nowa historia</p>
@@ -37,16 +39,16 @@
             <button type="button" class="btn ghost" id="btnDemo">Szybki start w trybie demo</button>
           </div>
         </div>
+      </div>
 
-        <div class="box" id="box" hidden>
-          <p class="action" id="lastAction"></p>
-          <p class="narr" id="narr"></p>
-          <div class="dialogue" id="dialogue"></div>
-          <p class="turn-error" id="turnErr" hidden></p>
-          <div class="thinking" id="thinking" hidden>
-            <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-            Narrator pisze… <span id="elapsed">0,0 s</span>
-          </div>
+      <div class="box" id="box" hidden>
+        <p class="action" id="lastAction"></p>
+        <p class="narr" id="narr"></p>
+        <div class="dialogue" id="dialogue"></div>
+        <p class="turn-error" id="turnErr" hidden></p>
+        <div class="thinking" id="thinking" hidden>
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          Narrator pisze… <span id="elapsed">0,0 s</span>
         </div>
       </div>
 
@@ -55,7 +57,7 @@
         <input id="action" placeholder="Co robisz? Np. Pytam Borwina o koronę" maxlength="500" />
         <button class="btn primary" id="send">Wyślij</button>
       </form>
-      <p class="hint">Enter wysyła. Kliknięcie tekstu pomija animację. Tło jest tymczasowe: kolor wynika z <code>location_id</code>, więc to samo miejsce ma zawsze ten sam kolor.</p>
+      <p class="hint">Enter wysyła. Kliknięcie tekstu pomija animację.</p>
     </section>
 
     <aside class="panel" id="panel" aria-label="Panel badawczy">
@@ -81,11 +83,16 @@
         <input id="fModel" spellcheck="false" placeholder="np. ollama_chat/gemma4:12b" hidden />
         <small>Format LiteLLM: <code>ollama_chat/…</code> (Mac albo GPU przez tunel), <code>hosted_vllm/…</code> (vLLM), <code>anthropic/…</code> (API). <code>demo</code> działa bez modelu.</small>
       </label>
+      <label id="fImageWrap">Generator grafiki
+        <select id="fImageModel"></select>
+        <small>Zmiana generatora wczytuje inny model na GPU, więc pierwszy obraz powstaje dłużej.</small>
+      </label>
       <div class="grid2">
         <label>Pamięć
           <select id="fHistory">
             <option value="window">Okno ostatnich tur</option>
             <option value="full">Pełna historia</option>
+            <option value="full_cached">Pełna historia z cache (full_cached)</option>
           </select>
         </label>
         <label>Rozmiar okna (tury)
@@ -106,6 +113,6 @@
     </form>
   </dialog>
 
-  <script src="/app.js"></script>
+  <script src="/app.js?v=2"></script>
 </body>
 </html>

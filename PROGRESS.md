@@ -47,12 +47,13 @@ Wzór wpisu w dzienniku:
 - Metryki dodatkowe X1 do X5 i porównanie „ze stanem minus bez stanu” na parach seedów (McNemar, bootstrap,
   przedziały Wilsona): `python -m app.eval.extra_metrics --tag <tag> [--csv plik] [--names 20]`.
 - Pełne badanie `long50` (3 modele × 25 gier ze stanem + 25 bez), wyniki w Dzienniku 2026-10-28.
+- Gra z obrazami na żywo przez serwer GPU i tunel SSH (README, sekcja „Gra z obrazami”): tło lokacji, portret postaci
+  i obraz sceny w każdej turze, generator do wyboru przy nowej grze. Czasy i prompty w tabeli `images`.
 
 **Nie ma jeszcze:**
 - Sędzia LLM (M3 dziwne komendy, gaslighting w M2).
 - Wyniki Gemini (darmowy klucz: 20 zapytań dziennie, za mało na badanie).
 - Wykresy i raport dla prowadzącego.
-- Generowanie obrazów teł (pytanie badawcze 3), zadanie S2.
 
 **Znane problemy:**
 - VPN rozłącza się przy wygaszaczu ekranu i bez powodu (macOS i Windows). Na macOS `caffeinate -di` (README),
@@ -63,6 +64,10 @@ Wzór wpisu w dzienniku:
   2 gry: trafia tylko jedna. Gry `full_cached` na `strata-big` uruchamiać po kolei.
 - `strata-big` z wymuszonym JSON oddaje całą odpowiedź naraz, mimo strumienia. Jego `ttft_ms` w grze to czas
   całej tury (TTFT mierzyć skryptem `kv_cache`, bez JSON). Ważne dla Z4c. `large-reasoning` strumieniuje normalnie.
+- `large-reasoning` przy domyślnym `NARRATOR_MAX_TOKENS` (1200) potrafi uciąć myślenie przed JSON. Ponowienia dają tury po 2,5 min.
+- `strata-big` 2026-11-08 chwilami nie odpowiadał przez ponad 150 s (przyczyna po stronie serwera, niepotwierdzona).
+- Obrazy w grze: portrety słabo oddają polskie opisy (np. Borwin bez rudych włosów) i bywają do siebie podobne,
+  czasem pojawia się drobny tekst na obrazie, a akcja sceny bywa pominięta (np. brak wędki).
 
 ## Metryki sprintu (ustalone)
 
@@ -86,11 +91,11 @@ Na serwerze GPU pobrane są już: FLUX.2 klein 4B, SDXL + IP-Adapter, Qwen-Image
 
 | Kto | Zadanie | Wymaga | Od kiedy |
 |---|---|---|---|
-| (wolne) | G1a. Naprawić wykrywanie postaci na obrazach Qwena (najpierw, blokuje G1b) | nic, potem GPU | |
+| Dudsztor | G1a. Wykrywanie postaci na obrazach Qwena. Próg 0.1 daje 9/9, zostało obejrzeć wycięte postacie (Dziennik 2026-11-09) | GPU | 2026-11-08 |
 | (wolne) | G1b. Pełny pomiar obrazów: 22 sceny, powrót 20 do 1, 2 do 3 seedy | GPU | |
 | (wolne) | G1c. Nowe miary: duplikaty postaci i sędzia obrazów (łączy się z Z5) | VPN, GPU | |
 | (wolne) | G2a. Nowe modele obrazów (lista niżej) | GPU | |
-| (wolne) | G2b. Adaptery tożsamości postaci (IP-Adapter Face, PuLID, InstantID i podobne) | GPU | |
+| Dudsztor | G2b. Adaptery tożsamości postaci. Zrobione: IP-Adapter Face (Dziennik 2026-11-09). PuLID i InstantID odłożone | GPU | 2026-11-08 |
 | (wolne) | G3a. Eksport prawdziwej gry do zestawu scen dla obrazów | VPN | |
 | (wolne) | G3b. Test całości: gra z narratorem, potem obrazy do każdej tury, czas i spójność | VPN, GPU, po G3a | |
 | (wolne) | G4. Screenshoty GUI do raportu | nic (tryb `demo`) albo VPN | |
@@ -107,7 +112,7 @@ VPN instytutu i klucza do modeli w `.env`. Zadania są niezależne, chyba że w 
 | (wstrzymane) | Z4a. Myślenie narratora: wyłączyć albo ograniczyć. Wstrzymane 2026-11-03: nie zmieniamy parametrów modeli (Decyzje) | VPN | |
 | Krzysiek | Z4b. Badanie `full_cached` vs `window/8`. Zrobione: 40 gier (Dziennik 2026-11-04) | VPN | 2026-11-03 |
 | (wolne) | Z4c. Strumieniowanie narracji do UI | nic (tryb `demo`) | |
-| (wolne) | Z4d. Obrazy w tle i cache po `location_id` w grze (po Z2) | GPU | |
+| Dudsztor | Z4d. Obrazy w tle i cache po `location_id` w grze. Zrobione (Dziennik 2026-11-09) | GPU | 2026-11-08 |
 | (wolne) | Z5. Czy `large-reasoning` przyjmuje obrazy, sędzia spójności obrazów | VPN | |
 
 **Sprint 3, wymagania prowadzącego (DoD):**
@@ -344,7 +349,49 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 - **Parametrów modeli nie zmieniamy** (myślenie, `reasoning_effort`): optymalizujemy czas po naszej stronie (cache, prompt).
 - **Gry `full_cached` na `strata-big` po kolei, nie równolegle**, bo równoległe gry nadpisują sobie cache.
 
+- **Próg detektora postaci to 0.1** (było 0.15). Najlepszy wynik Qwena to ok. 0,14, a FLUX i SDXL ok. 0,27.
+- **Adaptery na `insightface` odkładamy** (cięższe, ograniczenia licencji, IP-Adapter Face nie dał wyraźnej poprawy).
+
 ## Dziennik
+
+### 2026-11-09, Dudsztor: obrazy na żywo w grze, wybór generatora, test IP-Adapter Face
+- Co zrobione: połączenie interfejsu z generowaniem obrazów działa w prawdziwej grze (Z4d). Tło jest stałe dla lokacji, portret
+  rysowany raz dla postaci, a scena tury dostaje tło i do 3 portretów jako obrazy wejściowe. Postacie, które zostały w innym miejscu,
+  nie trafiają na scenę. Wypowiedzi są usuwane z promptu, bo powodowały napisy (9 z 9 obrazów z mową, 0 z 12 bez).
+- Interfejs: tekst tury pod obrazem, opcjonalne „Dane techniczne”, pamięć `full_cached` i generator grafiki do wyboru przy nowej grze.
+- Pliki: `app/images.py`, `app/main.py`, `app/static/`, `app/storage/db.py`, `bench/images/consistency/serve.py`, `models.py`, `run.py`, `score.py`.
+- Wyniki w grze (FLUX.2 klein 4B): tła ok. 2 s, portrety 1,4 do 2,9 s, sceny z portretami 6 do 12 s.
+- Test adapterów (`testset_short`, 1 seed, 6 scen, próg 0.1, wszędzie 9/9 wykrytych postaci). Kolumny: podobieństwo DINO do wzorca,
+  to samo w scenach z jedną postacią, powrót postaci, sekundy na obraz:
+
+  | Model | Wariant | DINO | Jedna postać | Powrót | s |
+  |---|---|---|---|---|---|
+  | flux2-klein-4b | anchor | 0,696 | 0,693 | 0,893 | 5,1 |
+  | flux2-klein-4b | chain | 0,575 | 0,518 | 0,986 | 5,2 |
+  | flux2-klein-4b | layers | 0,819 | 0,910 | 0,979 | 5,2 |
+  | flux2-klein-4b | text | 0,615 | 0,505 | 0,895 | 1,4 |
+  | qwen-image-21-turbo | anchor | 0,846 | 0,866 | 0,863 | 20,4 |
+  | qwen-image-21-turbo | chain | 0,832 | 0,762 | 0,982 | 17,9 |
+  | qwen-image-21-turbo | layers | 0,782 | 0,820 | 0,835 | 26,7 |
+  | qwen-image-21-turbo | text | 0,661 | 0,533 | 0,941 | 14,7 |
+  | sdxl-ip | anchor | 0,652 | 0,672 | 0,806 | 3,9 |
+  | sdxl-ip | chain | 0,677 | 0,663 | 0,757 | 3,9 |
+  | sdxl-ip | layers | 0,655 | 0,658 | 0,692 | 7,4 |
+  | sdxl-ip | text | 0,570 | 0,613 | 0,641 | 3,7 |
+  | sdxl-ip-face | anchor | 0,692 | 0,700 | 0,767 | 3,9 |
+  | sdxl-ip-face | chain | 0,669 | 0,720 | 0,794 | 3,9 |
+  | sdxl-ip-face | layers | 0,637 | 0,690 | 0,643 | 7,4 |
+  | sdxl-ip-face | text | 0,570 | 0,613 | 0,641 | 3,7 |
+
+- Wnioski: adapter Face podnosi podobieństwo SDXL do wzorca o 0,03 do 0,06 (do poziomu FLUX anchor), ale w anchor i layers pogarsza
+  powroty postaci. Wynik mieszany, przy 1 seedzie w granicach szumu, więc na razie nie dodajemy adapterów na `insightface`.
+  Qwen anchor najlepiej trzyma postacie, ale kosztuje ok. 20 s na scenę. FLUX layers to najlepszy kompromis, choć częściowo
+  z konstrukcji (wklejona postać). Powrót ok. 0,98 w chain to głównie kopiowanie obrazu.
+- Jak sprawdzić: `pytest -v` (123 testy bez modelu). Raport testu adapterów: `~/data/dvn-results/short-adapters` na serwerze GPU.
+- Uwaga dla następnych: przełączanie generatora działa w testach na modelu na niby i w interfejsie, ale nie było jeszcze sprawdzone
+  na prawdziwym GPU. Serwer ma ręcznie skopiowane `serve.py`, `models.py` i `run.py`: przed `git pull` przywróć te dwa ostatnie
+  przez `git checkout --` i usuń `serve.py`. Dalej: G1b (`--threshold 0.1`), obejrzenie wyciętych postaci Qwena (domknięcie G1a).
+- Commit: ten wpis
 
 ### 2026-11-08, Antek: zadania sprintu 5 z DoD prowadzącego
 - DoD: więcej testów grafik, inne modele i adaptery, testy całości (narrator + grafika), screenshoty GUI.

@@ -37,6 +37,9 @@ const turns = () => ui.game?.turns ?? [];
 const viewIndex = () => (ui.view ?? turns().length - 1);
 const viewedTurn = () => turns()[viewIndex()];
 const locationName = (id) => ui.game?.known_locations?.[id] ?? id;
+function memoryLabel(c) {
+  return { full: "pełna historia", full_cached: "pełna historia z cache" }[c.history] ?? `okno ${c.memory_window} tur`;
+}
 function currentModel() { return ui.game?.config.model ?? ui.config?.defaults.model ?? ""; }
 function modelStatus(model) {
   const p = ui.health?.providers ?? {};
@@ -65,8 +68,9 @@ function renderTop() {
   chips.push(`<span class="chip" title="${esc(st.label)}"><span class="dot ${st.cls}"></span><b>${esc(model)}</b></span>`);
   if (ui.game) {
     const c = ui.game.config;
-    chips.push(`<span class="chip">pamięć: <b>${c.history === "full" ? "pełna historia" : `okno ${c.memory_window}`}</b></span>`);
+    chips.push(`<span class="chip">pamięć: <b>${memoryLabel(c)}</b></span>`);
     chips.push(`<span class="chip">stan w prompcie: <b>${c.state_in_prompt ? "tak" : "nie"}</b></span>`);
+    if (ui.game.image_model) chips.push(`<span class="chip">grafika: <b>${esc(ui.game.image_model)}</b></span>`);
     chips.push(`<span class="chip">tura: <b>${turns().length}</b></span>`);
   }
   $("#chips").innerHTML = chips.join("");
@@ -100,6 +104,60 @@ function setBackground(locationId) {
     `linear-gradient(180deg, hsl(${h} 35% 32%) 0%, hsl(${h2} 38% 18%) 58%, hsl(${(h + 60) % 360} 30% 8%) 100%)`;
 }
 
+// Obrazy z serwera: najpierw tło lokacji, potem scena tury, rysowana na jego podstawie.
+// Gdy obrazu nie ma (albo serwer jest wyłączony), zostaje gradient.
+const stageImages = new Map(); // klucz obrazu -> adres gotowego pliku
+let stageWatch = null; // to, na co teraz czekamy
+
+function setStageImage(url) { $("#bg").style.background = `url("${url}") center / cover no-repeat`; }
+function showBgNote(text) { $("#bgNote").textContent = text; $("#bgNote").hidden = !text; }
+const preload = (url) => new Promise((done) => {
+  const im = new Image();
+  im.onload = () => done(true);
+  im.onerror = () => done(false);
+  im.src = url;
+});
+
+async function fetchImage(key, query) {
+  let s = null;
+  try { s = await api(query); } catch {}
+  if (s?.status !== "ready") return s?.status ?? "none";
+  if (!await preload(s.url)) return "failed";
+  stageImages.set(key, s.url);
+  return "ready";
+}
+
+async function watchStage(loc, turn) {
+  const gameId = ui.game.game_id;
+  const placeKey = `${gameId}|place|${loc}`;
+  const sceneKey = turn ? `${gameId}|turn|${turn}` : null;
+  const wanted = sceneKey ?? placeKey;
+  const paint = () => {
+    const url = stageImages.get(sceneKey) ?? stageImages.get(placeKey);
+    if (url) setStageImage(url);
+  };
+  paint();
+  if (stageImages.has(wanted)) { stageWatch = null; showBgNote(""); return; }
+  if (stageWatch === wanted) return;
+  stageWatch = wanted;
+  showBgNote("");
+  const base = `/api/games/${gameId}`;
+  for (let i = 0; i < 240 && stageWatch === wanted; i++) {
+    const place = stageImages.has(placeKey) ? "ready" : await fetchImage(placeKey, `${base}/image?location=${encodeURIComponent(loc)}`);
+    const status = sceneKey ? await fetchImage(sceneKey, `${base}/scene?t=${turn}`) : place;
+    if (stageWatch !== wanted) return;
+    paint();
+    if (status === "pending" || place === "pending") {
+      showBgNote(sceneKey ? "Rysuję scenę…" : "Rysuję tło…");
+      await new Promise((done) => setTimeout(done, 1500));
+      continue;
+    }
+    showBgNote(status === "failed" ? "Nie udało się narysować obrazu" : "");
+    break;
+  }
+  if (stageWatch === wanted) stageWatch = null;
+}
+
 function renderStage(animate) {
   stopTyping();
   const game = ui.game;
@@ -112,12 +170,15 @@ function renderStage(animate) {
     $("#loc").innerHTML = "";
     $("#viewing").hidden = true;
     setBackground("start");
+    stageWatch = null;
+    showBgNote("");
     return;
   }
   const t = viewedTurn();
   const loc = t ? t.location : game.world.start_location;
   setBackground(loc);
   $("#loc").innerHTML = `<span class="name">${esc(locationName(loc))}</span><span class="id">location_id: ${esc(loc)}</span>`;
+  watchStage(loc, t?.response ? t.t : null);
 
   const past = ui.view !== null && ui.view < turns().length - 1;
   $("#viewing").hidden = !past;
@@ -182,7 +243,7 @@ function tabTurn(t) {
   const c = ui.game.config;
   const cfg = `<div><h3>Konfiguracja gry</h3><dl class="kv">
     <dt>model</dt><dd>${esc(c.model)}</dd>
-    <dt>pamięć</dt><dd>${c.history === "full" ? "pełna historia" : `okno ${c.memory_window} tur`}</dd>
+    <dt>pamięć</dt><dd>${memoryLabel(c)}</dd>
     <dt>stan w prompcie</dt><dd>${c.state_in_prompt ? "tak" : "nie"}</dd>
     <dt>temperatura</dt><dd>${c.temperature}</dd>
     <dt>seed</dt><dd>${c.seed ?? "brak"}</dd>
@@ -202,6 +263,7 @@ function tabTurn(t) {
       <div class="metric"><span>JSON</span><b>${json}</b></div>
       <div class="metric"><span>Tokeny wejścia</span><b>${t.tokens_in}</b></div>
       <div class="metric"><span>Tokeny wyjścia</span><b>${t.tokens_out}</b></div>
+      <div class="metric"><span>Tokeny z cache</span><b>${t.tokens_cached}</b></div>
     </div>
     <div><h3>Scena</h3><dl class="kv">
       <dt>location_id</dt><dd><code>${esc(r?.scene.location_id ?? "brak")}</code> → <code>${esc(t.location)}</code>
@@ -252,6 +314,13 @@ function tabHistory() {
 }
 
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => { ui.tab = b.dataset.tab; store.set("dvn.tab", ui.tab); renderPanel(); }));
+function setTech(on) {
+  $("#btnTech").setAttribute("aria-pressed", on);
+  document.body.classList.toggle("show-tech", on);
+  store.set("dvn.tech", on ? "1" : "0");
+}
+setTech(store.get("dvn.tech") === "1");
+$("#btnTech").addEventListener("click", () => setTech($("#btnTech").getAttribute("aria-pressed") !== "true"));
 $("#btnPanel").addEventListener("click", () => {
   const on = $("#btnPanel").getAttribute("aria-pressed") !== "true";
   $("#btnPanel").setAttribute("aria-pressed", on);
@@ -334,6 +403,10 @@ function openDialog() {
   $("#fModelPick").value = current;
   $("#fModel").value = current;
   $("#fModel").hidden = true;
+  const imageModels = ui.config.image_models;
+  $("#fImageWrap").hidden = !imageModels.length;
+  $("#fImageModel").innerHTML = imageModels.map((m) => `<option value="${esc(m.id)}">${esc(m.label)}</option>`).join("");
+  if (imageModels.length) $("#fImageModel").value = ui.game?.image_model ?? d.image_model;
   $("#fHistory").value = c?.history ?? d.history;
   $("#fWindow").value = c?.memory_window ?? d.window;
   $("#fState").checked = c?.state_in_prompt ?? d.state_in_prompt;
@@ -369,6 +442,7 @@ $("#newForm").addEventListener("submit", async (e) => {
       window: Number($("#fWindow").value) || null,
       state_in_prompt: $("#fState").checked,
       seed: seed === "" ? null : Number(seed),
+      image_model: $("#fImageModel").value || null,
     });
     $("#dlg").close();
   } catch (err) {
