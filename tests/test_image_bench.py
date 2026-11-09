@@ -13,7 +13,7 @@ sys.path.insert(0, str(BENCH))
 import report
 import score
 from compose import FakeComposer
-from models import ADAPTERS, FakeAdapter
+from models import ADAPTERS, FakeAdapter, ref_side
 from run import VARIANTS, load_testset, run
 
 TS = load_testset(BENCH / "testset.yaml")
@@ -87,6 +87,41 @@ def test_layers_uses_location_anchor_as_background_and_character_anchors_for_spr
     scene = next(r for r in rows if r["kind"] == "scene" and r["variant"] == "layers" and r["scene"] == 3)
     assert scene["refs"][0] == "fake/seed1001/anchors/market.png"
     assert scene["seconds_total"] >= scene["seconds"]
+
+
+def test_reference_images_shrink_only_above_memory_budget():
+    assert ref_side(1024, 1, 3) == 1024
+    assert ref_side(1024, 3, 3) == 1024  # gotowe wyniki z 1 do 3 obrazami zostają porównywalne
+    assert ref_side(1024, 10, None) == 1024
+    side = ref_side(1024, 4, 3)
+    assert side == 886
+    assert 4 * side ** 2 <= 3 * 1024 ** 2
+
+
+@pytest.mark.parametrize("refs,expected", [(1, 1024), (3, 1024), (4, 886)])
+def test_qwen_limits_size_of_reference_images_in_pipeline(refs, expected):
+    class Pipe:
+        def __call__(self, **kwargs):
+            self.kwargs = kwargs
+            return type("Out", (), {"images": ["obraz"]})
+
+    adapter = ADAPTERS["qwen-image-21-turbo"]()
+    adapter.pipe = Pipe()
+    assert adapter._generate("x", ["ref"] * refs, None, (1280, 720)) == "obraz"
+    assert adapter.pipe.kwargs["output_resolution"] == expected
+    assert (adapter.pipe.kwargs["width"], adapter.pipe.kwargs["height"]) == (1280, 720)
+
+
+def test_qwen_without_references_keeps_pipeline_defaults():
+    class Pipe:
+        def __call__(self, **kwargs):
+            self.kwargs = kwargs
+            return type("Out", (), {"images": ["obraz"]})
+
+    adapter = ADAPTERS["qwen-image-21-turbo"]()
+    adapter.pipe = Pipe()
+    adapter._generate("x", [], None, (1280, 720))
+    assert "output_resolution" not in adapter.pipe.kwargs and "image" not in adapter.pipe.kwargs
 
 
 def test_face_adapter_gets_only_character_references(tmp_path):

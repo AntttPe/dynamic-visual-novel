@@ -16,6 +16,13 @@ from pathlib import Path
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 
+def ref_side(max_side: int, count: int, budget: int | None) -> int:
+    """Bok obrazów wejściowych: powyżej budżetu łączna liczba pikseli zostaje taka jak przy budżecie."""
+    if not budget or count <= budget:
+        return max_side
+    return int(max_side * (budget / count) ** 0.5)
+
+
 class FakeAdapter:
     """Model na niby do testów: zapisuje mały plik zamiast obrazu."""
 
@@ -195,8 +202,12 @@ class Qwen21Turbo(_Diffusers):
     name = "qwen-image-21-turbo"
     max_refs = 10
     repo = "Qwen/Qwen-Image-2.1-Turbo"
-    # Pełnowymiarowe obrazy wejściowe (3 x 1280x720) przekroczyły 24 GB przy wariancie anchor (2026-11-05)
+    # Nie zmniejsza pamięci, bo pipeline i tak skaluje każdy obraz do powierzchni output_resolution².
+    # Zostaje, żeby obrazy wejściowe były takie same jak w gotowych wynikach.
     ref_max_side = 768
+    # Szczyt pamięci: 2 obrazy 19,65 GB, 3 obrazy 22,28 GB, przy 4 brak pamięci na karcie 24 GB (2026-11-09)
+    ref_budget = 3
+    ref_resolution = 1024  # domyślne output_resolution pipeline'u
 
     def _load(self, torch):
         from diffusers import QwenImage21Pipeline
@@ -207,7 +218,10 @@ class Qwen21Turbo(_Diffusers):
 
     def _generate(self, prompt, images, generator, size):
         # Liczby kroków nie podajemy: Turbo ma zapisany harmonogram 8 kroków (karta modelu)
-        kwargs = {"image": images} if images else {}
+        kwargs = {}
+        if images:
+            # output_resolution skaluje tylko obrazy wejściowe, bo wymiary wyniku podajemy wprost
+            kwargs = {"image": images, "output_resolution": ref_side(self.ref_resolution, len(images), self.ref_budget)}
         return self.pipe(prompt=prompt, width=size[0], height=size[1], generator=generator, **kwargs).images[0]
 
 

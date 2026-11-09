@@ -92,7 +92,7 @@ Na serwerze GPU pobrane są już: FLUX.2 klein 4B, SDXL + IP-Adapter, Qwen-Image
 | Kto | Zadanie | Wymaga | Od kiedy |
 |---|---|---|---|
 | Dudsztor | G1a. Wykrywanie postaci na obrazach Qwena. Próg 0.1 daje 9/9, zostało obejrzeć wycięte postacie (Dziennik 2026-11-09) | GPU | 2026-11-08 |
-| (wolne) | G1b. Pełny pomiar obrazów: 22 sceny, powrót 20 do 1, 2 do 3 seedy | GPU | |
+| Dudsztor | G1b. Pełny pomiar obrazów: 22 sceny, 2 seedy, 4 modele. Zrobione (Dziennik 2026-11-09, pełny pomiar) | GPU | 2026-11-09 |
 | (wolne) | G1c. Nowe miary: duplikaty postaci i sędzia obrazów (łączy się z Z5) | VPN, GPU | |
 | (wolne) | G2a. Nowe modele obrazów (lista niżej) | GPU | |
 | Dudsztor | G2b. Adaptery tożsamości postaci. Zrobione: IP-Adapter Face (Dziennik 2026-11-09). PuLID i InstantID odłożone | GPU | 2026-11-08 |
@@ -350,9 +350,46 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 - **Gry `full_cached` na `strata-big` po kolei, nie równolegle**, bo równoległe gry nadpisują sobie cache.
 
 - **Próg detektora postaci to 0.1** (było 0.15). Najlepszy wynik Qwena to ok. 0,14, a FLUX i SDXL ok. 0,27.
-- **Adaptery na `insightface` odkładamy** (cięższe, ograniczenia licencji, IP-Adapter Face nie dał wyraźnej poprawy).
+- **Adaptery na `insightface` odkładamy** (cięższe, ograniczenia licencji). IP-Adapter Face pomaga SDXL w powrotach postaci,
+  ale SDXL z nim nadal wyraźnie ustępuje FLUX.2 klein (pełny pomiar G1b).
 
 ## Dziennik
+
+### 2026-11-09, Dudsztor: pełny pomiar obrazów G1b (4 modele, 22 sceny, 2 seedy)
+- Co zrobione: 1048 obrazów (`testset.yaml`, seedy 1001 i 2001, próg detektora 0.1). Poprawka braku pamięci Qwena przy 4 obrazach wejściowych.
+- Pliki: `bench/images/consistency/models.py`, `tests/test_image_bench.py`. Wyniki: `~/data/dvn-results/full-v1` na serwerze GPU i u Dudsztora w `data/dvn-results/`.
+- Wyniki (DINO, wyżej = bardziej podobne). Postać do wzorca: średnia z obu seedów. Powrót: 5 par scen, 15 lub 16 porównań na komórkę.
+
+  | Model | Wariant | Postać do wzorca | Powrót postaci | Postać znaleziona | CLIPScore | s na scenę |
+  |---|---|---|---|---|---|---|
+  | flux2-klein-4b | text | 0,734 | 0,864 | 100% | 32,0 | 1,4 |
+  | flux2-klein-4b | anchor | 0,768 | 0,903 | 100% | 32,4 | 5,7 |
+  | flux2-klein-4b | chain | 0,728 | 0,822 | 99% | 31,7 | 5,7 |
+  | flux2-klein-4b | layers | 0,893 | 0,876 | 100% | 29,5 | 6,0 |
+  | qwen-image-21-turbo | text | 0,672 | 0,831 | 97% | 28,5 | 14,0 |
+  | qwen-image-21-turbo | anchor | 0,841 | 0,900 | 92% | 30,7 | 17,5 |
+  | qwen-image-21-turbo | chain | 0,782 | 0,873 | 100% | 28,9 | 17,1 |
+  | qwen-image-21-turbo | layers | 0,835 | 0,894 | 96% | 26,3 | 30,1 |
+  | sdxl-ip | text | 0,583 | 0,594 | 96% | 33,2 | 3,8 |
+  | sdxl-ip | anchor | 0,689 | 0,725 | 94% | 32,2 | 3,9 |
+  | sdxl-ip | chain | 0,559 | 0,583 | 97% | 30,2 | 3,9 |
+  | sdxl-ip | layers | 0,742 | 0,772 | 100% | 28,7 | 8,6 |
+  | sdxl-ip-face | anchor | 0,696 | 0,791 | 94% | 30,9 | 3,9 |
+  | sdxl-ip-face | chain | 0,669 | 0,773 | 94% | 30,9 | 3,9 |
+  | sdxl-ip-face | layers | 0,711 | 0,722 | 99% | 29,5 | 8,6 |
+
+- Wnioski (różnice parami, bootstrap po scenach, 95% CI):
+  - **Rekomendacja do gry: FLUX.2 klein 4B.** Qwen `anchor` trzyma postać lepiej niż FLUX `anchor` (+0,074, CI +0,037 do +0,109), ale kosztuje 3 razy więcej czasu,
+    gubi więcej postaci (92% wobec 100%) i mocno zależy od seeda (0,887 i 0,786). W powrotach oba są równe (0,900 i 0,903).
+  - FLUX `layers` ma najwyższe podobieństwo do wzorca (+0,125 wobec FLUX `anchor`, CI +0,085 do +0,165), ale częściowo z konstrukcji (wklejona postać)
+    i gorzej zgadza się z opisem sceny (CLIPScore 29,5 wobec 32,4). Gra używa dziś sposobu `anchor`, `layers` nie jest w niej zrobione.
+  - **Adapter Face: poprawka wniosku z krótkiego testu.** Pomaga SDXL w powrotach (`anchor` +0,084, CI +0,016 do +0,158; `chain` +0,168, CI +0,087 do +0,253)
+    i w podobieństwie do wzorca w `chain` (+0,110). W `anchor` do wzorca bez różnicy (-0,002), w `layers` w granicach szumu. Mimo to SDXL Face `anchor` jest gorszy od FLUX `anchor` (-0,071).
+  - Dwa seedy potrafią różnić się o ok. 0,1 (np. Qwen `anchor`, SDXL `layers`), więc różnice rzędu kilku setnych traktować ostrożnie.
+- Uwaga dla następnych: Qwen w 2 z 44 scen `anchor` (4 obrazy wejściowe) dostaje je mniejsze (`output_resolution` 886 zamiast 1024) i znalazł tam tylko 3 z 6 postaci
+  (mała próba, FLUX 6 z 6). `ref_max_side = 768` u Qwena nie oszczędza pamięci, bo pipeline skaluje obrazy z powrotem do ok. 1 Mpx, przez co mogą być rozmyte. Zostawione dla zgodności wyników.
+  Powrót to mała próba. Porównań jest kilkanaście, więc pojedynczy wynik „pewny” też może być przypadkiem. Zostaje obejrzenie wycinków `crops/` (domknięcie G1a).
+- Commit: ten wpis
 
 ### 2026-11-09, Dudsztor: obrazy na żywo w grze, wybór generatora, test IP-Adapter Face
 - Co zrobione: połączenie interfejsu z generowaniem obrazów działa w prawdziwej grze (Z4d). Tło jest stałe dla lokacji, portret
