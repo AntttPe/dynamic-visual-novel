@@ -453,7 +453,7 @@ function showImageFields() {
   $("#fImageUrl").placeholder = kind === "dvn" ? "np. http://host.docker.internal:8420" : "puste = domyślny adres providera";
   $("#fImageHint").innerHTML = kind === "dvn"
     ? "Serwer z <code>bench/images/consistency/serve.py</code>, np. przez tunel SSH. Rysuje sceny na podstawie tła i portretów postaci."
-    : "Dowolny model obrazów obsługiwany przez LiteLLM, np. <code>openai/gpt-image-1</code>, <code>openai/dall-e-3</code>, <code>vertex_ai/imagen-4.0-generate-001</code>. Takie API rysuje tylko z opisu, bez obrazów wejściowych, więc postacie mogą wyglądać inaczej w kolejnych turach.";
+    : "Dowolny model obrazów obsługiwany przez LiteLLM, np. <code>openai/gpt-image-1</code>, <code>openai/dall-e-3</code>, <code>gemini/gemini-3.1-flash-image</code> (płatny plan Gemini). Takie API rysuje tylko z opisu, bez obrazów wejściowych, więc postacie mogą wyglądać inaczej w kolejnych turach.";
 }
 $("#fImageKind").addEventListener("change", showImageFields);
 function apiPayload() {

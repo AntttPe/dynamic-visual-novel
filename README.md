@@ -257,7 +257,7 @@ Wszystko ustawisz w oknie **Nowa gra**. Ustawienia działają tylko dla tej jedn
 |---|---|---|
 | OpenAI | `openai/gpt-4o-mini` | puste |
 | Anthropic | `anthropic/claude-haiku-5-5` | puste |
-| Google Gemini | `gemini/gemini-2.5-flash` | puste |
+| Google Gemini | `gemini/gemini-3.8-flash` | puste |
 | OpenRouter | `openrouter/<model>`, np. `openrouter/meta-llama/llama-3.1-8b-instruct` | puste |
 | Groq, Mistral, DeepSeek… | `groq/<model>`, `mistral/<model>`, `deepseek/<model>` | puste |
 | vLLM, LM Studio, inny serwer zgodny z OpenAI | `openai/<nazwa-modelu>` | np. `http://host.docker.internal:1234/v1` |
@@ -280,6 +280,9 @@ Własne API obrazów idzie przez LiteLLM, więc działa każdy dostawca obrazów
 Takie API rysuje tylko z opisu sceny, bez obrazów wejściowych, więc postacie mogą wyglądać
 trochę inaczej w kolejnych turach. Serwer obrazów projektu rysuje sceny na podstawie stałego tła i portretów,
 dlatego jest bardziej spójny.
+
+Gemini: model np. `gemini/gemini-3.1-flash-image` (Nano Banana 2), adres pusty, klucz pusty albo `GEMINI_API_KEY` z `.env`.
+Modele obrazów Gemini nie działają w darmowym planie, potrzebny jest klucz z włączonymi płatnościami.
 
 Uwaga na koszty: każda tura to jeden obraz sceny, a nowa lokacja i nowa postać to dodatkowe obrazy.
 
