@@ -8,6 +8,27 @@ Projekt na przedmiot *Eksploracja modeli i metod AI*.
 Całość działa w jednym kontenerze Docker, więc u każdego (macOS, Windows, Linux)
 uruchamia się tak samo. Nie trzeba instalować Pythona ani bibliotek.
 
+## Szybki start (w skrócie)
+
+Masz już Dockera i Gita? Wpisz w terminalu:
+
+```bash
+git clone https://github.com/AntttPe/dynamic-visual-novel.git
+cd dynamic-visual-novel
+cp .env.example .env
+docker compose up -d --build
+```
+
+Otwórz **http://localhost:8000** i wybierz jedną z trzech dróg:
+
+| Chcę… | Co zrobić |
+|---|---|
+| tylko zobaczyć, jak to działa | kliknij **Szybki start w trybie demo** (bez modelu, bez kluczy) |
+| grać na modelu na swoim komputerze | uruchom Ollamę (sekcja [Model Llama (Ollama)](#model-llama-ollama-opcjonalnie)) i kliknij **Zacznij grę** |
+| grać na swoim API (OpenAI, Anthropic, Gemini, OpenRouter, vLLM…) | kliknij **Nowa gra** i wpisz model, adres i klucz w polach „Własne API” (sekcja [Własne API](#własne-api-do-tekstu-i-obrazów)) |
+
+Pierwszy raz instalujesz Dockera? Przejdź krok po kroku przez instrukcję poniżej.
+
 ---
 
 ## Krok 1. Zainstaluj programy
@@ -80,6 +101,20 @@ Poprawny wynik wygląda tak (liczby mogą być inne, ważne, żeby nie było `fa
 Jeden test jest pominięty, jeśli nie masz uruchomionej Ollamy (patrz niżej). To normalne.
 
 **Gotowe, środowisko działa.**
+
+## Krok 6. Zagraj
+
+1. Wejdź na http://localhost:8000 i kliknij **Nowa gra** (albo **Zacznij grę**).
+2. Wybierz świat i **model narratora**. Zielona kropka przy nazwie modelu na górze strony
+   oznacza, że model jest dostępny. Czerwona: brak klucza API albo Ollama nie działa.
+3. Jeśli chcesz użyć swojego klucza lub serwera, rozwiń **Własne API modelu tekstowego**
+   i wybierz sposób rysowania w polu **Grafika** (szczegóły niżej).
+4. Kliknij **Zacznij** i wpisz w polu na dole, co robisz, np. `Pytam karczmarza o koronę`.
+   Enter wysyła.
+5. Panel po prawej pokazuje dane badawcze każdej tury: czas, tokeny, stan świata, prompt i surowy JSON.
+
+Gra zapamiętuje bieżącą rozgrywkę w przeglądarce, więc po odświeżeniu strony wracasz do niej.
+Restart serwera kończy grę (wszystkie tury są jednak zapisane w `data/dvn.sqlite`).
 
 ---
 
@@ -203,6 +238,62 @@ Wersja LiteLLM jest przypięta w `pyproject.toml`. Nie aktualizuj jej bez sprawd
 
 ---
 
+## Własne API do tekstu i obrazów
+
+Nie musisz edytować `.env`, żeby zagrać na swoim koncie u dostawcy modeli.
+Wszystko ustawisz w oknie **Nowa gra**. Ustawienia działają tylko dla tej jednej gry.
+
+### Model tekstowy (narrator)
+
+1. W polu **Model narratora** wybierz **Inny model (wpisz nazwę)** i wpisz nazwę w formacie LiteLLM:
+   `<dostawca>/<model>`.
+2. Rozwiń **Własne API modelu tekstowego** i wpisz:
+   * **Adres API**: potrzebny tylko dla serwerów zgodnych z API OpenAI (vLLM, LM Studio, OpenRouter itp.).
+     Dla OpenAI, Anthropic i Gemini zostaw puste.
+   * **Klucz API**: twój klucz. Puste = klucz z `.env`.
+3. Kliknij **Zacznij**. Przy nazwie modelu pojawi się zielona kropka z opisem „własne API”.
+
+| Dostawca | Model narratora | Adres API |
+|---|---|---|
+| OpenAI | `openai/gpt-4o-mini` | puste |
+| Anthropic | `anthropic/claude-haiku-5-5` | puste |
+| Google Gemini | `gemini/gemini-2.5-flash` | puste |
+| OpenRouter | `openrouter/<model>`, np. `openrouter/meta-llama/llama-3.1-8b-instruct` | puste |
+| Groq, Mistral, DeepSeek… | `groq/<model>`, `mistral/<model>`, `deepseek/<model>` | puste |
+| vLLM, LM Studio, inny serwer zgodny z OpenAI | `openai/<nazwa-modelu>` | np. `http://host.docker.internal:1234/v1` |
+
+Pełna lista dostawców: [docs.litellm.ai/docs/providers](https://docs.litellm.ai/docs/providers).
+Serwer działający na twoim komputerze (poza kontenerem) jest widoczny pod adresem `host.docker.internal`, nie `localhost`.
+
+### Obrazy (tła i sceny)
+
+W polu **Grafika** wybierz, kto rysuje:
+
+| Opcja | Kiedy | Co wpisać |
+|---|---|---|
+| **Serwer obrazów z .env** (albo **Bez obrazów**, gdy w `.env` nie ma `IMAGE_SERVER_URL`) | ustawienie domyślne | nic |
+| **Własny serwer obrazów projektu** | masz uruchomiony `bench/images/consistency/serve.py` pod innym adresem | adres, np. `http://host.docker.internal:8420`, i generator |
+| **Własne API obrazów** | chcesz rysować przez zewnętrzne API, np. OpenAI | model, np. `openai/gpt-image-1` albo `openai/dall-e-3`, klucz i rozmiar obrazu |
+
+Własne API obrazów idzie przez LiteLLM, więc działa każdy dostawca obrazów, którego LiteLLM obsługuje
+(OpenAI, Azure, Vertex AI, Bedrock, serwery zgodne z API OpenAI przez pole **Adres**).
+Takie API rysuje tylko z opisu sceny, bez obrazów wejściowych, więc postacie mogą wyglądać
+trochę inaczej w kolejnych turach. Serwer obrazów projektu rysuje sceny na podstawie stałego tła i portretów,
+dlatego jest bardziej spójny.
+
+Uwaga na koszty: każda tura to jeden obraz sceny, a nowa lokacja i nowa postać to dodatkowe obrazy.
+
+### Gdzie trafiają klucze
+
+* Klucz wpisany w oknie trafia tylko do serwera gry na twoim komputerze i stamtąd do dostawcy.
+  Nie zapisuje się w bazie `data/dvn.sqlite` ani w odpowiedziach serwera.
+* Po zaznaczeniu **Zapamiętaj adresy i klucze w tej przeglądarce** dane zostają w pamięci przeglądarki
+  (localStorage), żeby nie wpisywać ich przy każdej grze. Nie zaznaczaj tego na cudzym komputerze.
+* Na stałe (dla wszystkich gier i eksperymentów) klucze ustawiasz w `.env`: `OPENAI_API_KEY`,
+  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` albo `NARRATOR_API_BASE` i `NARRATOR_API_KEY`.
+
+---
+
 ## Gra z obrazami (serwer GPU instytutu)
 
 Obrazy powstają w trakcie gry. Gra nie czeka na nie: tekst pojawia się od razu, a obraz po chwili.
@@ -304,5 +395,8 @@ i `first_answer_ms` (koniec myślenia modelu). Wyłączenie: `NARRATOR_STREAM=fa
 | „Ollama nie odpowiada” (żółty pasek w grze) | Sprawdź, czy działa `ollama serve` albo tunel SSH do GPU |
 | „Narrator nie zwrócił poprawnej odpowiedzi” | Model nie trzyma formatu JSON. Spróbuj jeszcze raz albo użyj większego modelu |
 | `model not found` | Pobierz model: `ollama pull llama3.1:8b` |
+| Błąd 401 albo `AuthenticationError` przy własnym API | Zły klucz albo klucz do innego dostawcy niż przedrostek modelu (`openai/`, `anthropic/`…) |
+| Własny serwer na komputerze nie odpowiada | W adresie użyj `host.docker.internal` zamiast `localhost` |
+| „Nie udało się narysować obrazu” przy własnym API obrazów | Sprawdź nazwę modelu, klucz i rozmiar (np. `dall-e-3` przyjmuje `1792x1024`, `gpt-image-1` przyjmuje `1536x1024`) |
 | `claude: command not found` w kontenerze | Obraz jest stary. Uruchom `docker compose up -d --build` |
 | Dziwne błędy po zmianie bibliotek | `docker compose down`, potem `docker compose build --no-cache`, potem `docker compose up -d` |

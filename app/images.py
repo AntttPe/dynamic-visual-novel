@@ -56,6 +56,46 @@ class HttpImageClient:
         return resp.content, resp.headers.get("x-image-model", "")
 
 
+class LiteLLMImageClient:
+    """Dowolne API obrazów obsługiwane przez LiteLLM (np. openai/gpt-image-1 albo serwer zgodny z API OpenAI).
+
+    Takie API rysuje tylko z opisu: obrazów wejściowych (tła i portretów) nie dostaje, więc spójność
+    postaci między turami jest słabsza niż z serwerem obrazów projektu.
+    """
+
+    def __init__(self, model: str, api_base: str | None, api_key: str | None, timeout_s: float,
+                 size: str = "1536x1024"):
+        self.model = model
+        self.api_base = api_base or None
+        self.api_key = api_key or None
+        self.timeout_s = timeout_s
+        self.size = size
+
+    async def generate(self, prompt: str, seed: int, refs: Sequence[bytes] = (),
+                       model: str | None = None) -> tuple[bytes, str]:
+        import litellm  # import tutaj, bo LiteLLM wczytuje się długo, a bez własnego API nie jest potrzebny
+
+        try:
+            resp = await litellm.aimage_generation(
+                model=self.model, prompt=prompt, n=1, size=self.size,
+                api_base=self.api_base, api_key=self.api_key, timeout=self.timeout_s,
+            )
+        except Exception as e:  # noqa: BLE001  dostawca potrafi powtórzyć klucz w treści błędu, a błąd trafia do bazy
+            message = str(e).replace(self.api_key, "***") if self.api_key else str(e)
+            raise RuntimeError(f"{type(e).__name__}: {message}") from None
+        item = resp.data[0]
+        b64 = getattr(item, "b64_json", None)
+        if b64:
+            return base64.b64decode(b64), self.model
+        url = getattr(item, "url", None)
+        if not url:
+            raise ValueError("API obrazów nie zwróciło ani pliku, ani adresu")
+        async with httpx.AsyncClient(timeout=self.timeout_s) as client:
+            got = await client.get(url)
+            got.raise_for_status()
+        return got.content, self.model
+
+
 @dataclass
 class Job:
     game_id: str
@@ -178,6 +218,11 @@ class BackgroundImages:
         self.jobs: dict[tuple[str, str], Job] = {}
         self.casts: dict[str, SceneCast] = {}
         self.models: dict[str, str] = {}  # gra -> generator wybrany przy jej tworzeniu
+        self.clients: dict[str, ImageClient] = {}  # gra -> własne API obrazów z okna „Nowa gra”
+
+    def client_for(self, game_id: str) -> ImageClient | None:
+        """Własne API obrazów tej gry, a bez niego serwer z .env (IMAGE_SERVER_URL)."""
+        return self.clients.get(game_id) or self.client
 
     def cast(self, game_id: str, start_location: str) -> SceneCast:
         return self.casts.setdefault(game_id, SceneCast(start_location))
@@ -188,7 +233,7 @@ class BackgroundImages:
 
     def request(self, game_id: str, location: str, description: str, game_seed: int | None, t: int) -> None:
         """Zamawia tło, jeśli tej lokacji jeszcze nie ma. Wymaga działającej pętli asyncio."""
-        if self.client is None:
+        if self.client_for(game_id) is None:
             return
         job = self.jobs.get((game_id, location))
         if job and job.status != "failed":
@@ -215,7 +260,7 @@ class BackgroundImages:
 
     def request_portrait(self, game_id: str, name: str, prompt: str, game_seed: int | None, t: int) -> None:
         """Zamawia portret, jeśli tej postaci jeszcze nie ma. Portret zostaje na całą grę."""
-        if self.client is None:
+        if self.client_for(game_id) is None:
             return
         key = self._portrait_key(game_id, name)
         job = self.jobs.get((game_id, key))
@@ -231,7 +276,7 @@ class BackgroundImages:
     def request_scene(self, game_id: str, t: int, location: str, prompt: str, game_seed: int | None,
                       characters: Sequence[str] = ()) -> None:
         """Zamawia obraz tury. Powstaje po tle i portretach postaci, na ich podstawie (characters: bohater pierwszy)."""
-        if self.client is None:
+        if self.client_for(game_id) is None:
             return
         keys = [location, *(self._portrait_key(game_id, name) for name in characters[:MAX_PORTRAITS])]
         self._start(f"turn:{t}", Job(
@@ -248,7 +293,8 @@ class BackgroundImages:
                 if needed.task:
                     await needed.task
             refs = [needed.path.read_bytes() for needed in job.after if needed.status == "ready"]
-            data, model = await self.client.generate(job.prompt, job.seed, refs, self.models.get(job.game_id))
+            client = self.client_for(job.game_id)
+            data, model = await client.generate(job.prompt, job.seed, refs, self.models.get(job.game_id))
             if not data:
                 raise ValueError("pusta odpowiedź serwera obrazów")
             job.path.parent.mkdir(parents=True, exist_ok=True)
@@ -263,7 +309,7 @@ class BackgroundImages:
                                   str(job.path) if job.status == "ready" else None, job.error)
 
     def _status(self, game_id: str, key: str) -> dict:
-        if self.client is None:
+        if self.client_for(game_id) is None:
             return {"status": "off"}
         job = self.jobs.get((game_id, key))
         if job is None:

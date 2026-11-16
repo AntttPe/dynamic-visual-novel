@@ -44,6 +44,40 @@ def test_university_proxy_uses_own_base_and_key():
     assert resolve_api_key("anthropic/x", s) is None
 
 
+def test_custom_api_from_new_game_overrides_env():
+    client = LiteLLMClient("openai/gpt-4o-mini", S, api_base="https://example.test/v1", api_key="sk-gracz")
+    assert (client._api_base, client._api_key) == ("https://example.test/v1", "sk-gracz")
+    client = LiteLLMClient("anthropic/claude-haiku-5-5", S)
+    assert (client._api_base, client._api_key) == (None, "sk-test")
+
+
+@pytest.mark.anyio
+async def test_litellm_image_client_reads_base64(monkeypatch):
+    import base64
+
+    from app.images import LiteLLMImageClient
+
+    seen = {}
+
+    async def fake_image_generation(**kwargs):
+        seen.update(kwargs)
+        return SimpleNamespace(data=[SimpleNamespace(b64_json=base64.b64encode(b"PNG").decode(), url=None)])
+
+    monkeypatch.setattr(litellm_client.litellm, "aimage_generation", fake_image_generation)
+    client = LiteLLMImageClient("openai/gpt-image-1", "", "sk-img", 30, "1024x1024")
+    data, model = await client.generate("karczma", 1, refs=[b"ref"])
+    assert (data, model) == (b"PNG", "openai/gpt-image-1")
+    assert seen["api_key"] == "sk-img" and seen["api_base"] is None and seen["size"] == "1024x1024"
+
+    async def failing(**kwargs):
+        raise ValueError("Incorrect API key provided: sk-img")
+
+    monkeypatch.setattr(litellm_client.litellm, "aimage_generation", failing)
+    with pytest.raises(RuntimeError) as err:
+        await client.generate("karczma", 1)
+    assert "sk-img" not in str(err.value) and "***" in str(err.value)
+
+
 def test_default_model_falls_back_to_ollama_model():
     # narrator_model podany jawnie, bo zmienna NARRATOR_MODEL z .env trafia do środowiska kontenera
     s = Settings(_env_file=None, narrator_model="", ollama_model="gemma4:e4b")

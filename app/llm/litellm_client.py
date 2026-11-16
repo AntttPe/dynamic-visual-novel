@@ -36,10 +36,11 @@ def resolve_api_key(model: str, settings: Settings) -> str | None:
 
 
 class LiteLLMClient:
-    def __init__(self, model: str, settings: Settings):
+    def __init__(self, model: str, settings: Settings, api_base: str | None = None, api_key: str | None = None):
+        """api_base i api_key podane w oknie „Nowa gra” (własne API) mają pierwszeństwo przed .env."""
         self.model = model
-        self._api_base = resolve_api_base(model, settings)
-        self._api_key = resolve_api_key(model, settings)
+        self._api_base = api_base or resolve_api_base(model, settings)
+        self._api_key = api_key or resolve_api_key(model, settings)
         self._timeout = settings.narrator_timeout_s
         self._stream = settings.narrator_stream
 
@@ -79,7 +80,9 @@ class LiteLLMClient:
             if self._stream:
                 return await self._read_stream(resp, start)
         except Exception as e:  # LiteLLM zamienia błędy providerów na własne wyjątki
-            raise LLMError(f"{type(e).__name__}: {e}") from e
+            # Dostawca potrafi powtórzyć klucz w treści błędu, a błąd widać w grze
+            message = str(e).replace(self._api_key, "***") if self._api_key else str(e)
+            raise LLMError(f"{type(e).__name__}: {message}") from e
         latency_ms = (time.perf_counter() - start) * 1000
         usage = getattr(resp, "usage", None)
         details = getattr(usage, "prompt_tokens_details", None)

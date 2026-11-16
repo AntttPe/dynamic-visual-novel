@@ -139,6 +139,12 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 #newForm input:not([type=checkbox]), #newForm select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
 #newForm small { color: var(--muted); font-weight: 400; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+#newForm details.api, #newForm .api-box { display: grid; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+#newForm details.api:not([open]) { display: block; }
+#newForm details.api summary { cursor: pointer; font-size: .88rem; font-weight: 500; }
+#newForm details.api[open] summary { margin-bottom: 4px; }
+#newForm [hidden] { display: none !important; }
+#newForm { max-height: calc(100vh - 48px); overflow-y: auto; }
 .dlg-error { margin: 0; color: var(--bad); font-size: .85rem; min-height: 1em; }
 
 @media (max-width: 600px) {

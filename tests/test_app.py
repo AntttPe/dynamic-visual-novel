@@ -4,6 +4,7 @@ Uruchomienie:  docker compose exec app pytest -v
 """
 
 import json
+import sqlite3
 
 import pytest
 from fastapi.testclient import TestClient
@@ -30,7 +31,13 @@ def env(tmp_path):
     """Klient API z FakeLLM i bazą w katalogu tymczasowym."""
     fake = FakeLLM()
     old_factory, old_store, old_images = app.state.llm_factory, app.state.store, app.state.images
-    app.state.llm_factory = lambda model, world: fake
+    fake.api = None
+
+    def factory(model, world, **api):
+        fake.api = api  # własne API z okna „Nowa gra”
+        return fake
+
+    app.state.llm_factory = factory
     app.state.store = Store(tmp_path / "test.sqlite")
     app.state.images = BackgroundImages(None, tmp_path / "images")  # testy nie łączą się z serwerem obrazów
     yield TestClient(app), fake
@@ -139,3 +146,40 @@ def test_demo_mode_works_without_model(tmp_path):
         assert len(data["turn"]["rejected_updates"]) == 1
     finally:
         app.state.store = old_store
+
+
+def test_custom_text_api_reaches_client_but_key_is_not_stored(env):
+    client, fake = env
+    game = new_game(client, model="openai/gpt-4o-mini",
+                    text_api={"api_base": " https://example.test/v1 ", "api_key": "sk-sekret"})
+    assert fake.api == {"api_base": "https://example.test/v1", "api_key": "sk-sekret"}
+    assert game["custom_text_api"] is True
+    with sqlite3.connect(app.state.store.path) as conn:
+        run = conn.execute("SELECT config FROM runs WHERE run_id = ?", (game["game_id"],)).fetchone()
+    assert "sk-sekret" not in run[0] and "sk-sekret" not in json.dumps(game)
+
+
+def test_empty_text_api_uses_env_settings(env):
+    client, fake = env
+    game = new_game(client, text_api={"api_base": " ", "api_key": ""})
+    assert fake.api == {}
+    assert game["custom_text_api"] is False
+
+
+def test_custom_image_api(env):
+    client, _ = env
+    game = new_game(client, image_api={"kind": "litellm", "model": "openai/gpt-image-1", "api_key": "sk-img"})
+    assert game["custom_image_api"] is True
+    assert game["image_model"] == "openai/gpt-image-1"
+    assert "sk-img" not in json.dumps(game)
+    images = app.state.images
+    assert images.client_for(game["game_id"]).model == "openai/gpt-image-1"
+    assert images.client_for("inna_gra") is None  # inne gry dalej bez obrazów
+
+
+def test_custom_image_api_needs_url_or_model(env):
+    client, _ = env
+    assert client.post("/api/games", json={"image_api": {"kind": "dvn"}}).status_code == 422
+    assert client.post("/api/games", json={"image_api": {"kind": "litellm"}}).status_code == 422
+    assert client.post("/api/games", json={"image_api": {"kind": "litellm", "model": "x/y",
+                                                         "size": "duży"}}).status_code == 422

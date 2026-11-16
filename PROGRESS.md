@@ -49,6 +49,8 @@ Wzór wpisu w dzienniku:
 - Pełne badanie `long50` (3 modele × 25 gier ze stanem + 25 bez), wyniki w Dzienniku 2026-10-28.
 - Gra z obrazami na żywo przez serwer GPU i tunel SSH (README, sekcja „Gra z obrazami”): tło lokacji, portret postaci
   i obraz sceny w każdej turze, generator do wyboru przy nowej grze. Czasy i prompty w tabeli `images`.
+- Własne API gracza w oknie „Nowa gra”: model tekstowy (adres i klucz) i obrazy (`serve.py` pod innym adresem
+  albo API obrazów przez LiteLLM). README, sekcja „Własne API do tekstu i obrazów”.
 
 **Nie ma jeszcze:**
 - Sędzia LLM (M3 dziwne komendy, gaslighting w M2).
@@ -354,6 +356,17 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
   ale SDXL z nim nadal wyraźnie ustępuje FLUX.2 klein (pełny pomiar G1b).
 
 ## Dziennik
+
+### 2026-11-16, Dudsztor: własne API tekstu i obrazów w oknie „Nowa gra”, poradnik w README
+- Co zrobione: w oknie „Nowa gra” pola „Własne API modelu tekstowego” (adres i klucz, model jak dotąd w „Inny model”)
+  i wybór „Grafika”: serwer z `.env`, własny adres `serve.py` albo dowolne API obrazów przez LiteLLM (`aimage_generation`,
+  np. `openai/gpt-image-1`). Ustawienia działają dla jednej gry, klucze nie trafiają do bazy ani do odpowiedzi API.
+  Opcjonalnie zapamiętywane w localStorage przeglądarki.
+- Pliki: `app/main.py` (`TextApi`, `ImageApi`), `app/llm/`, `app/images.py` (`LiteLLMImageClient`, klient obrazów na grę),
+  `app/static/`, testy w `tests/test_app.py` i `tests/test_llm.py`, README (szybki start, krok 6, sekcja „Własne API”).
+- Uwaga dla następnych: API obrazów przez LiteLLM rysuje tylko z opisu, bez obrazów wejściowych (tło, portrety),
+  więc spójność postaci jest słabsza niż z `serve.py`. Lista generatorów w `/api/config` jest teraz zawsze pełna,
+  a nowe pole `image_server` mówi, czy w `.env` jest `IMAGE_SERVER_URL`.
 
 ### 2026-11-09, Dudsztor: pełny pomiar obrazów G1b (4 modele, 22 sceny, 2 seedy)
 - Co zrobione: 1048 obrazów (`testset.yaml`, seedy 1001 i 2001, próg detektora 0.1). Poprawka braku pamięci Qwena przy 4 obrazach wejściowych.

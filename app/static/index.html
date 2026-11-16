@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dynamic Visual Novel</title>
-  <link rel="stylesheet" href="/style.css?v=2" />
+  <link rel="stylesheet" href="/style.css?v=3" />
 </head>
 <body>
   <header class="topbar">
@@ -83,10 +83,45 @@
         <input id="fModel" spellcheck="false" placeholder="np. ollama_chat/gemma4:12b" hidden />
         <small>Format LiteLLM: <code>ollama_chat/…</code> (Mac albo GPU przez tunel), <code>hosted_vllm/…</code> (vLLM), <code>anthropic/…</code> (API). <code>demo</code> działa bez modelu.</small>
       </label>
+      <details class="api" id="fTextApi">
+        <summary>Własne API modelu tekstowego (opcjonalnie)</summary>
+        <label>Adres API
+          <input id="fTextBase" spellcheck="false" placeholder="np. https://api.openai.com/v1 albo http://host.docker.internal:8001/v1" />
+        </label>
+        <label>Klucz API
+          <input id="fTextKey" type="password" spellcheck="false" autocomplete="off" placeholder="puste = klucz z .env" />
+        </label>
+        <small>Nazwę modelu wybierz wyżej (opcja „Inny model”), np. <code>openai/gpt-4o-mini</code>, <code>anthropic/claude-haiku-5-5</code>, <code>gemini/gemini-2.5-flash</code>. Dla serwerów zgodnych z API OpenAI (vLLM, LM Studio, OpenRouter) użyj przedrostka <code>openai/</code> i podaj adres.</small>
+      </details>
+      <label>Grafika
+        <select id="fImageKind">
+          <option value="server" id="fImageServerOpt">Serwer obrazów z .env</option>
+          <option value="dvn">Własny serwer obrazów projektu (serve.py)</option>
+          <option value="litellm">Własne API obrazów (np. OpenAI)</option>
+        </select>
+      </label>
+      <div class="api-box" id="fImageApi" hidden>
+        <label id="fImageUrlWrap">Adres
+          <input id="fImageUrl" spellcheck="false" />
+        </label>
+        <label id="fImageLmWrap">Model obrazów
+          <input id="fImageLm" spellcheck="false" placeholder="np. openai/gpt-image-1" />
+        </label>
+        <div class="grid2" id="fImageKeyWrap">
+          <label>Klucz API
+            <input id="fImageKey" type="password" spellcheck="false" autocomplete="off" placeholder="puste = klucz z .env" />
+          </label>
+          <label>Rozmiar
+            <input id="fImageSize" spellcheck="false" value="1536x1024" />
+          </label>
+        </div>
+        <small id="fImageHint"></small>
+      </div>
       <label id="fImageWrap">Generator grafiki
         <select id="fImageModel"></select>
         <small>Zmiana generatora wczytuje inny model na GPU, więc pierwszy obraz powstaje dłużej.</small>
       </label>
+      <label class="check"><input id="fRemember" type="checkbox" /> Zapamiętaj adresy i klucze w tej przeglądarce</label>
       <div class="grid2">
         <label>Pamięć
           <select id="fHistory">
@@ -113,6 +148,6 @@
     </form>
   </dialog>
 
-  <script src="/app.js?v=2"></script>
+  <script src="/app.js?v=3"></script>
 </body>
 </html>

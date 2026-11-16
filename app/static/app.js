@@ -44,6 +44,7 @@ function currentModel() { return ui.game?.config.model ?? ui.config?.defaults.mo
 function modelStatus(model) {
   const p = ui.health?.providers ?? {};
   if (model === "demo") return { cls: "", label: "demo" };
+  if (ui.game?.custom_text_api && model === ui.game.config.model) return { cls: "ok", label: "własne API" };
   if (model.startsWith("ollama")) return p.ollama ? { cls: "ok", label: "Ollama działa" } : { cls: "bad", label: "Ollama nie odpowiada" };
   for (const k of ["anthropic", "openai", "gemini"]) if (model.startsWith(k + "/")) return p[k] ? { cls: "ok", label: "klucz API jest" } : { cls: "bad", label: "brak klucza API" };
   return { cls: "", label: "" };
@@ -404,9 +405,12 @@ function openDialog() {
   $("#fModel").value = current;
   $("#fModel").hidden = true;
   const imageModels = ui.config.image_models;
-  $("#fImageWrap").hidden = !imageModels.length;
   $("#fImageModel").innerHTML = imageModels.map((m) => `<option value="${esc(m.id)}">${esc(m.label)}</option>`).join("");
-  if (imageModels.length) $("#fImageModel").value = ui.game?.image_model ?? d.image_model;
+  const builtIn = imageModels.some((m) => m.id === ui.game?.image_model) ? ui.game.image_model : d.image_model;
+  $("#fImageModel").value = builtIn;
+  $("#fImageServerOpt").textContent = ui.config.image_server ? "Serwer obrazów z .env" : "Bez obrazów";
+  loadApiFields();
+  showImageFields();
   $("#fHistory").value = c?.history ?? d.history;
   $("#fWindow").value = c?.memory_window ?? d.window;
   $("#fState").checked = c?.state_in_prompt ?? d.state_in_prompt;
@@ -420,6 +424,54 @@ function modelLabel(m) {
   if (m.startsWith("ollama")) return `${m} (Ollama)`;
   if (m.startsWith("anthropic/")) return `${m} (API)`;
   return m;
+}
+// Własne API: adresy i klucze zostają w przeglądarce tylko po zaznaczeniu „Zapamiętaj”.
+// Serwer gry dostaje je przy tworzeniu gry i nie zapisuje ich w bazie.
+const API_FIELDS = ["fTextBase", "fTextKey", "fImageKind", "fImageUrl", "fImageLm", "fImageKey", "fImageSize"];
+function loadApiFields() {
+  let saved = null;
+  try { saved = JSON.parse(store.get("dvn.api") || "null"); } catch {}
+  $("#fRemember").checked = !!saved;
+  for (const id of API_FIELDS) {
+    const el = $(`#${id}`);
+    if (saved && saved[id] != null) el.value = saved[id];
+  }
+  $("#fTextApi").open = !!($("#fTextBase").value || $("#fTextKey").value);
+}
+function saveApiFields() {
+  if (!$("#fRemember").checked) { store.set("dvn.api", null); return; }
+  store.set("dvn.api", JSON.stringify(Object.fromEntries(API_FIELDS.map((id) => [id, $(`#${id}`).value]))));
+}
+function showImageFields() {
+  const kind = $("#fImageKind").value;
+  const own = kind === "dvn" || kind === "litellm";
+  $("#fImageApi").hidden = !own;
+  $("#fImageWrap").hidden = !(kind === "dvn" || (kind === "server" && ui.config.image_server));
+  $("#fImageLmWrap").hidden = kind !== "litellm";
+  $("#fImageKeyWrap").hidden = kind !== "litellm";
+  $("#fImageUrlWrap").firstChild.textContent = kind === "dvn" ? "Adres serwera obrazów" : "Adres API (opcjonalnie)";
+  $("#fImageUrl").placeholder = kind === "dvn" ? "np. http://host.docker.internal:8420" : "puste = domyślny adres providera";
+  $("#fImageHint").innerHTML = kind === "dvn"
+    ? "Serwer z <code>bench/images/consistency/serve.py</code>, np. przez tunel SSH. Rysuje sceny na podstawie tła i portretów postaci."
+    : "Dowolny model obrazów obsługiwany przez LiteLLM, np. <code>openai/gpt-image-1</code>, <code>openai/dall-e-3</code>, <code>vertex_ai/imagen-4.0-generate-001</code>. Takie API rysuje tylko z opisu, bez obrazów wejściowych, więc postacie mogą wyglądać inaczej w kolejnych turach.";
+}
+$("#fImageKind").addEventListener("change", showImageFields);
+function apiPayload() {
+  const body = {};
+  const base = $("#fTextBase").value.trim();
+  const key = $("#fTextKey").value.trim();
+  if (base || key) body.text_api = { api_base: base, api_key: key };
+  const kind = $("#fImageKind").value;
+  if (kind === "dvn" || kind === "litellm") {
+    body.image_api = {
+      kind,
+      url: $("#fImageUrl").value.trim(),
+      model: $("#fImageLm").value.trim(),
+      api_key: $("#fImageKey").value.trim(),
+      size: $("#fImageSize").value.trim() || "1536x1024",
+    };
+  }
+  return body;
 }
 $("#fModelPick").addEventListener("change", () => {
   const other = $("#fModelPick").value === "__other";
@@ -442,8 +494,10 @@ $("#newForm").addEventListener("submit", async (e) => {
       window: Number($("#fWindow").value) || null,
       state_in_prompt: $("#fState").checked,
       seed: seed === "" ? null : Number(seed),
-      image_model: $("#fImageModel").value || null,
+      image_model: $("#fImageWrap").hidden ? null : $("#fImageModel").value || null,
+      ...apiPayload(),
     });
+    saveApiFields();
     $("#dlg").close();
   } catch (err) {
     $("#dlgErr").textContent = err.message;

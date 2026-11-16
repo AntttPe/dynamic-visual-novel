@@ -15,6 +15,7 @@ from app.images import (
     MAX_PORTRAITS,
     BackgroundImages,
     HttpImageClient,
+    LiteLLMImageClient,
     portrait_prompt,
     present_characters,
     scene_prompt,
@@ -24,7 +25,7 @@ from app.storage.db import Store
 app = FastAPI(title="Dynamic Visual Novel")
 
 # Wymienne w testach: fabryka klientów LLM i magazyn danych
-app.state.llm_factory = lambda model, world: llm.make_client(model, world, settings)
+app.state.llm_factory = lambda model, world, **api: llm.make_client(model, world, settings, **api)
 app.state.store = None
 app.state.images = None
 GAMES: dict[str, GameEngine] = {}
@@ -79,6 +80,38 @@ def request_portrait(request: Request, game: GameEngine, name: str, entity: str 
     get_images(request).request_portrait(game.game_id, name, prompt, game.config["seed"], t)
 
 
+class TextApi(BaseModel):
+    """Własne API modelu tekstowego z okna „Nowa gra”. Puste pola = ustawienia z .env."""
+
+    api_base: str = Field(default="", max_length=500)
+    api_key: str = Field(default="", max_length=500)
+
+
+class ImageApi(BaseModel):
+    """Własne API obrazów z okna „Nowa gra”.
+
+    dvn: serwer obrazów projektu (bench/images/consistency/serve.py) pod innym adresem niż w .env,
+    litellm: dowolne API obrazów obsługiwane przez LiteLLM, np. openai/gpt-image-1.
+    """
+
+    kind: Literal["dvn", "litellm"]
+    url: str = Field(default="", max_length=500)  # dvn: adres serwera, litellm: api_base (opcjonalnie)
+    model: str = Field(default="", max_length=200)  # litellm: model w formacie LiteLLM
+    api_key: str = Field(default="", max_length=500)
+    size: str = Field(default="1536x1024", pattern=r"^\d{2,5}x\d{2,5}$")
+
+
+def make_image_client(api: ImageApi):
+    if api.kind == "dvn":
+        if not api.url.strip():
+            raise HTTPException(422, "Podaj adres serwera obrazów")
+        return HttpImageClient(api.url.strip(), settings.image_timeout_s)
+    if not api.model.strip():
+        raise HTTPException(422, "Podaj model obrazów w formacie LiteLLM, np. openai/gpt-image-1")
+    return LiteLLMImageClient(api.model.strip(), api.url.strip(), api.api_key.strip(), settings.image_timeout_s,
+                              api.size)
+
+
 class NewGame(BaseModel):
     world_id: str = "zaginiona_korona"
     model: str | None = None
@@ -87,6 +120,9 @@ class NewGame(BaseModel):
     state_in_prompt: bool | None = None
     seed: int | None = None
     image_model: str | None = None
+    # Własne API gracza. Klucze nie trafiają do bazy ani do odpowiedzi serwera.
+    text_api: TextApi | None = None
+    image_api: ImageApi | None = None
 
 
 class PlayerTurn(BaseModel):
@@ -98,7 +134,9 @@ def game_view(game: GameEngine, images: BackgroundImages) -> dict:
     return {
         "game_id": game.game_id,
         "config": game.config,
-        "image_model": images.models.get(game.game_id) if images.client else None,
+        "image_model": images.models.get(game.game_id) if images.client_for(game.game_id) else None,
+        "custom_text_api": getattr(game, "custom_text_api", False),
+        "custom_image_api": game.game_id in images.clients,
         "world": {
             "id": w.id, "title": w.title, "player": w.player, "goal": w.goal,
             "intro": w.intro, "start_location": w.start_location,
@@ -138,7 +176,8 @@ def config() -> dict:
             "image_model": settings.image_model,
         },
         "suggested_models": SUGGESTED_MODELS,
-        "image_models": IMAGE_MODELS if settings.image_server_url else [],
+        "image_models": IMAGE_MODELS,
+        "image_server": bool(settings.image_server_url),
         "worlds": [{"id": w.id, "title": w.title} for w in list_worlds()],
     }
 
@@ -152,10 +191,14 @@ async def new_game(req: NewGame, request: Request) -> dict:
     image_model = req.image_model or settings.image_model
     if image_model not in {m["id"] for m in IMAGE_MODELS}:
         raise HTTPException(422, f"Nie ma generatora obrazów „{image_model}”")
+    image_client = make_image_client(req.image_api) if req.image_api else None
+    if req.image_api and req.image_api.kind == "litellm":
+        image_model = req.image_api.model.strip()
     model = (req.model or settings.default_narrator_model).strip()
+    text_api = {k: v.strip() for k, v in (req.text_api.model_dump() if req.text_api else {}).items() if v.strip()}
     game = GameEngine(
         world,
-        request.app.state.llm_factory(model, world),
+        request.app.state.llm_factory(model, world, **text_api),
         history=req.history or settings.memory_history,
         window=req.window or settings.memory_window,
         state_in_prompt=settings.memory_state_in_prompt if req.state_in_prompt is None else req.state_in_prompt,
@@ -165,9 +208,13 @@ async def new_game(req: NewGame, request: Request) -> dict:
         seed=req.seed,
         store=get_store(request),
     )
+    game.custom_text_api = bool(text_api)
     GAMES[game.game_id] = game
     LOCKS[game.game_id] = asyncio.Lock()
-    get_images(request).models[game.game_id] = image_model
+    images = get_images(request)
+    images.models[game.game_id] = image_model
+    if image_client:
+        images.clients[game.game_id] = image_client
     request_background(request, game, game.location, "", 0)
     request_portrait(request, game, game.world.player, "bohater", 0)
     return game_view(game, get_images(request))
