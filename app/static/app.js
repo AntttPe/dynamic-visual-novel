@@ -91,6 +91,7 @@ function renderTop() {
     chips.push(`<span class="chip">pamięć: <b>${memoryLabel(c)}</b></span>`);
     chips.push(`<span class="chip">stan w prompcie: <b>${c.state_in_prompt ? "tak" : "nie"}</b></span>`);
     if (ui.game.image_model) chips.push(`<span class="chip">grafika: <b>${esc(ui.game.image_model)}</b></span>`);
+    if (ui.game.difficulty === "easy") chips.push(`<span class="chip">poziom: <b>łatwy</b></span>`);
     chips.push(`<span class="chip">tura: <b>${turns().length}${ui.game.max_turns ? ` / ${ui.game.max_turns}` : ""}</b></span>`);
     if (gameOver()) chips.push(`<span class="chip"><b>${ui.game.outcome.status === "won" ? "wygrana" : "przegrana"}</b></span>`);
   }
@@ -274,6 +275,7 @@ function tabTurn(t) {
     <dt>wygrana</dt><dd>${esc(w.win_condition || "osiągnięcie celu")}</dd>
     <dt>przegrana</dt><dd>${esc(w.lose_condition || "śmierć bohatera albo cel nie do osiągnięcia")}</dd>
     <dt>limit tur</dt><dd>${ui.game.max_turns ?? "brak"}</dd>
+    <dt>poziom</dt><dd>${ui.game.difficulty === "easy" ? "łatwy" : "normalny"}</dd>
     <dt>opis</dt><dd>${esc(w.setting)}</dd>
     <dt>zasady</dt><dd>${(w.rules ?? []).map(esc).join("<br>") || "brak"}</dd></dl></div>`;
   const cfg = `${world}<div><h3>Konfiguracja gry</h3><dl class="kv">
@@ -456,6 +458,7 @@ function openDialog() {
   $("#fState").checked = c?.state_in_prompt ?? d.state_in_prompt;
   $("#fSeed").value = c?.seed ?? "";
   $("#fMaxTurns").value = ui.game?.max_turns ?? "";
+  $("#fDifficulty").value = ui.game?.difficulty ?? "normal";
   $("#dlgErr").textContent = "";
   $("#dlg").showModal();
 }
@@ -543,6 +546,7 @@ $("#newForm").addEventListener("submit", async (e) => {
       world_id: $("#fWorld").value,
       world_idea: custom ? $("#fIdea").value.trim() : null,
       max_turns: Number($("#fMaxTurns").value) || null,
+      difficulty: $("#fDifficulty").value,
       model: $("#fModel").value.trim(),
       history: $("#fHistory").value,
       window: Number($("#fWindow").value) || null,

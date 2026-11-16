@@ -357,6 +357,12 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ## Dziennik
 
+### 2026-11-16, Dudsztor: łatwy poziom (easy mode)
+- Co zrobione: „Poziom trudności” w oknie „Nowa gra”. Łatwy dokleja do zasad końca gry blok
+  `app/prompts/narrator_easy.md` (pomocne postacie, wskazówki, ostrzeżenia, druga szansa, szybkie uznanie wygranej).
+- Uwaga dla następnych: tylko gra w przeglądarce. `config.difficulty` i dopisek `+easy<hash>` w `prompt_version`
+  odróżniają takie gry w bazie. Eksperymenty bez zmian. Nie sprawdzone na prawdziwym modelu.
+
 ### 2026-11-16, Dudsztor: wygrana, przegrana i limit tur w grze
 - Co zrobione: świat ma `win_condition` i `lose_condition` (w „Zaginionej koronie” dopisane, własny świat dostaje je
   od modelu). Narrator w grze zwraca `outcome` (`ongoing`, `won`, `lost` i powód), opcjonalny limit tur w oknie

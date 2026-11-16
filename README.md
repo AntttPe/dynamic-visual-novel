@@ -137,6 +137,10 @@ fakty niezmienne (wygląd postaci, materiały przedmiotów) i scenę otwierając
   plansza „Wygrana!” albo „Przegrana” z powodem, a pole akcji się blokuje.
 * W oknie **Nowa gra** możesz ustawić **Limit tur**. Gdy limit minie, a cel nie jest osiągnięty, gra kończy się przegraną.
   Narrator wie, która to tura, więc pod koniec przyspiesza akcję.
+* **Poziom trudności** w oknie **Nowa gra**: na poziomie **Łatwy** narrator dostaje dodatkowe zasady
+  z `app/prompts/narrator_easy.md`. Rozsądne pomysły się udają, postacie chętnie pomagają, narrator podsuwa
+  wskazówki i ostrzega przed niebezpieczeństwem, a przegrana zdarza się tylko po świadomie skrajnie ryzykownym działaniu.
+  Zasady świata i fakty niezmienne obowiązują dalej.
 * Wynik każdej tury zapisuje się w kolumnie `outcome` tabeli `turns`.
 * Dotyczy to tylko gry w przeglądarce. Eksperymenty (`app.eval.run`) mają ten sam prompt i format JSON co wcześniej.
 

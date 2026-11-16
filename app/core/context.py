@@ -23,6 +23,15 @@ def prompt_version() -> str:
 
 
 ENDING_PATH = PROMPT_PATH.parent / "narrator_ending.md"
+EASY_PATH = PROMPT_PATH.parent / "narrator_easy.md"
+
+
+def easy_template() -> str:
+    return EASY_PATH.read_text(encoding="utf-8")
+
+
+def easy_version() -> str:
+    return hashlib.sha256(easy_template().encode()).hexdigest()[:8]
 
 
 def ending_template() -> str:

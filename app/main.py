@@ -135,6 +135,8 @@ class NewGame(BaseModel):
     world_idea: str | None = Field(default=None, max_length=2000)
     # Limit tur. Po nim gra kończy się przegraną, jeśli cel nie został osiągnięty. None = bez limitu.
     max_turns: int | None = Field(default=None, ge=1, le=500)
+    # "easy": narrator ułatwia wygraną (app/prompts/narrator_easy.md). Tylko gra w przeglądarce.
+    difficulty: Literal["normal", "easy"] = "normal"
 
 
 class PlayerTurn(BaseModel):
@@ -156,6 +158,7 @@ def game_view(game: GameEngine, images: BackgroundImages) -> dict:
             "win_condition": w.win_condition, "lose_condition": w.lose_condition,
         },
         "max_turns": game.max_turns,
+        "difficulty": game.difficulty,
         "outcome": game.outcome.model_dump(),
         "location": game.location,
         "known_locations": game.known_locations,
@@ -248,6 +251,7 @@ async def new_game(req: NewGame, request: Request) -> dict:
         store=get_store(request),
         endings=True,
         max_turns=req.max_turns,
+        difficulty=req.difficulty,
     )
     game.custom_text_api = bool(text_api)
     if built:

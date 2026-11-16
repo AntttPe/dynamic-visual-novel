@@ -124,3 +124,31 @@ def test_narrator_without_outcome_field_keeps_game_going(env):
     game = client.post("/api/games", json={}).json()
     resp = client.post(f"/api/games/{game['game_id']}/turns", json={"action": "Czekam"})
     assert resp.json()["outcome"]["status"] == "ongoing"
+
+
+@pytest.mark.anyio
+async def test_easy_mode_adds_its_prompt_and_version():
+    fake = FakeLLM([answer()])
+    game = GameEngine(WORLD, fake, endings=True, difficulty="easy")
+    await game.step("Rozglądam się")
+    system = fake.calls[0][0]["content"]
+    assert "# Poziom łatwy" in system and system.index("# Poziom łatwy") < system.index("# Aktualna sytuacja")
+    assert "+easy" in game.config["prompt_version"] and game.config["difficulty"] == "easy"
+
+
+@pytest.mark.anyio
+async def test_normal_mode_and_experiments_have_no_easy_prompt():
+    for game in (GameEngine(WORLD, FakeLLM([answer()]), endings=True),
+                 GameEngine(WORLD, FakeLLM([answer()]), mode="eval", difficulty="easy")):
+        await game.step("Rozglądam się")
+        assert "# Poziom łatwy" not in game.llm.calls[0][0]["content"]
+        assert "+easy" not in game.config["prompt_version"]
+    with pytest.raises(ValueError):
+        GameEngine(WORLD, FakeLLM(), endings=True, difficulty="hard")
+
+
+def test_api_difficulty(env):
+    client, _ = env
+    game = client.post("/api/games", json={"difficulty": "easy"}).json()
+    assert game["difficulty"] == "easy"
+    assert client.post("/api/games", json={"difficulty": "hard"}).status_code == 422

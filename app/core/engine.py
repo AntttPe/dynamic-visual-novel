@@ -11,6 +11,8 @@ from pydantic import ValidationError
 
 from app.core.context import (
     build_messages,
+    easy_template,
+    easy_version,
     ending_prompt,
     ending_version,
     prompt_version,
@@ -33,6 +35,8 @@ PLAY_NARRATOR_SCHEMA = PlayNarratorResponse.model_json_schema()
 
 class GameOver(Exception):
     """Gra już się skończyła (wygrana, przegrana albo koniec limitu tur)."""
+
+
 _THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 
@@ -68,9 +72,13 @@ class GameEngine:
         create_run: bool = True,
         endings: bool = False,
         max_turns: int | None = None,
+        difficulty: str = "normal",
     ):
         """endings: narrator ocenia wygraną i przegraną (gra w przeglądarce). Eksperymenty zostają przy False,
-        więc ich prompt i schemat JSON się nie zmieniają. max_turns: limit tur, po nim gra jest przegrana."""
+        więc ich prompt i schemat JSON się nie zmieniają. max_turns: limit tur, po nim gra jest przegrana.
+        difficulty: "normal" albo "easy" (narrator ułatwia wygraną, tylko razem z endings)."""
+        if difficulty not in ("normal", "easy"):
+            raise ValueError(f"Nieznany poziom trudności: {difficulty}")
         self.game_id = game_id or uuid.uuid4().hex[:12]
         self.world = world
         self.llm = llm
@@ -84,7 +92,15 @@ class GameEngine:
         self.endings = endings
         self.max_turns = max_turns
         self.outcome = GameOutcome()
+        self.difficulty = difficulty if endings else "normal"
         self._ending = ending_prompt(world, max_turns) if endings else None
+        if self._ending and self.difficulty == "easy":
+            self._ending = f"{self._ending.strip()}\n\n{easy_template().strip()}"
+        version = prompt_version()
+        if endings:
+            version += f"+end{ending_version()}"
+        if self.difficulty == "easy":
+            version += f"+easy{easy_version()}"
         self.config = {
             "mode": mode,
             "world_id": world.id,
@@ -96,10 +112,11 @@ class GameEngine:
             "max_tokens": max_tokens,
             "json_retries": json_retries,
             "seed": seed,
-            "prompt_version": prompt_version() + (f"+end{ending_version()}" if endings else ""),
+            "prompt_version": version,
         }
         if endings:
             self.config["max_turns"] = max_turns
+            self.config["difficulty"] = self.difficulty
         if store and create_run:
             store.create_run(self.game_id, self.config)
 

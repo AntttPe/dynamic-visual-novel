@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dynamic Visual Novel</title>
-  <link rel="stylesheet" href="/style.css?v=6" />
+  <link rel="stylesheet" href="/style.css?v=7" />
 </head>
 <body>
   <header class="topbar">
@@ -92,10 +92,18 @@
         <textarea id="fIdea" rows="4" maxlength="2000" placeholder="np. Cyberpunkowy Kraków w 2090 roku. Jestem detektywką, która szuka zaginionego androida. Bez magii, dużo neonów i deszczu."></textarea>
         <small>Wybrany niżej model narratora zamieni pomysł w pełny świat: bohatera, cel, zasady, lokacje i scenę otwierającą. Wzorem jest „Zaginiona korona”. Trwa to od kilku sekund do minuty.</small>
       </label>
-      <label>Limit tur (opcjonalnie)
-        <input id="fMaxTurns" type="number" min="1" max="500" placeholder="bez limitu" />
-        <small>Po ostatniej turze gra kończy się przegraną, jeśli cel nie został osiągnięty. Narrator sam rozpoznaje wygraną i przegraną z warunków świata.</small>
-      </label>
+      <div class="grid2">
+        <label>Poziom trudności
+          <select id="fDifficulty">
+            <option value="normal">Normalny</option>
+            <option value="easy">Łatwy (easy mode)</option>
+          </select>
+        </label>
+        <label>Limit tur (opcjonalnie)
+          <input id="fMaxTurns" type="number" min="1" max="500" placeholder="bez limitu" />
+        </label>
+      </div>
+      <small class="hint-row">Narrator sam rozpoznaje wygraną i przegraną z warunków świata. Po ostatniej turze limitu gra kończy się przegraną. Na łatwym poziomie postacie chętniej pomagają, narrator podsuwa wskazówki i ostrzega przed niebezpieczeństwem.</small>
       <label>Model narratora
         <select id="fModelPick"></select>
         <input id="fModel" spellcheck="false" placeholder="np. ollama_chat/gemma4:12b" hidden />
@@ -166,6 +174,6 @@
     </form>
   </dialog>
 
-  <script src="/app.js?v=6"></script>
+  <script src="/app.js?v=7"></script>
 </body>
 </html>
