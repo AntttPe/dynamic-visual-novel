@@ -112,6 +112,24 @@ class Job:
     task: asyncio.Task | None = None  # silna referencja, inaczej zadanie może zniknąć w trakcie
 
 
+def short_error(error: str | None) -> str:
+    """Krótka przyczyna nieudanego obrazu dla gracza. Pełny błąd zostaje w tabeli images."""
+    text = error or ""
+    low = text.lower()
+    if "free_tier" in low and "limit: 0" in low:
+        return "ten model nie działa w darmowym planie dostawcy, potrzebny jest klucz z płatnościami"
+    if "ratelimit" in low or "429" in text or "quota" in low:
+        return "przekroczony limit zapytań u dostawcy (429), spróbuj później albo sprawdź plan"
+    if "authentication" in low or "401" in text or "api key" in low or "api_key" in low:
+        return "zły albo brakujący klucz API"
+    if "notfound" in low or "404" in text:
+        return "nie ma takiego modelu u dostawcy, sprawdź nazwę"
+    if "connect" in low or "timeout" in low:
+        return "serwer obrazów nie odpowiada, sprawdź adres albo tunel"
+    first = text.splitlines()[0] if text else "nieznany błąd"
+    return first[:200]
+
+
 def location_seed(game_seed: int | None, location: str) -> int:
     """Stały seed lokacji: ta sama gra i lokacja dają zawsze ten sam seed."""
     return (game_seed or 0) + zlib.crc32(location.encode()) % 1_000_000
@@ -314,7 +332,11 @@ class BackgroundImages:
         job = self.jobs.get((game_id, key))
         if job is None:
             return {"status": "none"}
-        return {"status": job.status, "url": job.url} if job.status == "ready" else {"status": job.status}
+        if job.status == "ready":
+            return {"status": job.status, "url": job.url}
+        if job.status == "failed":
+            return {"status": job.status, "error": short_error(job.error)}
+        return {"status": job.status}
 
     def _path(self, game_id: str, key: str) -> Path | None:
         job = self.jobs.get((game_id, key))

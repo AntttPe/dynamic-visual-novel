@@ -333,3 +333,18 @@ def test_server_stops_when_idle():
     thread.join(timeout=5)
     srv.server_close()
     assert not thread.is_alive()
+
+
+def test_failed_image_status_explains_why():
+    from app.images import short_error
+
+    gemini = ("RateLimitError: ... Quota exceeded for metric: generativelanguage.googleapis.com/"
+              "generate_content_free_tier_requests, limit: 0, model: gemini-nano-banana-2.1")
+    assert "darmowym planie" in short_error(gemini)
+    assert "429" in short_error("RateLimitError: Error code: 429, too many requests")
+    assert "klucz" in short_error("AuthenticationError: Incorrect API key provided: ***")
+    assert short_error("ValueError: coś innego\ndrugi wiersz") == "ValueError: coś innego"
+
+    images = BackgroundImages(FakeImages(), "unused")
+    job = images.jobs[("g", "tavern")] = type("J", (), {"status": "failed", "error": gemini, "url": ""})()
+    assert images.status("g", "tavern") == {"status": "failed", "error": short_error(job.error)}

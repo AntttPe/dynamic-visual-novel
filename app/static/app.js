@@ -119,9 +119,11 @@ const preload = (url) => new Promise((done) => {
   im.src = url;
 });
 
+let imageError = ""; // przyczyna ostatniego nieudanego obrazu, od serwera
 async function fetchImage(key, query) {
   let s = null;
   try { s = await api(query); } catch {}
+  if (s?.status === "failed") imageError = s.error || imageError;
   if (s?.status !== "ready") return s?.status ?? "none";
   if (!await preload(s.url)) return "failed";
   stageImages.set(key, s.url);
@@ -141,6 +143,7 @@ async function watchStage(loc, turn) {
   if (stageImages.has(wanted)) { stageWatch = null; showBgNote(""); return; }
   if (stageWatch === wanted) return;
   stageWatch = wanted;
+  imageError = "";
   showBgNote("");
   const base = `/api/games/${gameId}`;
   for (let i = 0; i < 240 && stageWatch === wanted; i++) {
@@ -153,7 +156,8 @@ async function watchStage(loc, turn) {
       await new Promise((done) => setTimeout(done, 1500));
       continue;
     }
-    showBgNote(status === "failed" ? "Nie udało się narysować obrazu" : "");
+    const failed = status === "failed" || (place === "failed" && !stageImages.has(placeKey) && status !== "ready");
+    showBgNote(failed ? `Nie udało się narysować obrazu${imageError ? `: ${imageError}` : ""}` : "");
     break;
   }
   if (stageWatch === wanted) stageWatch = null;
