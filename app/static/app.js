@@ -55,11 +55,30 @@ function render({ animate = false } = {}) {
   renderTop();
   renderBanner();
   renderStage(animate);
+  renderEnding();
   renderPanel();
-  const playing = !!ui.game && !ui.busy;
+  const playing = !!ui.game && !ui.busy && !gameOver();
   $("#action").disabled = !playing;
   $("#send").disabled = !playing;
+  $("#action").placeholder = gameOver() ? "Gra się skończyła. Zacznij nową grę." : "Co robisz? Np. Pytam Borwina o koronę";
 }
+
+// ---------- koniec gry ----------
+const gameOver = () => !!ui.game && (ui.game.outcome?.status ?? "ongoing") !== "ongoing";
+let endingHidden = false; // gracz chce obejrzeć ostatnią scenę bez planszy końca
+function renderEnding() {
+  const el = $("#ending");
+  const latest = ui.view === null || ui.view >= turns().length - 1;
+  const show = gameOver() && latest && !endingHidden;
+  el.hidden = !show;
+  if (!show) return;
+  const o = ui.game.outcome;
+  el.className = `ending ${o.status}`;
+  $("#endTitle").textContent = o.status === "won" ? "Wygrana!" : "Przegrana";
+  $("#endReason").textContent = o.reason || (o.status === "won" ? "Cel osiągnięty." : "Cel nie został osiągnięty.");
+}
+$("#btnEndNew").addEventListener("click", () => openDialog());
+$("#btnEndHide").addEventListener("click", () => { endingHidden = true; renderEnding(); });
 
 function renderTop() {
   $("#worldTitle").textContent = ui.game ? `· ${ui.game.world.title}` : "";
@@ -72,7 +91,8 @@ function renderTop() {
     chips.push(`<span class="chip">pamięć: <b>${memoryLabel(c)}</b></span>`);
     chips.push(`<span class="chip">stan w prompcie: <b>${c.state_in_prompt ? "tak" : "nie"}</b></span>`);
     if (ui.game.image_model) chips.push(`<span class="chip">grafika: <b>${esc(ui.game.image_model)}</b></span>`);
-    chips.push(`<span class="chip">tura: <b>${turns().length}</b></span>`);
+    chips.push(`<span class="chip">tura: <b>${turns().length}${ui.game.max_turns ? ` / ${ui.game.max_turns}` : ""}</b></span>`);
+    if (gameOver()) chips.push(`<span class="chip"><b>${ui.game.outcome.status === "won" ? "wygrana" : "przegrana"}</b></span>`);
   }
   $("#chips").innerHTML = chips.join("");
 }
@@ -251,6 +271,9 @@ function tabTurn(t) {
     <dt>tytuł</dt><dd>${esc(w.title)}</dd>
     <dt>bohater</dt><dd>${esc(w.player)}</dd>
     <dt>cel</dt><dd>${esc(w.goal)}</dd>
+    <dt>wygrana</dt><dd>${esc(w.win_condition || "osiągnięcie celu")}</dd>
+    <dt>przegrana</dt><dd>${esc(w.lose_condition || "śmierć bohatera albo cel nie do osiągnięcia")}</dd>
+    <dt>limit tur</dt><dd>${ui.game.max_turns ?? "brak"}</dd>
     <dt>opis</dt><dd>${esc(w.setting)}</dd>
     <dt>zasady</dt><dd>${(w.rules ?? []).map(esc).join("<br>") || "brak"}</dd></dl></div>`;
   const cfg = `${world}<div><h3>Konfiguracja gry</h3><dl class="kv">
@@ -370,6 +393,8 @@ $("#form").addEventListener("submit", async (e) => {
     ui.game.location = data.location;
     ui.game.known_locations = data.known_locations;
     ui.game.state = data.state;
+    ui.game.outcome = data.outcome;
+    endingHidden = false;
     $("#action").value = "";
     setBusy(false);
     render({ animate: true });
@@ -393,6 +418,7 @@ async function startGame(body) {
   const game = await api("/api/games", { method: "POST", body: JSON.stringify(body) });
   ui.game = game;
   ui.view = null;
+  endingHidden = false;
   store.set("dvn.game", game.game_id);
   render({ animate: true });
   $("#action").focus();
@@ -429,6 +455,7 @@ function openDialog() {
   $("#fWindow").value = c?.memory_window ?? d.window;
   $("#fState").checked = c?.state_in_prompt ?? d.state_in_prompt;
   $("#fSeed").value = c?.seed ?? "";
+  $("#fMaxTurns").value = ui.game?.max_turns ?? "";
   $("#dlgErr").textContent = "";
   $("#dlg").showModal();
 }
@@ -515,6 +542,7 @@ $("#newForm").addEventListener("submit", async (e) => {
     await startGame({
       world_id: $("#fWorld").value,
       world_idea: custom ? $("#fIdea").value.trim() : null,
+      max_turns: Number($("#fMaxTurns").value) || null,
       model: $("#fModel").value.trim(),
       history: $("#fHistory").value,
       window: Number($("#fWindow").value) || null,

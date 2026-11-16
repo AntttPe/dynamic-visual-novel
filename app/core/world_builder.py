@@ -34,6 +34,8 @@ class WorldDraft(BaseModel):
     player: str = Field(min_length=1)
     setting: str = Field(min_length=1)
     goal: str = Field(min_length=1)
+    win_condition: str = Field(min_length=1)
+    lose_condition: str = Field(min_length=1)
     rules: list[str] = Field(default_factory=list)
     start_location: str
     intro: str = Field(min_length=1)
@@ -104,7 +106,8 @@ def to_world(draft: WorldDraft, world_id: str) -> World:
                   immutable=f.immutable) for f in draft.facts if f.entity.strip() and f.attribute.strip()]
     return World(
         id=world_id, title=draft.title.strip(), player=draft.player.strip(), setting=draft.setting.strip(),
-        goal=draft.goal.strip(), rules=[r.strip() for r in draft.rules if r.strip()], start_location=start,
+        goal=draft.goal.strip(), win_condition=draft.win_condition.strip(),
+        lose_condition=draft.lose_condition.strip(), rules=[r.strip() for r in draft.rules if r.strip()], start_location=start,
         intro=draft.intro.strip(), locations=locations, facts=facts,
     )
 

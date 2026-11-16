@@ -22,6 +22,30 @@ def prompt_version() -> str:
     return hashlib.sha256(prompt_template().encode()).hexdigest()[:8]
 
 
+ENDING_PATH = PROMPT_PATH.parent / "narrator_ending.md"
+
+
+def ending_template() -> str:
+    return ENDING_PATH.read_text(encoding="utf-8")
+
+
+def ending_version() -> str:
+    return hashlib.sha256(ending_template().encode()).hexdigest()[:8]
+
+
+def ending_prompt(world: World, max_turns: int | None) -> str:
+    """Zasady końca gry dla narratora. Bez warunków w świecie wygrana wynika z celu."""
+    limit = ""
+    if max_turns:
+        limit = (f"- Gra ma limit {max_turns} tur. Po ostatniej turze gra kończy się przegraną, jeśli cel nie "
+                 "został osiągnięty. Gdy zostaje mało tur, prowadź akcję tak, żeby rozstrzygnięcie było możliwe.")
+    return Template(ending_template()).safe_substitute(
+        win=world.win_condition or f"bohater osiąga cel: {world.goal}",
+        lose=world.lose_condition or "bohater ginie albo osiągnięcie celu staje się niemożliwe",
+        limit=limit,
+    )
+
+
 def build_messages(
     world: World,
     state: WorldState,
@@ -31,7 +55,11 @@ def build_messages(
     current_location: str,
     known_locations: dict[str, str],
     state_in_prompt: bool,
+    ending: str | None = None,
+    turn_info: str | None = None,
 ) -> list[dict]:
+    """ending: zasady końca gry (tylko gra w przeglądarce), wstawiane przed częścią zmienną promptu.
+    turn_info: licznik tur, dopisywany na końcu części zmiennej, żeby nie psuć cache stałego początku."""
     if state_in_prompt:
         state_text = state.as_prompt()
         locations_text = "\n".join(f"- {loc_id}: {name}" for loc_id, name in known_locations.items())
@@ -49,6 +77,11 @@ def build_messages(
         locations=locations_text,
         state=state_text,
     )
+    if ending:
+        before, marker, after = text.partition(DYNAMIC_MARKER)
+        text = f"{before}{ending.strip()}\n\n{marker}{after}"
+    if turn_info:
+        text = f"{text.rstrip()}\n\n# Tura\n{turn_info}\n"
     if memory.name == "full_cached":
         # Stały początek (zasady, świat, historia) serwer może wziąć z cache, czyta tylko nowy koniec
         static, marker, dynamic = text.partition(DYNAMIC_MARKER)

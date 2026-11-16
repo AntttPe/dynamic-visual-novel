@@ -1,5 +1,7 @@
 """Struktury danych tury: co zwraca narrator i co zapisujemy do bazy."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.core.world import Fact
@@ -36,6 +38,19 @@ class NarratorResponse(BaseModel):
     characters_present: list[str] = Field(default_factory=list)
 
 
+class GameOutcome(BaseModel):
+    """Stan gry po turze. Tylko gra w przeglądarce, eksperymenty go nie używają."""
+
+    status: Literal["ongoing", "won", "lost"] = "ongoing"
+    reason: str = Field(default="", description="Krótko, dlaczego gra się skończyła. Puste, gdy trwa.")
+
+
+class PlayNarratorResponse(NarratorResponse):
+    """Odpowiedź narratora w grze: to samo co w eksperymentach plus wynik gry."""
+
+    outcome: GameOutcome = Field(default_factory=GameOutcome)
+
+
 class RejectedUpdate(BaseModel):
     update: StateUpdate
     reason: str
@@ -62,3 +77,4 @@ class TurnRecord(BaseModel):
     location: str
     state_after: list[Fact] = Field(default_factory=list)
     error: str | None = None
+    outcome: GameOutcome | None = None  # tylko gra z wykrywaniem końca (None w eksperymentach)

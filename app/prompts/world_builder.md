@@ -8,7 +8,12 @@ Projektujesz świat startowy interaktywnej powieści wizualnej. Gracz opisuje sw
 - `title`: krótki tytuł przygody, 2 do 5 słów.
 - `player`: bohater gracza w formie „Imię, kim jest”, np. „Aren, wędrowny najemnik”.
 - `setting`: 2 do 3 zdań: gdzie i kiedy dzieje się akcja oraz co w tym świecie jest możliwe, a co nie (magia, technika).
-- `goal`: jeden konkretny cel bohatera, który da się osiągnąć w kilkudziesięciu turach.
+- `goal`: jeden konkretny cel bohatera, który da się osiągnąć w kilkudziesięciu turach. Jeśli gracz podał cel, użyj go.
+- `win_condition`: jedno zdanie, po którym narrator jednoznacznie pozna wygraną: konkretne, sprawdzalne zdarzenie
+  w świecie (bohater ma przedmiot i oddaje go komuś, dociera do miejsca, ktoś zostaje schwytany).
+  Nie „bohater jest szczęśliwy” ani „bohater rozwiązał zagadkę”.
+- `lose_condition`: jedno zdanie o nieodwracalnej porażce: śmierć bohatera, utrata albo zniszczenie celu,
+  uwięzienie bez wyjścia. Zwykłe niepowodzenie, z którego można się podnieść, to nie przegrana.
 - `rules`: 3 do 5 krótkich zasad świata, których narrator ma pilnować.
 - `intro`: scena otwierająca w 2. osobie („siedzisz”, „widzisz”), 2 do 4 zdań. Bohater jest w lokacji startowej, obok jest co najmniej jedna postać, z którą można porozmawiać, i jest pierwszy trop prowadzący do celu.
 - `locations`: 4 do 6 miejsc, między którymi bohater może chodzić. `description` to wygląd miejsca do narysowania tła: maks. 25 słów, bez postaci i bez akcji.

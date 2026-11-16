@@ -5,6 +5,10 @@ setting: >-
   Średniowieczne miasto Velgard i jego okolice. Świat bez magii: nie ma czarów,
   teleportacji ani potworów. Technika i obyczaje jak w XIV wieku.
 goal: Odnaleźć zaginioną koronę króla.
+win_condition: Bohater ma koronę w rękach i oddaje ją królowi albo straży zamku.
+lose_condition: >-
+  Bohater ginie, trafia na stałe do lochu albo korona zostaje zniszczona lub wywieziona z miasta
+  poza jego zasięg.
 rules:
   - W świecie nie ma magii.
   - Bohater ma tylko to, co jest w jego ekwipunku.

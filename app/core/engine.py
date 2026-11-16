@@ -9,15 +9,30 @@ import uuid
 
 from pydantic import ValidationError
 
-from app.core.context import build_messages, prompt_version
+from app.core.context import (
+    build_messages,
+    ending_prompt,
+    ending_version,
+    prompt_version,
+)
 from app.core.memory import make_memory
-from app.core.schemas import NarratorResponse, TurnRecord
+from app.core.schemas import (
+    GameOutcome,
+    NarratorResponse,
+    PlayNarratorResponse,
+    TurnRecord,
+)
 from app.core.state import WorldState
 from app.core.world import Fact, World
 from app.llm.base import LLMClient
 from app.storage.db import Store
 
 NARRATOR_SCHEMA = NarratorResponse.model_json_schema()
+PLAY_NARRATOR_SCHEMA = PlayNarratorResponse.model_json_schema()
+
+
+class GameOver(Exception):
+    """Gra już się skończyła (wygrana, przegrana albo koniec limitu tur)."""
 _THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 
@@ -51,7 +66,11 @@ class GameEngine:
         mode: str = "play",
         game_id: str | None = None,
         create_run: bool = True,
+        endings: bool = False,
+        max_turns: int | None = None,
     ):
+        """endings: narrator ocenia wygraną i przegraną (gra w przeglądarce). Eksperymenty zostają przy False,
+        więc ich prompt i schemat JSON się nie zmieniają. max_turns: limit tur, po nim gra jest przegrana."""
         self.game_id = game_id or uuid.uuid4().hex[:12]
         self.world = world
         self.llm = llm
@@ -62,6 +81,10 @@ class GameEngine:
         self.turns: list[TurnRecord] = []
         self._restored = 0  # tury odtworzone z bazy przy wznowieniu
         self.store = store
+        self.endings = endings
+        self.max_turns = max_turns
+        self.outcome = GameOutcome()
+        self._ending = ending_prompt(world, max_turns) if endings else None
         self.config = {
             "mode": mode,
             "world_id": world.id,
@@ -73,8 +96,10 @@ class GameEngine:
             "max_tokens": max_tokens,
             "json_retries": json_retries,
             "seed": seed,
-            "prompt_version": prompt_version(),
+            "prompt_version": prompt_version() + (f"+end{ending_version()}" if endings else ""),
         }
+        if endings:
+            self.config["max_turns"] = max_turns
         if store and create_run:
             store.create_run(self.game_id, self.config)
 
@@ -93,18 +118,32 @@ class GameEngine:
         """Co pamięć zapisuje jako wiadomość gracza: samą akcję albo całą wysłaną wiadomość (full_cached)."""
         return prompt[-1]["content"] if getattr(self.memory, "records_sent_message", False) else action
 
+    @property
+    def finished(self) -> bool:
+        return self.outcome.status != "ongoing"
+
     async def step(self, player_action: str) -> TurnRecord:
         """Rozgrywa jedną turę. LLMError (model niedostępny) przechodzi wyżej, tura nie jest zapisana."""
         action = player_action.strip()
         if not action:
             raise ValueError("Pusta akcja gracza")
+        if self.finished:
+            raise GameOver(self.outcome.reason)
         cfg = self.config
+        t = self._restored + len(self.turns) + 1
+        turn_info = None
+        if self.endings:
+            turn_info = f"To jest tura {t} z {self.max_turns}." if self.max_turns else f"To jest tura {t}."
         prompt = build_messages(
             self.world, self.state, self.memory, action,
             current_location=self.location,
             known_locations=self.known_locations,
             state_in_prompt=cfg["state_in_prompt"],
+            ending=self._ending,
+            turn_info=turn_info,
         )
+        response_model = PlayNarratorResponse if self.endings else NarratorResponse
+        schema = PLAY_NARRATOR_SCHEMA if self.endings else NARRATOR_SCHEMA
         conversation = list(prompt)
         parsed, raw, error = None, "", None
         tokens_in = tokens_out = tokens_cached = 0
@@ -114,7 +153,7 @@ class GameEngine:
         for _ in range(cfg["json_retries"] + 1):
             result = await self.llm.complete(
                 conversation,
-                json_schema=NARRATOR_SCHEMA,
+                json_schema=schema,
                 temperature=cfg["temperature"],
                 seed=cfg["seed"],
                 max_tokens=cfg["max_tokens"],
@@ -128,7 +167,7 @@ class GameEngine:
             latency_ms += result.latency_ms
             raw = result.text
             try:
-                parsed = NarratorResponse.model_validate_json(extract_json(raw))
+                parsed = response_model.model_validate_json(extract_json(raw))
                 error = None
                 break
             except (ValidationError, ValueError) as e:
@@ -146,8 +185,17 @@ class GameEngine:
             self.known_locations.setdefault(self.location, parsed.scene.description[:60])
             self.memory.record(self._remembered(action, prompt), parsed)
 
+        outcome = None
+        if self.endings:
+            outcome = parsed.outcome if parsed else GameOutcome()
+            if outcome.status == "ongoing" and self.max_turns and t >= self.max_turns:
+                outcome = GameOutcome(status="lost", reason=f"Skończył się limit tur ({self.max_turns}), "
+                                      "a cel nie został osiągnięty.")
+            self.outcome = outcome
+
         record = TurnRecord(
-            t=self._restored + len(self.turns) + 1,
+            t=t,
+            outcome=outcome,
             player_action=action,
             response=parsed,
             raw_output=raw,

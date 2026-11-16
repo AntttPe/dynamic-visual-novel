@@ -21,6 +21,8 @@ def world_json(start="Neon Bar", **changes):
         "player": "Mira, detektywka",
         "setting": "Kraków w 2090 roku. Neon, deszcz i androidy. Bez magii.",
         "goal": "Odnaleźć zaginionego androida K-7.",
+        "win_condition": "Mira przyprowadza K-7 do swojego biura.",
+        "lose_condition": "Mira ginie albo K-7 zostaje zniszczony.",
         "rules": ["Nie ma magii.", "Androidy nie mogą kłamać ludziom."],
         "start_location": start,
         "intro": "Siedzisz w barze Neon, a barman Jaro poleruje szklankę.",
@@ -50,6 +52,7 @@ async def test_build_world_normalizes_draft():
     built = await build_world(FakeLLM([world_json()]), IDEA)
     w = built.world
     assert w.id.startswith("custom_") and w.title == "Zaginiony android"
+    assert w.win_condition == "Mira przyprowadza K-7 do swojego biura."
     assert [loc.id for loc in w.locations] == ["neon_bar", "market"]  # bez duplikatu, snake_case
     assert w.start_location == "neon_bar"
     assert {"entity": "bohater", "attribute": "ekwipunek", "value": "pistolet, notes",

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from app import llm
 from app.config import settings
-from app.core.engine import GameEngine
+from app.core.engine import GameEngine, GameOver
 from app.core.world import WorldNotFound, list_worlds, load_world
 from app.core.world_builder import (
     CUSTOM_WORLD,
@@ -133,6 +133,8 @@ class NewGame(BaseModel):
     image_api: ImageApi | None = None
     # Pomysł gracza na świat, gdy world_id == "custom". Model narratora zamienia go w pełny świat.
     world_idea: str | None = Field(default=None, max_length=2000)
+    # Limit tur. Po nim gra kończy się przegraną, jeśli cel nie został osiągnięty. None = bez limitu.
+    max_turns: int | None = Field(default=None, ge=1, le=500)
 
 
 class PlayerTurn(BaseModel):
@@ -151,7 +153,10 @@ def game_view(game: GameEngine, images: BackgroundImages) -> dict:
             "id": w.id, "title": w.title, "player": w.player, "goal": w.goal,
             "intro": w.intro, "start_location": w.start_location, "setting": w.setting,
             "rules": w.rules, "custom": w.id.startswith(f"{CUSTOM_WORLD}_"),
+            "win_condition": w.win_condition, "lose_condition": w.lose_condition,
         },
+        "max_turns": game.max_turns,
+        "outcome": game.outcome.model_dump(),
         "location": game.location,
         "known_locations": game.known_locations,
         "state": [f.model_dump() for f in game.state.facts()],
@@ -241,6 +246,8 @@ async def new_game(req: NewGame, request: Request) -> dict:
         json_retries=settings.narrator_json_retries,
         seed=req.seed,
         store=get_store(request),
+        endings=True,
+        max_turns=req.max_turns,
     )
     game.custom_text_api = bool(text_api)
     if built:
@@ -279,6 +286,8 @@ async def play_turn(game_id: str, req: PlayerTurn, request: Request) -> dict:
                 502, f"Model {game.llm.model} nie odpowiada. Sprawdź, czy działa "
                      f"(Ollama, tunel do GPU albo klucz API). Szczegóły: {e}",
             ) from e
+        except GameOver:
+            raise HTTPException(409, "Ta gra już się skończyła. Zacznij nową grę.") from None
     if record.response:
         r = record.response
         request_background(request, game, game.location, r.scene.description, record.t)
@@ -295,7 +304,8 @@ async def play_turn(game_id: str, req: PlayerTurn, request: Request) -> dict:
                              [game.world.player, *others])
     return {"turn": record.model_dump(), "location": game.location,
             "known_locations": game.known_locations,
-            "state": [f.model_dump() for f in game.state.facts()]}
+            "state": [f.model_dump() for f in game.state.facts()],
+            "outcome": game.outcome.model_dump()}
 
 
 @app.get("/api/games/{game_id}/image")

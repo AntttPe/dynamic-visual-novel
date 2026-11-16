@@ -71,6 +71,12 @@ body:not(.show-tech) .loc .id { display: none; }
 .start p { margin: 0; max-width: 56ch; color: var(--stage-muted); font-family: var(--f-story); font-size: 1.05rem; }
 .start .eyebrow { font-family: var(--f-mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; }
 
+.ending { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; text-align: center; gap: 12px; padding: 32px; background: rgba(8,10,14,.78); }
+.ending h1 { margin: 0; font-family: var(--f-story); font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 600; }
+.ending.won h1 { color: #7bd88f; }
+.ending.lost h1 { color: #ff8a80; }
+.ending p { margin: 0; max-width: 56ch; color: var(--stage-muted); font-family: var(--f-story); font-size: 1.05rem; }
+.ending .eyebrow { font-family: var(--f-mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; }
 .box { max-height: 28vh; overflow-y: auto; background: #14161d; color: var(--stage-text); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 16px 20px; display: grid; gap: 10px; cursor: pointer; }
 .box p { margin: 0; }
 .action { font-size: .85rem; color: var(--stage-muted); font-style: italic; }

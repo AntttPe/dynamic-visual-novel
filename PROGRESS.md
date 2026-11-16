@@ -357,6 +357,17 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ## Dziennik
 
+### 2026-11-16, Dudsztor: wygrana, przegrana i limit tur w grze
+- Co zrobione: świat ma `win_condition` i `lose_condition` (w „Zaginionej koronie” dopisane, własny świat dostaje je
+  od modelu). Narrator w grze zwraca `outcome` (`ongoing`, `won`, `lost` i powód), opcjonalny limit tur w oknie
+  „Nowa gra” kończy grę przegraną. Plansza końca gry w UI, kolejne tury dają 409.
+- Pliki: `app/prompts/narrator_ending.md` (zasady końca dla narratora), `app/core/engine.py` (`endings`, `max_turns`),
+  `app/core/context.py`, `app/core/schemas.py` (`PlayNarratorResponse`, `GameOutcome`), kolumna `turns.outcome`,
+  `tests/test_endings.py`.
+- Uwaga dla następnych: eksperymenty NIE są zmienione. Blok końca gry dochodzi do promptu tylko przy `endings=True`
+  (gra w przeglądarce), schemat JSON w eksperymentach jest ten sam, a `prompt_version` gry ma dopisek `+end<hash>`.
+  Licznik tur jest na końcu promptu, żeby nie psuć cache w `full_cached`. Nie sprawdzone na prawdziwym modelu.
+
 ### 2026-11-16, Dudsztor: własny świat z pomysłu gracza
 - Co zrobione: w polu „Świat” opcja „Własny świat (opisz pomysł)”. Wybrany model narratora zamienia pomysł gracza
   w pełny świat (bohater, cel, zasady, lokacje, fakty niezmienne, intro) według wytycznych, a wzorem jest

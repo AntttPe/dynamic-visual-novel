@@ -31,6 +31,9 @@ class World(BaseModel):
     player: str
     setting: str
     goal: str
+    # Kiedy gra się kończy (tylko gra w przeglądarce, eksperymenty ich nie używają). Puste = wynika z celu.
+    win_condition: str = ""
+    lose_condition: str = ""
     rules: list[str] = Field(default_factory=list)
     start_location: str
     intro: str

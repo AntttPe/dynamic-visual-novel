@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS turns (
     tokens_cached     INTEGER NOT NULL DEFAULT 0,
     ttft_ms           REAL,
     first_answer_ms   REAL,
+    outcome           TEXT,
     PRIMARY KEY (run_id, t)
 );
 CREATE TABLE IF NOT EXISTS eval_runs (
@@ -96,6 +97,7 @@ _ADDED_TURN_COLUMNS = {
     "tokens_cached": "INTEGER NOT NULL DEFAULT 0",
     "ttft_ms": "REAL",
     "first_answer_ms": "REAL",
+    "outcome": "TEXT",  # wynik gry po turze (JSON), tylko gra w przeglądarce
 }
 
 
@@ -159,8 +161,8 @@ class Store:
                 "INSERT INTO turns (run_id, t, created_at, player_action, prompt, raw_output, json_ok_first_try,"
                 " retries, tokens_in, tokens_out, latency_ms, narration, dialogue, location_id, location,"
                 " scene_description, state_updates, rejected_updates, state_after, error, tokens_cached,"
-                " ttft_ms, first_answer_ms)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " ttft_ms, first_answer_ms, outcome)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (run_id, rec.t, _now(), rec.player_action, _json(rec.prompt), rec.raw_output,
                  int(rec.json_ok_first_try), rec.retries, rec.tokens_in, rec.tokens_out,
                  rec.latency_ms,
@@ -172,7 +174,8 @@ class Store:
                  _json([u.model_dump() for u in r.state_updates]) if r else None,
                  _json([x.model_dump() for x in rec.rejected_updates]),
                  _json([f.model_dump() for f in rec.state_after]),
-                 rec.error, rec.tokens_cached, rec.ttft_ms, rec.first_answer_ms),
+                 rec.error, rec.tokens_cached, rec.ttft_ms, rec.first_answer_ms,
+                 rec.outcome.model_dump_json() if rec.outcome else None),
             )
 
     def turns(self, run_id: str) -> list[dict]:

@@ -127,6 +127,18 @@ fakty niezmienne (wygląd postaci, materiały przedmiotów) i scenę otwierając
 * Gotowy świat, pomysł gracza, prompt i odpowiedź modelu zapisują się w tabeli `worlds` bazy `data/dvn.sqlite`.
   Opis świata widać też w panelu badawczym, w zakładce **Tura**.
 * W trybie `demo` nie ma modelu, więc zamiast nowego świata dostajesz „Zaginioną koronę” z twoim pomysłem w opisie.
+* Model nadaje też światu cel oraz warunek wygranej i przegranej (patrz niżej).
+
+### Wygrana, przegrana i limit tur
+
+* Każdy świat ma cel oraz warunek wygranej i przegranej. W „Zaginionej koronie” wygrana to oddanie korony królowi
+  albo straży, a przegrana to śmierć, loch na zawsze albo zniszczenie korony. Własny świat dostaje je od modelu.
+* Po każdej turze narrator ocenia, czy gra się skończyła (pole `outcome` w JSON). Gdy tak, na scenie pojawia się
+  plansza „Wygrana!” albo „Przegrana” z powodem, a pole akcji się blokuje.
+* W oknie **Nowa gra** możesz ustawić **Limit tur**. Gdy limit minie, a cel nie jest osiągnięty, gra kończy się przegraną.
+  Narrator wie, która to tura, więc pod koniec przyspiesza akcję.
+* Wynik każdej tury zapisuje się w kolumnie `outcome` tabeli `turns`.
+* Dotyczy to tylko gry w przeglądarce. Eksperymenty (`app.eval.run`) mają ten sam prompt i format JSON co wcześniej.
 
 Gra zapamiętuje bieżącą rozgrywkę w przeglądarce, więc po odświeżeniu strony wracasz do niej.
 Restart serwera kończy grę (wszystkie tury są jednak zapisane w `data/dvn.sqlite`).
