@@ -11,6 +11,14 @@ from app import llm
 from app.config import settings
 from app.core.engine import GameEngine
 from app.core.world import WorldNotFound, list_worlds, load_world
+from app.core.world_builder import (
+    CUSTOM_WORLD,
+    EXAMPLE_WORLD,
+    BuiltWorld,
+    WorldBuildError,
+    build_world,
+    demo_world,
+)
 from app.images import (
     MAX_PORTRAITS,
     BackgroundImages,
@@ -123,6 +131,8 @@ class NewGame(BaseModel):
     # Własne API gracza. Klucze nie trafiają do bazy ani do odpowiedzi serwera.
     text_api: TextApi | None = None
     image_api: ImageApi | None = None
+    # Pomysł gracza na świat, gdy world_id == "custom". Model narratora zamienia go w pełny świat.
+    world_idea: str | None = Field(default=None, max_length=2000)
 
 
 class PlayerTurn(BaseModel):
@@ -139,7 +149,8 @@ def game_view(game: GameEngine, images: BackgroundImages) -> dict:
         "custom_image_api": game.game_id in images.clients,
         "world": {
             "id": w.id, "title": w.title, "player": w.player, "goal": w.goal,
-            "intro": w.intro, "start_location": w.start_location,
+            "intro": w.intro, "start_location": w.start_location, "setting": w.setting,
+            "rules": w.rules, "custom": w.id.startswith(f"{CUSTOM_WORLD}_"),
         },
         "location": game.location,
         "known_locations": game.known_locations,
@@ -182,12 +193,26 @@ def config() -> dict:
     }
 
 
+async def make_world(req: NewGame, request: Request, model: str, text_api: dict) -> BuiltWorld:
+    """Świat z pomysłu gracza, stworzony przez ten sam model, który potem prowadzi grę."""
+    idea = (req.world_idea or "").strip()
+    if len(idea) < 3:
+        raise HTTPException(422, "Opisz pomysł na świat (kilka słów wystarczy)")
+    if model == "demo":
+        return demo_world(idea)
+    client = request.app.state.llm_factory(model, load_world(EXAMPLE_WORLD), **text_api)
+    try:
+        return await build_world(client, idea, temperature=settings.narrator_temperature, seed=req.seed,
+                                 max_tokens=max(settings.narrator_max_tokens, 4000),
+                                 retries=settings.narrator_json_retries)
+    except llm.LLMError as e:
+        raise HTTPException(502, f"Model {model} nie odpowiada. Szczegóły: {e}") from e
+    except WorldBuildError as e:
+        raise HTTPException(502, f"{e} Spróbuj jeszcze raz albo użyj większego modelu.") from e
+
+
 @app.post("/api/games")
 async def new_game(req: NewGame, request: Request) -> dict:
-    try:
-        world = load_world(req.world_id)
-    except WorldNotFound:
-        raise HTTPException(404, f"Nie ma świata „{req.world_id}”") from None
     image_model = req.image_model or settings.image_model
     if image_model not in {m["id"] for m in IMAGE_MODELS}:
         raise HTTPException(422, f"Nie ma generatora obrazów „{image_model}”")
@@ -196,6 +221,15 @@ async def new_game(req: NewGame, request: Request) -> dict:
         image_model = req.image_api.model.strip()
     model = (req.model or settings.default_narrator_model).strip()
     text_api = {k: v.strip() for k, v in (req.text_api.model_dump() if req.text_api else {}).items() if v.strip()}
+    built = None
+    if req.world_id == CUSTOM_WORLD:
+        built = await make_world(req, request, model, text_api)
+        world = built.world
+    else:
+        try:
+            world = load_world(req.world_id)
+        except WorldNotFound:
+            raise HTTPException(404, f"Nie ma świata „{req.world_id}”") from None
     game = GameEngine(
         world,
         request.app.state.llm_factory(model, world, **text_api),
@@ -209,6 +243,8 @@ async def new_game(req: NewGame, request: Request) -> dict:
         store=get_store(request),
     )
     game.custom_text_api = bool(text_api)
+    if built:
+        get_store(request).save_world(game.game_id, model, built)
     GAMES[game.game_id] = game
     LOCKS[game.game_id] = asyncio.Lock()
     images = get_images(request)

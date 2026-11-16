@@ -113,6 +113,21 @@ Jeden test jest pominięty, jeśli nie masz uruchomionej Ollamy (patrz niżej). 
    Enter wysyła.
 5. Panel po prawej pokazuje dane badawcze każdej tury: czas, tokeny, stan świata, prompt i surowy JSON.
 
+### Własny świat
+
+W polu **Świat** wybierz **Własny świat (opisz pomysł)** i wpisz kilka zdań, np.
+`Cyberpunkowy Kraków w 2090 roku, jestem detektywką i szukam zaginionego androida`.
+Wybrany model narratora zamieni pomysł w pełny świat: bohatera, cel, zasady, 4 do 6 lokacji,
+fakty niezmienne (wygląd postaci, materiały przedmiotów) i scenę otwierającą. Potem ten sam model prowadzi grę.
+
+* Wytyczne dla modelu są w `app/prompts/world_builder.md`, a wzorem jest świat „Zaginiona korona”
+  (`app/worlds/zaginiona_korona.yaml`). Zmiana wytycznych zmienia każdy kolejny świat.
+* Tworzenie świata trwa od kilku sekund do minuty. Mały model czasem nie trzyma formatu,
+  wtedy gra ponawia prośbę, a po kilku nieudanych próbach pokazuje błąd.
+* Gotowy świat, pomysł gracza, prompt i odpowiedź modelu zapisują się w tabeli `worlds` bazy `data/dvn.sqlite`.
+  Opis świata widać też w panelu badawczym, w zakładce **Tura**.
+* W trybie `demo` nie ma modelu, więc zamiast nowego świata dostajesz „Zaginioną koronę” z twoim pomysłem w opisie.
+
 Gra zapamiętuje bieżącą rozgrywkę w przeglądarce, więc po odświeżeniu strony wracasz do niej.
 Restart serwera kończy grę (wszystkie tury są jednak zapisane w `data/dvn.sqlite`).
 

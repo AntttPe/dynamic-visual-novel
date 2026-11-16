@@ -246,7 +246,14 @@ function renderPanel() {
 
 function tabTurn(t) {
   const c = ui.game.config;
-  const cfg = `<div><h3>Konfiguracja gry</h3><dl class="kv">
+  const w = ui.game.world;
+  const world = `<div><h3>Świat${w.custom ? " (stworzony z pomysłu gracza)" : ""}</h3><dl class="kv">
+    <dt>tytuł</dt><dd>${esc(w.title)}</dd>
+    <dt>bohater</dt><dd>${esc(w.player)}</dd>
+    <dt>cel</dt><dd>${esc(w.goal)}</dd>
+    <dt>opis</dt><dd>${esc(w.setting)}</dd>
+    <dt>zasady</dt><dd>${(w.rules ?? []).map(esc).join("<br>") || "brak"}</dd></dl></div>`;
+  const cfg = `${world}<div><h3>Konfiguracja gry</h3><dl class="kv">
     <dt>model</dt><dd>${esc(c.model)}</dd>
     <dt>pamięć</dt><dd>${memoryLabel(c)}</dd>
     <dt>stan w prompcie</dt><dd>${c.state_in_prompt ? "tak" : "nie"}</dd>
@@ -400,7 +407,10 @@ async function refreshHealth() {
 function openDialog() {
   const d = ui.config.defaults;
   const c = ui.game?.config;
-  $("#fWorld").innerHTML = ui.config.worlds.map((w) => `<option value="${esc(w.id)}">${esc(w.title)}</option>`).join("");
+  $("#fWorld").innerHTML = ui.config.worlds.map((w) => `<option value="${esc(w.id)}">${esc(w.title)}</option>`).join("") +
+    `<option value="custom">Własny świat (opisz pomysł)…</option>`;
+  if (ui.game?.world.custom) $("#fWorld").value = "custom";
+  showIdea();
   const current = c?.model ?? d.model;
   const models = [...new Set([current, ...ui.config.suggested_models])].filter((m) => !m.includes("<"));
   $("#fModelPick").innerHTML = models.map((m) => `<option value="${esc(m)}">${esc(modelLabel(m))}</option>`).join("") +
@@ -460,6 +470,12 @@ function showImageFields() {
     : "Dowolny model obrazów obsługiwany przez LiteLLM, np. <code>openai/gpt-image-1</code>, <code>openai/dall-e-3</code>, <code>gemini/gemini-3.1-flash-image</code> (płatny plan Gemini). Takie API rysuje tylko z opisu, bez obrazów wejściowych, więc postacie mogą wyglądać inaczej w kolejnych turach.";
 }
 $("#fImageKind").addEventListener("change", showImageFields);
+function showIdea() {
+  const custom = $("#fWorld").value === "custom";
+  $("#fIdeaWrap").hidden = !custom;
+  $("#fIdea").required = custom;
+}
+$("#fWorld").addEventListener("change", () => { showIdea(); if (!$("#fIdeaWrap").hidden) $("#fIdea").focus(); });
 function apiPayload() {
   const body = {};
   const base = $("#fTextBase").value.trim();
@@ -490,9 +506,15 @@ $("#dlgCancel").addEventListener("click", () => $("#dlg").close());
 $("#newForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const seed = $("#fSeed").value.trim();
+  const custom = $("#fWorld").value === "custom";
+  const ok = $("#dlgOk");
+  ok.disabled = true;
+  ok.textContent = custom ? "Tworzę świat…" : "Zaczynam…";
+  $("#dlgErr").textContent = custom ? "Model narratora tworzy świat z twojego pomysłu, to może potrwać do minuty." : "";
   try {
     await startGame({
       world_id: $("#fWorld").value,
+      world_idea: custom ? $("#fIdea").value.trim() : null,
       model: $("#fModel").value.trim(),
       history: $("#fHistory").value,
       window: Number($("#fWindow").value) || null,
@@ -502,9 +524,13 @@ $("#newForm").addEventListener("submit", async (e) => {
       ...apiPayload(),
     });
     saveApiFields();
+    $("#dlgErr").textContent = "";
     $("#dlg").close();
   } catch (err) {
     $("#dlgErr").textContent = err.message;
+  } finally {
+    ok.disabled = false;
+    ok.textContent = "Zacznij";
   }
 });
 function alertStage(msg) { $("#startIntro").textContent = msg; }

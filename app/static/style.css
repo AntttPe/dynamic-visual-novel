@@ -136,7 +136,8 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 #newForm h2 { margin: 0; font-size: 1.25rem; }
 #newForm label { display: grid; gap: 5px; font-size: .88rem; font-weight: 500; }
 #newForm label.check { display: flex; align-items: center; gap: 8px; align-self: end; padding-bottom: 8px; }
-#newForm input:not([type=checkbox]), #newForm select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+#newForm textarea { resize: vertical; min-height: 80px; }
+#newForm input:not([type=checkbox]), #newForm select, #newForm textarea { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
 #newForm small { color: var(--muted); font-weight: 400; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 #newForm details.api, #newForm .api-box { display: grid; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }

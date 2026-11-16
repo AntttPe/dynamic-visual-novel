@@ -357,6 +357,16 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ## Dziennik
 
+### 2026-11-16, Dudsztor: własny świat z pomysłu gracza
+- Co zrobione: w polu „Świat” opcja „Własny świat (opisz pomysł)”. Wybrany model narratora zamienia pomysł gracza
+  w pełny świat (bohater, cel, zasady, lokacje, fakty niezmienne, intro) według wytycznych, a wzorem jest
+  „Zaginiona korona”. Wynik przechodzi przez walidację `World`, ponowienia przy złym JSON jak w turze.
+- Pliki: `app/prompts/world_builder.md` (wytyczne), `app/core/world_builder.py`, `app/main.py` (`world_idea`),
+  `app/storage/db.py` (tabela `worlds`: pomysł, prompt, surowa odpowiedź, świat, tokeny, czas), UI, `tests/test_world_builder.py`.
+- Uwaga dla następnych: gry na własnym świecie mają `world_id` w postaci `custom_<hash>`, więc nie mieszają się
+  z wynikami na `zaginiona_korona`. Runner eksperymentów nadal używa tylko światów z YAML. Sprawdzone tylko na
+  modelu na niby i w trybie demo, nie na prawdziwym modelu.
+
 ### 2026-11-16, Dudsztor: własne API tekstu i obrazów w oknie „Nowa gra”, poradnik w README
 - Co zrobione: w oknie „Nowa gra” pola „Własne API modelu tekstowego” (adres i klucz, model jak dotąd w „Inny model”)
   i wybór „Grafika”: serwer z `.env`, własny adres `serve.py` albo dowolne API obrazów przez LiteLLM (`aimage_generation`,

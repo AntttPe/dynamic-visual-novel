@@ -36,7 +36,8 @@ stan projektu, zadania w toku, decyzje i dziennik zmian.
 - `app/core/`: silnik tury. `engine.py` (przebieg tury, ponowienia przy złym JSON),
   `context.py` (prompt), `memory.py` (strategie pamięci: full, window),
   `state.py` (stan świata, walidator faktów niezmiennych), `schemas.py` (Pydantic, JSON narratora),
-  `world.py` (światy z YAML w `app/worlds/`).
+  `world.py` (światy z YAML w `app/worlds/`), `world_builder.py` (świat z pomysłu gracza przez model narratora,
+  wytyczne w `app/prompts/world_builder.md`, zapis w tabeli `worlds`).
 - `app/llm/`: LiteLLM (`litellm_client.py`), tryb `demo` i model na niby do testów (`fake.py`).
   Model wybiera `NARRATOR_MODEL` w `.env` (format LiteLLM `<provider>/<model>`).
 - `app/storage/db.py`: każda tura w `data/dvn.sqlite` (prompt, odpowiedź, tokeny, czas, stan).

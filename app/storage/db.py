@@ -75,6 +75,20 @@ CREATE TABLE IF NOT EXISTS images (
     error       TEXT,
     kind        TEXT NOT NULL DEFAULT 'background'
 );
+CREATE TABLE IF NOT EXISTS worlds (
+    run_id      TEXT PRIMARY KEY REFERENCES runs(run_id),
+    created_at  TEXT NOT NULL,
+    world_id    TEXT NOT NULL,
+    model       TEXT NOT NULL,
+    idea        TEXT NOT NULL,
+    prompt      TEXT NOT NULL,
+    raw_output  TEXT NOT NULL,
+    world       TEXT NOT NULL,
+    retries     INTEGER NOT NULL,
+    tokens_in   INTEGER NOT NULL,
+    tokens_out  INTEGER NOT NULL,
+    latency_ms  REAL NOT NULL
+);
 """
 
 
@@ -122,6 +136,21 @@ class Store:
                  config["history"], config["memory_window"], int(config["state_in_prompt"]),
                  config["temperature"], config["seed"], config["prompt_version"], _json(config)),
             )
+
+    def save_world(self, run_id: str, model: str, built) -> None:
+        """Świat stworzony z pomysłu gracza (app.core.world_builder.BuiltWorld), razem z promptem i odpowiedzią."""
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "INSERT INTO worlds VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (run_id, _now(), built.world.id, model, built.idea, _json(built.prompt), built.raw_output,
+                 _json(built.world.model_dump()), built.retries, built.tokens_in, built.tokens_out,
+                 built.latency_ms),
+            )
+
+    def world(self, run_id: str) -> dict | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute("SELECT * FROM worlds WHERE run_id = ?", (run_id,)).fetchone()
+        return dict(row) if row else None
 
     def save_turn(self, run_id: str, rec: TurnRecord) -> None:
         r = rec.response
