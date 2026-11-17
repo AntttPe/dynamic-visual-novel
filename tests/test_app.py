@@ -71,6 +71,19 @@ def test_ui_is_served():
     assert "Dynamic Visual Novel" in resp.text
 
 
+def test_world_cover_for_menu():
+    client = TestClient(app)
+    worlds = {w["id"]: w for w in client.get("/api/config").json()["worlds"]}
+    korona = worlds["zaginiona_korona"]
+    assert korona["goal"] and korona["player"]
+    assert korona["cover"] == "/api/worlds/zaginiona_korona/cover"
+    resp = client.get(korona["cover"])
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "image/jpeg"
+    assert client.get("/api/worlds/nie_ma/cover").status_code == 404
+    assert client.get("/api/worlds/..%2Fmain/cover").status_code == 404
+
+
 def test_new_game_and_turn_are_logged(env):
     client, fake = env
     fake.responses = [narrator_json(location_id="market",

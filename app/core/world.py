@@ -55,5 +55,15 @@ def load_world(world_id: str) -> World:
     return World.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
+COVER_TYPES = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+
+
+def cover_path(world_id: str) -> Path | None:
+    """Okładka świata do menu: app/worlds/<id>.jpg (albo .png, .webp). Brak pliku = menu z samym gradientem."""
+    if not _WORLD_ID.match(world_id):
+        return None
+    return next((p for ext in COVER_TYPES if (p := WORLDS_DIR / f"{world_id}{ext}").exists()), None)
+
+
 def list_worlds() -> list[World]:
     return [load_world(p.stem) for p in sorted(WORLDS_DIR.glob("*.yaml"))]

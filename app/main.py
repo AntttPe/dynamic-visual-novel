@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from app import llm
 from app.config import settings
 from app.core.engine import GameEngine, GameOver
-from app.core.world import WorldNotFound, list_worlds, load_world
+from app.core.world import COVER_TYPES, WorldNotFound, cover_path, list_worlds, load_world
 from app.core.world_builder import (
     CUSTOM_WORLD,
     EXAMPLE_WORLD,
@@ -197,8 +197,18 @@ def config() -> dict:
         "suggested_models": SUGGESTED_MODELS,
         "image_models": IMAGE_MODELS,
         "image_server": bool(settings.image_server_url),
-        "worlds": [{"id": w.id, "title": w.title} for w in list_worlds()],
+        "worlds": [{"id": w.id, "title": w.title, "player": w.player, "goal": w.goal, "setting": w.setting,
+                    "cover": f"/api/worlds/{w.id}/cover" if cover_path(w.id) else None} for w in list_worlds()],
     }
+
+
+@app.get("/api/worlds/{world_id}/cover")
+def world_cover(world_id: str) -> FileResponse:
+    """Okładka świata do menu (plik obok YAML świata)."""
+    path = cover_path(world_id)
+    if path is None:
+        raise HTTPException(404, "Ten świat nie ma okładki")
+    return FileResponse(path, media_type=COVER_TYPES[path.suffix])
 
 
 async def make_world(req: NewGame, request: Request, model: str, text_api: dict) -> BuiltWorld:

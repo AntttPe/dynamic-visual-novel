@@ -2,7 +2,10 @@
 const $ = (s) => document.querySelector(s);
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const ui = { config: null, health: null, game: null, view: null, tab: "turn", busy: false };
+const ui = { config: null, health: null, game: null, view: null, tab: "turn", busy: false, menu: true };
+// Tryb deweloperski: panel badawczy, dane techniczne i ustawienia modeli. Na razie jedyny tryb (projekt badawczy),
+// tryb gracza (tylko przeglądanie historii) dojdzie później.
+const DEV_ONLY = true;
 let typer = null;
 let timer = null;
 
@@ -52,6 +55,7 @@ function modelStatus(model) {
 
 // ---------- render ----------
 function render({ animate = false } = {}) {
+  renderMenu();
   renderTop();
   renderBanner();
   renderStage(animate);
@@ -77,7 +81,7 @@ function renderEnding() {
   $("#endTitle").textContent = o.status === "won" ? "Wygrana!" : "Przegrana";
   $("#endReason").textContent = o.reason || (o.status === "won" ? "Cel osiągnięty." : "Cel nie został osiągnięty.");
 }
-$("#btnEndNew").addEventListener("click", () => openDialog());
+$("#btnEndNew").addEventListener("click", () => openMenu());
 $("#btnEndHide").addEventListener("click", () => { endingHidden = true; renderEnding(); });
 
 function renderTop() {
@@ -91,7 +95,7 @@ function renderTop() {
     chips.push(`<span class="chip">pamięć: <b>${memoryLabel(c)}</b></span>`);
     chips.push(`<span class="chip">stan w prompcie: <b>${c.state_in_prompt ? "tak" : "nie"}</b></span>`);
     if (ui.game.image_model) chips.push(`<span class="chip">grafika: <b>${esc(ui.game.image_model)}</b></span>`);
-    if (ui.game.difficulty === "easy") chips.push(`<span class="chip">poziom: <b>łatwy</b></span>`);
+    if (ui.game.difficulty === "easy") chips.push(`<span class="chip">podpowiedzi: <b>tak</b></span>`);
     chips.push(`<span class="chip">tura: <b>${turns().length}${ui.game.max_turns ? ` / ${ui.game.max_turns}` : ""}</b></span>`);
     if (gameOver()) chips.push(`<span class="chip"><b>${ui.game.outcome.status === "won" ? "wygrana" : "przegrana"}</b></span>`);
   }
@@ -187,12 +191,8 @@ async function watchStage(loc, turn) {
 function renderStage(animate) {
   stopTyping();
   const game = ui.game;
-  $("#start").hidden = !!game;
   $("#box").hidden = !game;
   if (!game) {
-    const w = ui.config?.worlds?.[0];
-    $("#startTitle").textContent = w?.title ?? "Dynamic Visual Novel";
-    $("#startIntro").textContent = "Wpisujesz dowolne działanie, a model językowy opowiada, co dzieje się dalej. Panel po prawej pokazuje, co dokładnie trafia do modelu i co z niego wraca.";
     $("#loc").innerHTML = "";
     $("#viewing").hidden = true;
     setBackground("start");
@@ -275,7 +275,7 @@ function tabTurn(t) {
     <dt>wygrana</dt><dd>${esc(w.win_condition || "osiągnięcie celu")}</dd>
     <dt>przegrana</dt><dd>${esc(w.lose_condition || "śmierć bohatera albo cel nie do osiągnięcia")}</dd>
     <dt>limit tur</dt><dd>${ui.game.max_turns ?? "brak"}</dd>
-    <dt>poziom</dt><dd>${ui.game.difficulty === "easy" ? "łatwy" : "normalny"}</dd>
+    <dt>podpowiedzi</dt><dd>${ui.game.difficulty === "easy" ? "tak" : "nie"}</dd>
     <dt>opis</dt><dd>${esc(w.setting)}</dd>
     <dt>zasady</dt><dd>${(w.rules ?? []).map(esc).join("<br>") || "brak"}</dd></dl></div>`;
   const cfg = `${world}<div><h3>Konfiguracja gry</h3><dl class="kv">
@@ -420,6 +420,7 @@ async function startGame(body) {
   const game = await api("/api/games", { method: "POST", body: JSON.stringify(body) });
   ui.game = game;
   ui.view = null;
+  ui.menu = false;
   endingHidden = false;
   store.set("dvn.game", game.game_id);
   render({ animate: true });
@@ -431,14 +432,79 @@ async function refreshHealth() {
   render();
 }
 
-// ---------- okno nowej gry ----------
-function openDialog() {
+// ---------- menu i nowa gra ----------
+const IDEAS = [
+  "Cyberpunkowy Kraków w 2090 roku. Jestem detektywką i szukam zaginionego androida. Bez magii, dużo neonów i deszczu.",
+  "Stacja badawcza na Antarktydzie, zerwana łączność z bazą. Jestem lekarzem wyprawy, a ktoś z załogi kłamie.",
+  "Rybacka wioska na Kaszubach w 1890 roku. Po sztormie zaginął statek mojego brata, a w porcie pojawił się obcy.",
+];
+function renderMenu() {
+  $("#menu").hidden = !ui.menu;
+  document.body.classList.toggle("in-menu", ui.menu);
+  $("#mBack").hidden = !ui.game;
+}
+function worldCover(w) { return w?.cover ?? null; }
+function artGradient(seed) {
+  const h = hash(seed) % 360;
+  return `radial-gradient(ellipse at 70% 30%, hsla(${h}, 70%, 55%, .35), transparent 60%),` +
+    `radial-gradient(ellipse at 20% 80%, hsla(${(h + 40) % 360}, 60%, 40%, .3), transparent 55%),` +
+    `linear-gradient(160deg, hsl(${h} 30% 18%), hsl(${(h + 40) % 360} 35% 7%))`;
+}
+// Tło generatora: niezapisana mapa (ciepła poświata i siatka), bez obrazu, bo świata jeszcze nie ma
+const BLANK_MAP = "radial-gradient(ellipse at 68% 42%, rgba(227,178,107,.22), transparent 55%)," +
+  "repeating-linear-gradient(0deg, rgba(227,178,107,.07) 0 1px, transparent 1px 64px)," +
+  "repeating-linear-gradient(90deg, rgba(227,178,107,.07) 0 1px, transparent 1px 64px)," +
+  "linear-gradient(160deg, #1c1610, #0b0907)";
+function renderWorlds() {
+  const sel = $("#fWorld").value;
+  const cards = ui.config.worlds.map((w) => {
+    const art = worldCover(w) ? `url("${w.cover}") center / cover` : artGradient(w.id);
+    return `<button type="button" class="world" role="radio" aria-checked="${w.id === sel}" data-world="${esc(w.id)}">
+      <span class="thumb" style='background:${art}'></span>
+      <span class="name">${esc(w.title)}</span><span class="sub">${esc(w.player.split(",")[0])}</span></button>`;
+  });
+  cards.push(`<button type="button" class="world custom" role="radio" aria-checked="${sel === "custom"}" data-world="custom">
+      <span class="thumb" aria-hidden="true"><span class="plus">+</span></span>
+      <span class="name">Własny świat</span><span class="sub">z twojego pomysłu</span></button>`);
+  $("#worlds").innerHTML = cards.join("");
+  $("#worlds").querySelectorAll("[data-world]").forEach((b) => b.addEventListener("click", () => selectWorld(b.dataset.world)));
+}
+function selectWorld(id) {
+  $("#fWorld").value = id;
+  const w = ui.config.worlds.find((x) => x.id === id);
+  if (w) {
+    $("#mEyebrow").textContent = "Opowieść prowadzona przez model językowy";
+    $("#mTitle").textContent = w.title;
+    $("#mLead").textContent = `Grasz jako ${w.player}. Cel: ${w.goal.charAt(0).toLowerCase()}${w.goal.slice(1)}`;
+    $("#menuArt").style.background = worldCover(w) ? `url("${w.cover}") center / cover no-repeat` : artGradient(w.id);
+  } else {
+    $("#mEyebrow").textContent = "Generator świata";
+    $("#mTitle").textContent = "Twój własny świat";
+    $("#mLead").textContent = "Opisz pomysł w kilku zdaniach. Model narratora zamieni go w świat gry: bohatera, cel, lokacje, zasady i fakty, których nie da się zmienić.";
+    $("#menuArt").style.background = BLANK_MAP;
+  }
+  renderWorlds();
+  showIdea();
+}
+$("#ideaExamples").innerHTML = IDEAS.map((t, i) => `<button type="button" class="example" data-idea="${i}">${esc(t.split(".")[0])}</button>`).join("");
+$("#ideaExamples").querySelectorAll("[data-idea]").forEach((b) => b.addEventListener("click", () => {
+  $("#fIdea").value = IDEAS[Number(b.dataset.idea)];
+  $("#fIdea").focus();
+}));
+function openMenu() {
+  fillMenu();
+  ui.menu = true;
+  render();
+}
+function closeMenu() {
+  if (!ui.game) return;
+  ui.menu = false;
+  render();
+}
+function fillMenu() {
   const d = ui.config.defaults;
   const c = ui.game?.config;
-  $("#fWorld").innerHTML = ui.config.worlds.map((w) => `<option value="${esc(w.id)}">${esc(w.title)}</option>`).join("") +
-    `<option value="custom">Własny świat (opisz pomysł)…</option>`;
-  if (ui.game?.world.custom) $("#fWorld").value = "custom";
-  showIdea();
+  selectWorld(ui.game?.world.custom ? "custom" : (ui.game?.world.id ?? ui.config.worlds[0]?.id ?? "custom"));
   const current = c?.model ?? d.model;
   const models = [...new Set([current, ...ui.config.suggested_models])].filter((m) => !m.includes("<"));
   $("#fModelPick").innerHTML = models.map((m) => `<option value="${esc(m)}">${esc(modelLabel(m))}</option>`).join("") +
@@ -458,9 +524,13 @@ function openDialog() {
   $("#fState").checked = c?.state_in_prompt ?? d.state_in_prompt;
   $("#fSeed").value = c?.seed ?? "";
   $("#fMaxTurns").value = ui.game?.max_turns ?? "";
-  $("#fDifficulty").value = ui.game?.difficulty ?? "normal";
+  $("#fHints").checked = ui.game?.difficulty === "easy";
   $("#dlgErr").textContent = "";
-  $("#dlg").showModal();
+  updateDevSummary();
+}
+function updateDevSummary() {
+  const model = $("#fModel").value || $("#fModelPick").value;
+  $("#devSummary").textContent = `· ${model}`;
 }
 function modelLabel(m) {
   if (m === "demo") return "demo (bez modelu, tylko podgląd)";
@@ -504,8 +574,8 @@ function showIdea() {
   const custom = $("#fWorld").value === "custom";
   $("#fIdeaWrap").hidden = !custom;
   $("#fIdea").required = custom;
+  $("#dlgOk").textContent = custom ? "Stwórz świat i zagraj" : "Zacznij grę";
 }
-$("#fWorld").addEventListener("change", () => { showIdea(); if (!$("#fIdeaWrap").hidden) $("#fIdea").focus(); });
 function apiPayload() {
   const body = {};
   const base = $("#fTextBase").value.trim();
@@ -528,11 +598,31 @@ $("#fModelPick").addEventListener("change", () => {
   $("#fModel").hidden = !other;
   $("#fModel").value = other ? "" : $("#fModelPick").value;
   if (other) $("#fModel").focus();
+  updateDevSummary();
 });
-$("#btnNew").addEventListener("click", openDialog);
-$("#btnStart").addEventListener("click", openDialog);
-$("#btnDemo").addEventListener("click", () => startGame({ model: "demo" }).catch((e) => alertStage(e.message)));
-$("#dlgCancel").addEventListener("click", () => $("#dlg").close());
+$("#fModel").addEventListener("input", updateDevSummary);
+$("#btnNew").addEventListener("click", openMenu);
+$("#mBack").addEventListener("click", closeMenu);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && ui.menu && $("#building").hidden) closeMenu(); });
+$("#mDev").addEventListener("click", () => {
+  if (DEV_ONLY) { $("#dlgErr").textContent = "Tryb gracza jeszcze nie istnieje. Na razie gra działa tylko w trybie deweloperskim."; return; }
+});
+$("#btnDemo").addEventListener("click", () => {
+  const custom = $("#fWorld").value === "custom";
+  startGame({ model: "demo", world_id: $("#fWorld").value, world_idea: custom ? ($("#fIdea").value.trim() || IDEAS[0]) : null,
+    difficulty: $("#fHints").checked ? "easy" : "normal" })
+    .catch((e) => { $("#dlgErr").textContent = e.message; });
+});
+let buildTimer = null;
+function showBuilding(idea) {
+  $("#building").hidden = !idea;
+  clearInterval(buildTimer);
+  if (!idea) return;
+  $("#buildIdea").textContent = `„${idea.length > 140 ? `${idea.slice(0, 140)}…` : idea}”`;
+  const t0 = performance.now();
+  $("#buildElapsed").textContent = "0 s";
+  buildTimer = setInterval(() => { $("#buildElapsed").textContent = `${Math.round((performance.now() - t0) / 1000)} s`; }, 500);
+}
 $("#newForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const seed = $("#fSeed").value.trim();
@@ -540,13 +630,14 @@ $("#newForm").addEventListener("submit", async (e) => {
   const ok = $("#dlgOk");
   ok.disabled = true;
   ok.textContent = custom ? "Tworzę świat…" : "Zaczynam…";
-  $("#dlgErr").textContent = custom ? "Model narratora tworzy świat z twojego pomysłu, to może potrwać do minuty." : "";
+  $("#dlgErr").textContent = "";
+  if (custom) showBuilding($("#fIdea").value.trim());
   try {
     await startGame({
       world_id: $("#fWorld").value,
       world_idea: custom ? $("#fIdea").value.trim() : null,
       max_turns: Number($("#fMaxTurns").value) || null,
-      difficulty: $("#fDifficulty").value,
+      difficulty: $("#fHints").checked ? "easy" : "normal",
       model: $("#fModel").value.trim(),
       history: $("#fHistory").value,
       window: Number($("#fWindow").value) || null,
@@ -557,15 +648,14 @@ $("#newForm").addEventListener("submit", async (e) => {
     });
     saveApiFields();
     $("#dlgErr").textContent = "";
-    $("#dlg").close();
   } catch (err) {
     $("#dlgErr").textContent = err.message;
   } finally {
+    showBuilding(null);
     ok.disabled = false;
-    ok.textContent = "Zacznij";
+    showIdea();
   }
 });
-function alertStage(msg) { $("#startIntro").textContent = msg; }
 
 // ---------- start ----------
 (async function init() {
@@ -583,5 +673,7 @@ function alertStage(msg) { $("#startIntro").textContent = msg; }
   if (saved) {
     try { ui.game = await api(`/api/games/${saved}`); } catch { store.set("dvn.game", null); }
   }
+  fillMenu();
+  ui.menu = !ui.game;
   render();
 })();

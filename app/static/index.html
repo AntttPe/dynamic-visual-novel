@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dynamic Visual Novel</title>
-  <link rel="stylesheet" href="/style.css?v=7" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="/style.css?v=8" />
 </head>
 <body>
   <header class="topbar">
@@ -14,7 +17,7 @@
     </div>
     <div class="chips" id="chips"></div>
     <div class="actions">
-      <button type="button" id="btnNew" class="btn">Nowa gra</button>
+      <button type="button" id="btnNew" class="btn">Menu</button>
       <button type="button" id="btnTech" class="btn" aria-pressed="false">Dane techniczne</button>
       <button type="button" id="btnPanel" class="btn" aria-pressed="true">Panel badawczy</button>
     </div>
@@ -29,16 +32,6 @@
         <div class="loc" id="loc"></div>
         <div class="viewing" id="viewing" hidden></div>
         <div class="bgnote" id="bgNote" hidden></div>
-
-        <div class="start" id="start" hidden>
-          <p class="eyebrow">Nowa historia</p>
-          <h1 id="startTitle"></h1>
-          <p id="startIntro"></p>
-          <div class="row">
-            <button type="button" class="btn primary" id="btnStart">Zacznij grę</button>
-            <button type="button" class="btn ghost" id="btnDemo">Szybki start w trybie demo</button>
-          </div>
-        </div>
 
         <div class="ending" id="ending" hidden>
           <p class="eyebrow">Koniec gry</p>
@@ -82,98 +75,132 @@
     </aside>
   </main>
 
-  <dialog id="dlg" aria-labelledby="dlgTitle">
-    <form id="newForm">
-      <h2 id="dlgTitle">Nowa gra</h2>
-      <label>Świat
-        <select id="fWorld"></select>
-      </label>
-      <label id="fIdeaWrap" hidden>Twój pomysł na świat
-        <textarea id="fIdea" rows="4" maxlength="2000" placeholder="np. Cyberpunkowy Kraków w 2090 roku. Jestem detektywką, która szuka zaginionego androida. Bez magii, dużo neonów i deszczu."></textarea>
-        <small>Wybrany niżej model narratora zamieni pomysł w pełny świat: bohatera, cel, zasady, lokacje i scenę otwierającą. Wzorem jest „Zaginiona korona”. Trwa to od kilku sekund do minuty.</small>
-      </label>
-      <div class="grid2">
-        <label>Poziom trudności
-          <select id="fDifficulty">
-            <option value="normal">Normalny</option>
-            <option value="easy">Łatwy (easy mode)</option>
-          </select>
+  <section class="menu" id="menu" aria-label="Menu gry" hidden>
+    <div class="menu-art" id="menuArt" aria-hidden="true"></div>
+    <div class="menu-shade" aria-hidden="true"></div>
+
+    <header class="menu-top">
+      <span class="wordmark">Dynamic Visual Novel</span>
+      <div class="row">
+        <button type="button" class="toggle" id="mDev" aria-pressed="true" title="Na razie jedyny tryb: to projekt badawczy">
+          <span class="knob" aria-hidden="true"></span>Tryb deweloperski
+        </button>
+        <button type="button" class="btn ghost" id="mBack" hidden>Wróć do gry</button>
+      </div>
+    </header>
+
+    <form id="newForm" class="menu-body" autocomplete="off">
+      <div class="menu-intro" data-enter>
+        <p class="eyebrow" id="mEyebrow">Opowieść prowadzona przez model językowy</p>
+        <h1 id="mTitle">Dynamic Visual Novel</h1>
+        <p class="lead" id="mLead"></p>
+      </div>
+
+      <input type="hidden" id="fWorld" />
+      <div class="worlds" id="worlds" role="radiogroup" aria-label="Świat"></div>
+
+      <div class="idea" id="fIdeaWrap" hidden>
+        <label for="fIdea">Twój pomysł na świat</label>
+        <textarea id="fIdea" rows="3" maxlength="2000" placeholder="Kto jest bohaterem, gdzie i kiedy dzieje się historia, czego szuka. Np. Cyberpunkowy Kraków w 2090 roku, jestem detektywką i szukam zaginionego androida."></textarea>
+        <div class="examples" id="ideaExamples" aria-label="Przykładowe pomysły"></div>
+      </div>
+
+      <div class="opts">
+        <label class="switch"><input type="checkbox" id="fHints" /><span class="track" aria-hidden="true"></span>
+          <span><b>Podpowiedzi</b><small>Narrator podsuwa, co zrobić dalej, a postacie chętniej pomagają.</small></span>
         </label>
-        <label>Limit tur (opcjonalnie)
+        <label class="turns">Limit tur
           <input id="fMaxTurns" type="number" min="1" max="500" placeholder="bez limitu" />
         </label>
       </div>
-      <small class="hint-row">Narrator sam rozpoznaje wygraną i przegraną z warunków świata. Po ostatniej turze limitu gra kończy się przegraną. Na łatwym poziomie postacie chętniej pomagają, narrator podsuwa wskazówki i ostrzega przed niebezpieczeństwem.</small>
-      <label>Model narratora
-        <select id="fModelPick"></select>
-        <input id="fModel" spellcheck="false" placeholder="np. ollama_chat/gemma4:12b" hidden />
-        <small>Format LiteLLM: <code>ollama_chat/…</code> (Mac albo GPU przez tunel), <code>hosted_vllm/…</code> (vLLM), <code>anthropic/…</code> (API). <code>demo</code> działa bez modelu.</small>
-      </label>
-      <details class="api" id="fTextApi">
-        <summary>Własne API modelu tekstowego (opcjonalnie)</summary>
-        <label>Adres API
-          <input id="fTextBase" spellcheck="false" placeholder="np. https://api.openai.com/v1 albo http://host.docker.internal:8001/v1" />
-        </label>
-        <label>Klucz API
-          <input id="fTextKey" type="password" spellcheck="false" autocomplete="off" placeholder="puste = klucz z .env" />
-        </label>
-        <small>Nazwę modelu wybierz wyżej (opcja „Inny model”), np. <code>openai/gpt-4o-mini</code>, <code>anthropic/claude-haiku-5-5</code>, <code>gemini/gemini-3.8-flash</code>. Dla serwerów zgodnych z API OpenAI (vLLM, LM Studio, OpenRouter) użyj przedrostka <code>openai/</code> i podaj adres.</small>
-      </details>
-      <label>Grafika
-        <select id="fImageKind">
-          <option value="server" id="fImageServerOpt">Serwer obrazów z .env</option>
-          <option value="dvn">Własny serwer obrazów projektu (serve.py)</option>
-          <option value="litellm">Własne API obrazów (np. OpenAI)</option>
-        </select>
-      </label>
-      <div class="api-box" id="fImageApi" hidden>
-        <label id="fImageUrlWrap">Adres
-          <input id="fImageUrl" spellcheck="false" />
-        </label>
-        <label id="fImageLmWrap">Model obrazów
-          <input id="fImageLm" spellcheck="false" placeholder="np. openai/gpt-image-1" />
-        </label>
-        <div class="grid2" id="fImageKeyWrap">
-          <label>Klucz API
-            <input id="fImageKey" type="password" spellcheck="false" autocomplete="off" placeholder="puste = klucz z .env" />
+
+      <details class="dev" id="devSettings">
+        <summary>Ustawienia deweloperskie <span class="muted" id="devSummary"></span></summary>
+        <div class="dev-body">
+          <label>Model narratora
+            <select id="fModelPick"></select>
+            <input id="fModel" spellcheck="false" placeholder="np. ollama_chat/gemma4:12b" hidden />
+            <small>Format LiteLLM: <code>ollama_chat/…</code> (Mac albo GPU przez tunel), <code>hosted_vllm/…</code> (vLLM), <code>anthropic/…</code> (API). <code>demo</code> działa bez modelu.</small>
           </label>
-          <label>Rozmiar
-            <input id="fImageSize" spellcheck="false" value="1536x1024" />
+          <details class="api" id="fTextApi">
+            <summary>Własne API modelu tekstowego (opcjonalnie)</summary>
+            <label>Adres API
+              <input id="fTextBase" spellcheck="false" placeholder="np. https://api.openai.com/v1 albo http://host.docker.internal:8001/v1" />
+            </label>
+            <label>Klucz API
+              <input id="fTextKey" type="password" spellcheck="false" autocomplete="off" placeholder="puste = klucz z .env" />
+            </label>
+            <small>Nazwę modelu wybierz wyżej (opcja „Inny model”), np. <code>openai/gpt-4o-mini</code>, <code>anthropic/claude-haiku-5-5</code>, <code>gemini/gemini-3.8-flash</code>. Dla serwerów zgodnych z API OpenAI (vLLM, LM Studio, OpenRouter) użyj przedrostka <code>openai/</code> i podaj adres.</small>
+          </details>
+          <label>Grafika
+            <select id="fImageKind">
+              <option value="server" id="fImageServerOpt">Serwer obrazów z .env</option>
+              <option value="dvn">Własny serwer obrazów projektu (serve.py)</option>
+              <option value="litellm">Własne API obrazów (np. OpenAI)</option>
+            </select>
           </label>
+          <div class="api-box" id="fImageApi" hidden>
+            <label id="fImageUrlWrap">Adres
+              <input id="fImageUrl" spellcheck="false" />
+            </label>
+            <label id="fImageLmWrap">Model obrazów
+              <input id="fImageLm" spellcheck="false" placeholder="np. openai/gpt-image-1" />
+            </label>
+            <div class="grid2" id="fImageKeyWrap">
+              <label>Klucz API
+                <input id="fImageKey" type="password" spellcheck="false" autocomplete="off" placeholder="puste = klucz z .env" />
+              </label>
+              <label>Rozmiar
+                <input id="fImageSize" spellcheck="false" value="1536x1024" />
+              </label>
+            </div>
+            <small id="fImageHint"></small>
+          </div>
+          <label id="fImageWrap">Generator grafiki
+            <select id="fImageModel"></select>
+            <small>Zmiana generatora wczytuje inny model na GPU, więc pierwszy obraz powstaje dłużej.</small>
+          </label>
+          <label class="check"><input id="fRemember" type="checkbox" /> Zapamiętaj adresy i klucze w tej przeglądarce</label>
+          <div class="grid2">
+            <label>Pamięć
+              <select id="fHistory">
+                <option value="window">Okno ostatnich tur</option>
+                <option value="full">Pełna historia</option>
+                <option value="full_cached">Pełna historia z cache (full_cached)</option>
+              </select>
+            </label>
+            <label>Rozmiar okna (tury)
+              <input id="fWindow" type="number" min="1" max="100" />
+            </label>
+          </div>
+          <div class="grid2">
+            <label class="check"><input id="fState" type="checkbox" /> Stan świata w prompcie</label>
+            <label>Seed (opcjonalnie)
+              <input id="fSeed" type="number" placeholder="brak" />
+            </label>
+          </div>
         </div>
-        <small id="fImageHint"></small>
-      </div>
-      <label id="fImageWrap">Generator grafiki
-        <select id="fImageModel"></select>
-        <small>Zmiana generatora wczytuje inny model na GPU, więc pierwszy obraz powstaje dłużej.</small>
-      </label>
-      <label class="check"><input id="fRemember" type="checkbox" /> Zapamiętaj adresy i klucze w tej przeglądarce</label>
-      <div class="grid2">
-        <label>Pamięć
-          <select id="fHistory">
-            <option value="window">Okno ostatnich tur</option>
-            <option value="full">Pełna historia</option>
-            <option value="full_cached">Pełna historia z cache (full_cached)</option>
-          </select>
-        </label>
-        <label>Rozmiar okna (tury)
-          <input id="fWindow" type="number" min="1" max="100" />
-        </label>
-      </div>
-      <div class="grid2">
-        <label class="check"><input id="fState" type="checkbox" /> Stan świata w prompcie</label>
-        <label>Seed (opcjonalnie)
-          <input id="fSeed" type="number" placeholder="brak" />
-        </label>
-      </div>
-      <p class="dlg-error" id="dlgErr"></p>
-      <div class="row end">
-        <button type="button" class="btn" id="dlgCancel">Anuluj</button>
-        <button class="btn primary" id="dlgOk">Zacznij</button>
+      </details>
+
+      <p class="dlg-error" id="dlgErr" role="status"></p>
+      <div class="menu-actions">
+        <button class="btn primary big" id="dlgOk">Zacznij grę</button>
+        <button type="button" class="btn ghost" id="btnDemo">Podgląd bez modelu (demo)</button>
       </div>
     </form>
-  </dialog>
 
-  <script src="/app.js?v=7"></script>
+    <div class="building" id="building" hidden role="status" aria-live="polite">
+      <div class="building-card">
+        <span class="ring" aria-hidden="true"></span>
+        <p class="eyebrow">Narrator buduje świat</p>
+        <h2 id="buildIdea"></h2>
+        <p class="muted">Bohater, cel, lokacje, fakty niezmienne i scena otwierająca powstają w jednym zapytaniu do modelu.
+          Na serwerze uczelni trwa to zwykle 1 do 2 minut.</p>
+        <p class="elapsed" id="buildElapsed">0 s</p>
+      </div>
+    </div>
+  </section>
+
+  <script src="/app.js?v=8"></script>
 </body>
 </html>
