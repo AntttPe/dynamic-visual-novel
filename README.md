@@ -25,7 +25,7 @@ Otwórz **http://localhost:8000** i wybierz jedną z trzech dróg:
 |---|---|
 | tylko zobaczyć, jak to działa | kliknij **Szybki start w trybie demo** (bez modelu, bez kluczy) |
 | grać na modelu na swoim komputerze | uruchom Ollamę (sekcja [Model Llama (Ollama)](#model-llama-ollama-opcjonalnie)) i kliknij **Zacznij grę** |
-| grać na swoim API (OpenAI, Anthropic, Gemini, OpenRouter, vLLM…) | kliknij **Nowa gra** i wpisz model, adres i klucz w polach „Własne API” (sekcja [Własne API](#własne-api-do-tekstu-i-obrazów)) |
+| grać na swoim API (OpenAI, Anthropic, Gemini, OpenRouter, vLLM…) | w menu otwórz **Ustawienia deweloperskie** i wpisz model, adres i klucz w polach „Własne API” (sekcja [Własne API](#własne-api-do-tekstu-i-obrazów)) |
 
 Pierwszy raz instalujesz Dockera? Przejdź krok po kroku przez instrukcję poniżej.
 
@@ -82,7 +82,7 @@ docker compose up -d --build
 
 Pierwsze uruchomienie trwa kilka minut. Potem otwórz w przeglądarce:
 
-* **http://localhost:8000** to gra (scena, okno narracji i panel badawczy)
+* **http://localhost:8000** to gra (menu, scena na cały ekran, narracja i panel badawczy)
 * **http://localhost:8000/docs** to dokumentacja API
 
 Bez uruchomionego modelu kliknij **Szybki start w trybie demo**. Tryb demo nie opowiada
@@ -104,25 +104,33 @@ Jeden test jest pominięty, jeśli nie masz uruchomionej Ollamy (patrz niżej). 
 
 ## Krok 6. Zagraj
 
-1. Wejdź na http://localhost:8000 i kliknij **Nowa gra** (albo **Zacznij grę**).
-2. Wybierz świat i **model narratora**. Zielona kropka przy nazwie modelu na górze strony
-   oznacza, że model jest dostępny. Czerwona: brak klucza API albo Ollama nie działa.
-3. Jeśli chcesz użyć swojego klucza lub serwera, rozwiń **Własne API modelu tekstowego**
-   i wybierz sposób rysowania w polu **Grafika** (szczegóły niżej).
-4. Kliknij **Zacznij** i wpisz w polu na dole, co robisz, np. `Pytam karczmarza o koronę`.
-   Enter wysyła.
-5. Panel po prawej pokazuje dane badawcze każdej tury: czas, tokeny, stan świata, prompt i surowy JSON.
+1. Wejdź na http://localhost:8000. Otworzy się menu (w trakcie gry wracasz do niego przyciskiem **Menu**).
+2. Wybierz kartę świata: „Zaginiona korona” albo **Własny świat** (opis niżej).
+3. W **Ustawieniach deweloperskich** (przycisk w prawym górnym rogu menu) wybierz **model narratora**,
+   własne API, grafikę, pamięć i seed. Na serwerze uczelni najszybszy jest `openai/strata-big`.
+4. Kliknij **Zacznij grę** i wpisz w polu na dole, co robisz, np. `Pytam karczmarza o koronę`. Enter wysyła.
+5. Ekran gry: obraz sceny na cały ekran, narracja w pasku na dole, w prawym górnym rogu cel gry (i podpowiedź).
+   **Historia** (albo strzałka ←) przewija wcześniejsze tury jak slajdy, **Pełny ekran** (albo F) chowa przeglądarkę.
+6. **Panel badawczy** i **Dane techniczne** pokazują dane każdej tury: czas, tokeny, stan świata, prompt i surowy JSON.
+
+### Zapisane gry
+
+Każda tura zapisuje się w `data/dvn.sqlite`, a obrazy w `data/images/`. W menu przycisk **Zapisane gry** pokazuje
+rozegrane gry (miniatura, liczba tur, wynik, model). Wybrana gra otwiera się od początku w trybie historii:
+strzałki ← → przewijają tury, a **Wróć do gry** pozwala grać dalej. Działa też po restarcie serwera i bez serwera
+obrazów. Zapis jest tylko na twoim komputerze (katalog `data/` nie trafia do repo).
 
 ### Własny świat
 
-W polu **Świat** wybierz **Własny świat (opisz pomysł)** i wpisz kilka zdań, np.
+W menu wybierz kartę **Własny świat** i wpisz kilka zdań w polu po prawej (albo kliknij jeden z przykładów), np.
 `Cyberpunkowy Kraków w 2090 roku, jestem detektywką i szukam zaginionego androida`.
 Wybrany model narratora zamieni pomysł w pełny świat: bohatera, cel, zasady, 4 do 6 lokacji,
 fakty niezmienne (wygląd postaci, materiały przedmiotów) i scenę otwierającą. Potem ten sam model prowadzi grę.
 
 * Wytyczne dla modelu są w `app/prompts/world_builder.md`, a wzorem jest świat „Zaginiona korona”
   (`app/worlds/zaginiona_korona.yaml`). Zmiana wytycznych zmienia każdy kolejny świat.
-* Tworzenie świata trwa od kilku sekund do minuty. Mały model czasem nie trzyma formatu,
+* Tworzenie świata trwa od kilku sekund do kilku minut (`strata-big`: 1 do 5 minut, `large-reasoning` dłużej,
+  bo najpierw myśli). W trakcie czekania można kliknąć **Anuluj**. Mały model czasem nie trzyma formatu,
   wtedy gra ponawia prośbę, a po kilku nieudanych próbach pokazuje błąd.
 * Gotowy świat, pomysł gracza, prompt i odpowiedź modelu zapisują się w tabeli `worlds` bazy `data/dvn.sqlite`.
   Opis świata widać też w panelu badawczym, w zakładce **Tura**.
@@ -135,17 +143,17 @@ fakty niezmienne (wygląd postaci, materiały przedmiotów) i scenę otwierając
   albo straży, a przegrana to śmierć, loch na zawsze albo zniszczenie korony. Własny świat dostaje je od modelu.
 * Po każdej turze narrator ocenia, czy gra się skończyła (pole `outcome` w JSON). Gdy tak, na scenie pojawia się
   plansza „Wygrana!” albo „Przegrana” z powodem, a pole akcji się blokuje.
-* W oknie **Nowa gra** możesz ustawić **Limit tur**. Gdy limit minie, a cel nie jest osiągnięty, gra kończy się przegraną.
+* W menu możesz ustawić **Limit tur**. Gdy limit minie, a cel nie jest osiągnięty, gra kończy się przegraną.
   Narrator wie, która to tura, więc pod koniec przyspiesza akcję.
-* **Poziom trudności** w oknie **Nowa gra**: na poziomie **Łatwy** narrator dostaje dodatkowe zasady
-  z `app/prompts/narrator_easy.md`. Rozsądne pomysły się udają, postacie chętnie pomagają, narrator podsuwa
-  wskazówki i ostrzega przed niebezpieczeństwem, a przegrana zdarza się tylko po świadomie skrajnie ryzykownym działaniu.
-  Zasady świata i fakty niezmienne obowiązują dalej.
+* **Podpowiedzi** (przełącznik w menu, w kodzie `difficulty: "easy"`): narrator dostaje dodatkowe zasady
+  z `app/prompts/narrator_easy.md`. Rozsądne pomysły się udają, postacie chętnie pomagają, narrator ostrzega
+  przed niebezpieczeństwem, a po każdej turze zwraca pole `hint` z następnym krokiem w stronę wygranej.
+  Podpowiedź widać w prawym górnym rogu ekranu gry. Zasady świata i fakty niezmienne obowiązują dalej.
 * Wynik każdej tury zapisuje się w kolumnie `outcome` tabeli `turns`.
 * Dotyczy to tylko gry w przeglądarce. Eksperymenty (`app.eval.run`) mają ten sam prompt i format JSON co wcześniej.
 
 Gra zapamiętuje bieżącą rozgrywkę w przeglądarce, więc po odświeżeniu strony wracasz do niej.
-Restart serwera kończy grę (wszystkie tury są jednak zapisane w `data/dvn.sqlite`).
+Po restarcie serwera gra odtwarza się z bazy (patrz „Zapisane gry”) i można grać dalej.
 
 ---
 
@@ -246,7 +254,7 @@ zielona kropka i można grać.
 ## Wybór modelu narratora
 
 Połączenie z modelami idzie przez bibliotekę **LiteLLM**, więc zmiana modelu to zmiana
-jednej linijki w `.env` (`NARRATOR_MODEL`) albo pola „Model narratora” w oknie nowej gry.
+jednej linijki w `.env` (`NARRATOR_MODEL`) albo pola „Model narratora” w menu (Ustawienia deweloperskie).
 
 | Gdzie działa model | Ustawienia w `.env` |
 |---|---|
@@ -272,7 +280,7 @@ Wersja LiteLLM jest przypięta w `pyproject.toml`. Nie aktualizuj jej bez sprawd
 ## Własne API do tekstu i obrazów
 
 Nie musisz edytować `.env`, żeby zagrać na swoim koncie u dostawcy modeli.
-Wszystko ustawisz w oknie **Nowa gra**. Ustawienia działają tylko dla tej jednej gry.
+Wszystko ustawisz w menu, w panelu **Ustawienia deweloperskie**. Ustawienia działają tylko dla tej jednej gry.
 
 ### Model tekstowy (narrator)
 
@@ -345,7 +353,8 @@ Bez serwera obrazów gra działa jak zwykle.
    ```bash
    ssh -N -L 8420:127.0.0.1:8420 -i ~/.ssh/id_ed25519 <login>@<adres serwera>
    ```
-4. Graj na http://localhost:8000. Generator grafiki wybierzesz w oknie „Nowa gra” (domyślny ustawia `IMAGE_MODEL` w `.env`).
+4. Graj na http://localhost:8000. Generator grafiki wybierzesz w menu, w **Ustawieniach deweloperskich**
+   (domyślny ustawia `IMAGE_MODEL` w `.env`). Styl obrazów bierze epokę z pola `visual_style` świata.
    Na GPU mieści się jeden model naraz, więc po zmianie generatora serwer wczytuje inny model i pierwszy obraz powstaje dłużej.
    Obrazy zapisują się w `data/images/`, a czasy i prompty w tabeli `images` bazy.
 5. Po graniu obowiązkowo wyłącz serwer obrazów przez `Ctrl+C` (regulamin: żadnych usług działających na stałe).
