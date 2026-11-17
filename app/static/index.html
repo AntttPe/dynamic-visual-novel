@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="/style.css?v=8" />
+  <link rel="stylesheet" href="/style.css?v=9" />
 </head>
 <body>
   <header class="topbar">
@@ -85,11 +85,13 @@
         <button type="button" class="toggle" id="mDev" aria-pressed="true" title="Na razie jedyny tryb: to projekt badawczy">
           <span class="knob" aria-hidden="true"></span>Tryb deweloperski
         </button>
+        <button type="button" class="btn ghost" id="btnDev" aria-controls="devSettings" aria-expanded="false">Ustawienia deweloperskie <span class="dev-model" id="devSummary"></span></button>
         <button type="button" class="btn ghost" id="mBack" hidden>Wróć do gry</button>
       </div>
     </header>
 
     <form id="newForm" class="menu-body" autocomplete="off">
+     <div class="menu-left">
       <div class="menu-intro" data-enter>
         <p class="eyebrow" id="mEyebrow">Opowieść prowadzona przez model językowy</p>
         <h1 id="mTitle">Dynamic Visual Novel</h1>
@@ -98,12 +100,6 @@
 
       <input type="hidden" id="fWorld" />
       <div class="worlds" id="worlds" role="radiogroup" aria-label="Świat"></div>
-
-      <div class="idea" id="fIdeaWrap" hidden>
-        <label for="fIdea">Twój pomysł na świat</label>
-        <textarea id="fIdea" rows="3" maxlength="2000" placeholder="Kto jest bohaterem, gdzie i kiedy dzieje się historia, czego szuka. Np. Cyberpunkowy Kraków w 2090 roku, jestem detektywką i szukam zaginionego androida."></textarea>
-        <div class="examples" id="ideaExamples" aria-label="Przykładowe pomysły"></div>
-      </div>
 
       <div class="opts">
         <label class="switch"><input type="checkbox" id="fHints" /><span class="track" aria-hidden="true"></span>
@@ -114,8 +110,28 @@
         </label>
       </div>
 
-      <details class="dev" id="devSettings">
-        <summary>Ustawienia deweloperskie <span class="muted" id="devSummary"></span></summary>
+      <p class="dlg-error" id="dlgErr" role="status"></p>
+      <div class="menu-actions">
+        <button class="btn primary big" id="dlgOk">Zacznij grę</button>
+        <button type="button" class="btn ghost" id="btnDemo">Podgląd bez modelu (demo)</button>
+      </div>
+     </div>
+
+     <div class="menu-right">
+      <div class="idea" id="fIdeaWrap" hidden>
+        <p class="eyebrow">Pomysł na świat</p>
+        <label for="fIdea" class="sr-only">Twój pomysł na świat</label>
+        <textarea id="fIdea" rows="6" maxlength="2000" placeholder="Kto jest bohaterem, gdzie i kiedy dzieje się historia, czego szuka. Np. Cyberpunkowy Kraków w 2090 roku, jestem detektywką i szukam zaginionego androida."></textarea>
+        <div class="examples" id="ideaExamples" aria-label="Przykładowe pomysły"></div>
+      </div>
+
+     </div>
+
+      <aside class="dev" id="devSettings" aria-label="Ustawienia deweloperskie" hidden>
+        <header class="dev-head">
+          <h2>Ustawienia deweloperskie</h2>
+          <button type="button" class="btn ghost" id="devClose">Gotowe</button>
+        </header>
         <div class="dev-body">
           <label>Model narratora
             <select id="fModelPick"></select>
@@ -180,13 +196,7 @@
             </label>
           </div>
         </div>
-      </details>
-
-      <p class="dlg-error" id="dlgErr" role="status"></p>
-      <div class="menu-actions">
-        <button class="btn primary big" id="dlgOk">Zacznij grę</button>
-        <button type="button" class="btn ghost" id="btnDemo">Podgląd bez modelu (demo)</button>
-      </div>
+      </aside>
     </form>
 
     <div class="building" id="building" hidden role="status" aria-live="polite">
@@ -201,6 +211,6 @@
     </div>
   </section>
 
-  <script src="/app.js?v=8"></script>
+  <script src="/app.js?v=9"></script>
 </body>
 </html>

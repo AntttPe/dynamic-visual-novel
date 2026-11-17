@@ -530,8 +530,15 @@ function fillMenu() {
 }
 function updateDevSummary() {
   const model = $("#fModel").value || $("#fModelPick").value;
-  $("#devSummary").textContent = `· ${model}`;
+  $("#devSummary").textContent = model;
 }
+function showDev(on) {
+  $("#devSettings").hidden = !on;
+  $("#btnDev").setAttribute("aria-expanded", on);
+  if (on) $("#fModelPick").focus();
+}
+$("#btnDev").addEventListener("click", () => showDev($("#devSettings").hidden));
+$("#devClose").addEventListener("click", () => showDev(false));
 function modelLabel(m) {
   if (m === "demo") return "demo (bez modelu, tylko podgląd)";
   if (m.startsWith("openai/strata") || m.startsWith("openai/large")) return `${m} (serwer uczelni)`;
@@ -603,7 +610,10 @@ $("#fModelPick").addEventListener("change", () => {
 $("#fModel").addEventListener("input", updateDevSummary);
 $("#btnNew").addEventListener("click", openMenu);
 $("#mBack").addEventListener("click", closeMenu);
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && ui.menu && $("#building").hidden) closeMenu(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !ui.menu || !$("#building").hidden) return;
+  if (!$("#devSettings").hidden) showDev(false); else closeMenu();
+});
 $("#mDev").addEventListener("click", () => {
   if (DEV_ONLY) { $("#dlgErr").textContent = "Tryb gracza jeszcze nie istnieje. Na razie gra działa tylko w trybie deweloperskim."; return; }
 });
@@ -651,6 +661,7 @@ $("#newForm").addEventListener("submit", async (e) => {
   } catch (err) {
     $("#dlgErr").textContent = err.message;
   } finally {
+    showDev(false);
     showBuilding(null);
     ok.disabled = false;
     showIdea();
