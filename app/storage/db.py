@@ -178,6 +178,22 @@ class Store:
                  rec.outcome.model_dump_json() if rec.outcome else None),
             )
 
+    def run(self, run_id: str) -> dict | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
+        return dict(row) if row else None
+
+    def play_runs(self, limit: int = 100) -> list[dict]:
+        """Gry z przeglądarki (bez eksperymentów), najnowsze najpierw, z liczbą tur i wynikiem ostatniej tury."""
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT r.run_id, r.created_at, r.world_id, r.model, r.config,"
+                " (SELECT COUNT(*) FROM turns t WHERE t.run_id = r.run_id) AS turns,"
+                " (SELECT outcome FROM turns t WHERE t.run_id = r.run_id ORDER BY t.t DESC LIMIT 1) AS outcome,"
+                " (SELECT world FROM worlds w WHERE w.run_id = r.run_id) AS world"
+                " FROM runs r WHERE r.mode = 'play' ORDER BY r.created_at DESC LIMIT ?", (limit,))
+            return [dict(row) for row in rows]
+
     def turns(self, run_id: str) -> list[dict]:
         with closing(self._connect()) as conn:
             rows = conn.execute("SELECT * FROM turns WHERE run_id = ? ORDER BY t", (run_id,))

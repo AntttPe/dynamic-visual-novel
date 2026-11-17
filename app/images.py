@@ -336,14 +336,32 @@ class BackgroundImages:
                                   round(time.perf_counter() - started, 3),
                                   str(job.path) if job.status == "ready" else None, job.error)
 
+    def restore(self, game_id: str, rows: Sequence[dict]) -> None:
+        """Gotowe obrazy zapisanej gry (tabela images), żeby było je widać po restarcie serwera."""
+        for row in rows:
+            path = Path(row["path"] or "")
+            if row["status"] != "ready" or not path.is_file():
+                continue
+            loc, t = row["location_id"], row["t"]
+            key, url = {
+                "background": (loc, f"/api/games/{game_id}/image/file?location={quote(loc, safe='')}"),
+                "portrait": (f"char:{loc}", ""),
+                "scene": (f"turn:{t}", f"/api/games/{game_id}/scene/file?t={t}"),
+            }.get(row["kind"], (None, ""))
+            if key and (game_id, key) not in self.jobs:
+                self.jobs[(game_id, key)] = Job(game_id, loc, t, row["kind"], url, row["prompt"], row["seed"], path,
+                                                status="ready")
+            if row["model"]:
+                self.models.setdefault(game_id, row["model"])
+
     def _status(self, game_id: str, key: str) -> dict:
+        job = self.jobs.get((game_id, key))
+        if job and job.status == "ready":  # zapisany obraz widać także bez serwera obrazów
+            return {"status": job.status, "url": job.url}
         if self.client_for(game_id) is None:
             return {"status": "off"}
-        job = self.jobs.get((game_id, key))
         if job is None:
             return {"status": "none"}
-        if job.status == "ready":
-            return {"status": job.status, "url": job.url}
         if job.status == "failed":
             return {"status": job.status, "error": short_error(job.error)}
         return {"status": job.status}

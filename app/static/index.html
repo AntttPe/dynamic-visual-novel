@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="/style.css?v=11" />
+  <link rel="stylesheet" href="/style.css?v=12" />
 </head>
 <body>
   <div id="banner" class="banner" hidden></div>
@@ -111,6 +111,7 @@
         <button type="button" class="toggle" id="mDev" aria-pressed="true" title="Na razie jedyny tryb: to projekt badawczy">
           <span class="knob" aria-hidden="true"></span>Tryb deweloperski
         </button>
+        <button type="button" class="btn ghost" id="btnSaved" aria-controls="savedGames" aria-expanded="false">Zapisane gry</button>
         <button type="button" class="btn ghost" id="btnDev" aria-controls="devSettings" aria-expanded="false">Ustawienia deweloperskie <span class="dev-model" id="devSummary"></span></button>
         <button type="button" class="btn ghost" id="mBack" hidden>Wróć do gry</button>
       </div>
@@ -225,18 +226,30 @@
       </aside>
     </form>
 
+    <aside class="dev saved" id="savedGames" aria-label="Zapisane gry" hidden>
+      <header class="dev-head">
+        <h2>Zapisane gry</h2>
+        <button type="button" class="btn ghost" id="savedClose">Zamknij</button>
+      </header>
+      <p class="saved-note">Każda tura jest zapisana w bazie razem z obrazami. Gra otwiera się od początku w trybie historii:
+        strzałki ← → przewijają tury, a „Wróć do gry” pozwala grać dalej.</p>
+      <ul class="saved-list" id="savedList"></ul>
+    </aside>
+
     <div class="building" id="building" hidden role="status" aria-live="polite">
       <div class="building-card">
         <span class="ring" aria-hidden="true"></span>
         <p class="eyebrow">Narrator buduje świat</p>
         <h2 id="buildIdea"></h2>
         <p class="muted">Bohater, cel, lokacje, fakty niezmienne i scena otwierająca powstają w jednym zapytaniu do modelu.
-          Na serwerze uczelni trwa to zwykle 1 do 2 minut.</p>
+          Na <code>strata-big</code> trwa to zwykle 1 do 5 minut.</p>
         <p class="elapsed" id="buildElapsed">0 s</p>
+        <p class="muted build-model" id="buildModel"></p>
+        <button type="button" class="btn ghost" id="buildCancel">Anuluj</button>
       </div>
     </div>
   </section>
 
-  <script src="/app.js?v=11"></script>
+  <script src="/app.js?v=12"></script>
 </body>
 </html>

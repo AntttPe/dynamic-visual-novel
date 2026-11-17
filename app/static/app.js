@@ -265,7 +265,7 @@ $("#box").addEventListener("click", () => { if (typer) { clearInterval(typer.id)
 let lastHint = "";
 function renderGoal() {
   const card = $("#goalCard");
-  card.hidden = !ui.game || gameOver();
+  card.hidden = !ui.game || (gameOver() && !ui.history); // w historii skończonej gry też widać podpowiedzi z tur
   if (card.hidden) return;
   $("#goalText").textContent = ui.game.world.goal;
   const hints = ui.game.difficulty === "easy";
@@ -502,8 +502,8 @@ $("#form").addEventListener("submit", async (e) => {
   }
 });
 
-async function startGame(body) {
-  const game = await api("/api/games", { method: "POST", body: JSON.stringify(body) });
+async function startGame(body, signal) {
+  const game = await api("/api/games", { method: "POST", body: JSON.stringify(body), signal });
   ui.game = game;
   ui.view = null;
   ui.history = false;
@@ -699,8 +699,50 @@ $("#btnNew").addEventListener("click", openMenu);
 $("#mBack").addEventListener("click", closeMenu);
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape" || !ui.menu || !$("#building").hidden) return;
-  if (!$("#devSettings").hidden) showDev(false); else closeMenu();
+  if (!$("#savedGames").hidden) showSaved(false);
+  else if (!$("#devSettings").hidden) showDev(false);
+  else closeMenu();
 });
+
+// ---------- zapisane gry (z bazy, także po restarcie serwera) ----------
+const OUTCOME = { won: ["won", "wygrana"], lost: ["lost", "przegrana"] };
+async function showSaved(on) {
+  $("#savedGames").hidden = !on;
+  $("#btnSaved").setAttribute("aria-expanded", on);
+  if (!on) return;
+  showDev(false);
+  const list = $("#savedList");
+  list.innerHTML = `<li class="saved-empty">Wczytuję…</li>`;
+  let games = [];
+  try { games = await api("/api/games"); } catch (e) { list.innerHTML = `<li class="saved-empty">${esc(e.message)}</li>`; return; }
+  if (!games.length) { list.innerHTML = `<li class="saved-empty">Nie ma jeszcze rozegranych gier.</li>`; return; }
+  list.innerHTML = games.map((g) => {
+    const when = new Date(g.created_at).toLocaleString("pl-PL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    const [cls, label] = OUTCOME[g.outcome] ?? ["", "w trakcie"];
+    const turnsWord = g.turns === 1 ? "tura" : [2, 3, 4].includes(g.turns % 10) && ![12, 13, 14].includes(g.turns % 100) ? "tury" : "tur";
+    return `<li><button type="button" data-game="${esc(g.game_id)}">
+      <span class="thumb" ${g.thumb ? `style='background-image:url("${g.thumb}")'` : ""}></span>
+      <span class="meta"><b>${esc(g.title)}</b>
+        <small>${g.turns} ${turnsWord} · <span class="${cls}">${label}</span>${g.hints ? " · podpowiedzi" : ""}</small>
+        <small>${esc(when)} · ${esc(g.model)}</small></span></button></li>`;
+  }).join("");
+  list.querySelectorAll("[data-game]").forEach((b) => b.addEventListener("click", () => openSaved(b.dataset.game)));
+}
+async function openSaved(id) {
+  try {
+    ui.game = await api(`/api/games/${id}`);
+  } catch (e) {
+    $("#dlgErr").textContent = e.message;
+    return;
+  }
+  store.set("dvn.game", id);
+  showSaved(false);
+  ui.menu = false;
+  endingHidden = false;
+  showTurn(-1);
+}
+$("#btnSaved").addEventListener("click", () => showSaved($("#savedGames").hidden));
+$("#savedClose").addEventListener("click", () => showSaved(false));
 $("#mDev").addEventListener("click", () => {
   if (DEV_ONLY) { $("#dlgErr").textContent = "Tryb gracza jeszcze nie istnieje. Na razie gra działa tylko w trybie deweloperskim."; return; }
 });
@@ -711,15 +753,19 @@ $("#btnDemo").addEventListener("click", () => {
     .catch((e) => { $("#dlgErr").textContent = e.message; });
 });
 let buildTimer = null;
+let buildAbort = null;
 function showBuilding(idea) {
   $("#building").hidden = !idea;
   clearInterval(buildTimer);
   if (!idea) return;
+  const model = $("#fModel").value.trim();
+  $("#buildModel").textContent = `model: ${model}${model.includes("large-reasoning") ? " (myśli przed odpowiedzią, może to potrwać kilka minut)" : ""}`;
   $("#buildIdea").textContent = `„${idea.length > 140 ? `${idea.slice(0, 140)}…` : idea}”`;
   const t0 = performance.now();
   $("#buildElapsed").textContent = "0 s";
   buildTimer = setInterval(() => { $("#buildElapsed").textContent = `${Math.round((performance.now() - t0) / 1000)} s`; }, 500);
 }
+$("#buildCancel").addEventListener("click", () => buildAbort?.abort());
 $("#newForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const seed = $("#fSeed").value.trim();
@@ -729,6 +775,7 @@ $("#newForm").addEventListener("submit", async (e) => {
   ok.textContent = custom ? "Tworzę świat…" : "Zaczynam…";
   $("#dlgErr").textContent = "";
   if (custom) showBuilding($("#fIdea").value.trim());
+  buildAbort = new AbortController();
   try {
     await startGame({
       world_id: $("#fWorld").value,
@@ -742,12 +789,15 @@ $("#newForm").addEventListener("submit", async (e) => {
       seed: seed === "" ? null : Number(seed),
       image_model: $("#fImageWrap").hidden ? null : $("#fImageModel").value || null,
       ...apiPayload(),
-    });
+    }, buildAbort.signal);
     saveApiFields();
     $("#dlgErr").textContent = "";
   } catch (err) {
-    $("#dlgErr").textContent = err.message;
+    $("#dlgErr").textContent = err.name === "AbortError"
+      ? "Przerwano czekanie na świat. Model może jeszcze kończyć pracę na serwerze, ale ten świat nie zostanie użyty."
+      : err.message;
   } finally {
+    buildAbort = null;
     showDev(false);
     showBuilding(null);
     ok.disabled = false;

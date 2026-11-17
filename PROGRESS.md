@@ -394,6 +394,9 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 - Pliki: `app/static/`, `app/core/schemas.py`, `app/core/engine.py`, `app/prompts/narrator_easy.md`, `app/llm/demo.py`,
   `app/core/world.py`, `app/core/world_builder.py`, `app/prompts/world_builder.md`, `app/config.py`, `app/images.py`, `app/main.py`
   (`/api/worlds/{id}/cover`), `app/worlds/zaginiona_korona.jpg` (okładka z pomiaru FLUX), `docs/screenshots/`, testy.
+- Zapisane gry: menu ma „Zapisane gry” (lista z bazy z miniaturą, wynikiem i modelem, `GET /api/games`). Gra, której nie ma
+  w pamięci (np. po restarcie serwera), odtwarza się z bazy razem z obrazami (`app/core/saved.py`) i można grać dalej.
+  Otwiera się w trybie historii od początku, więc nadaje się do pokazania przebiegu gry na zajęciach.
 - Uwaga dla następnych: podpowiedzi sprawdzone tylko na `strata-big`. Okładka świata to plik `app/worlds/<id>.jpg`.
   Skill do UI (`taste-skill`) jest tylko lokalnie: `.claude/skills/` w `.gitignore`, wersja w `skills-lock.json`.
 

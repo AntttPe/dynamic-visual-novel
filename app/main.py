@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 from typing import Literal
 
@@ -10,6 +11,7 @@ from pydantic import BaseModel, Field
 from app import llm
 from app.config import settings
 from app.core.engine import GameEngine, GameOver
+from app.core.saved import load_game, saved_world
 from app.core.world import COVER_TYPES, WorldNotFound, cover_path, list_worlds, load_world
 from app.core.world_builder import (
     CUSTOM_WORLD,
@@ -279,10 +281,70 @@ async def new_game(req: NewGame, request: Request) -> dict:
 
 
 def _game(game_id: str) -> GameEngine:
+    """Gra z pamięci, a po restarcie serwera odtworzona z bazy (razem z gotowymi obrazami)."""
     game = GAMES.get(game_id)
+    if game:
+        return game
+    store = app.state.store or Store(Path(settings.data_dir) / "dvn.sqlite")
+    app.state.store = store
+    try:
+        game = load_game(store, game_id, app.state.llm_factory)
+    except Exception:  # noqa: BLE001  zepsuty zapis nie może wywrócić serwera
+        game = None
     if not game:
-        raise HTTPException(404, "Nie ma takiej gry. Serwer mógł się zrestartować, zacznij nową grę.")
+        raise HTTPException(404, "Nie ma takiej gry ani jej zapisu w bazie.")
+    GAMES[game_id] = game
+    LOCKS[game_id] = asyncio.Lock()
+    images = app.state.images
+    if images is None:  # pierwsze zapytanie po restarcie: ten sam obiekt, który zrobiłoby get_images
+        url = settings.image_server_url
+        images = app.state.images = BackgroundImages(
+            HttpImageClient(url, settings.image_timeout_s) if url else None,
+            Path(settings.data_dir) / "images", store, settings.image_style,
+        )
+    images.restore(game_id, store.images(game_id))
     return game
+
+
+def _thumb(store: Store, game_id: str) -> Path | None:
+    """Ostatni gotowy obraz sceny gry, a bez scen tło lokacji: miniatura na liście zapisanych gier."""
+    ready = [r for r in store.images(game_id) if r["status"] == "ready" and r["path"] and Path(r["path"]).is_file()]
+    for kind in ("scene", "background"):
+        found = [r for r in ready if r["kind"] == kind]
+        if found:
+            return Path(found[-1]["path"])
+    return None
+
+
+@app.get("/api/games")
+def saved_games(request: Request) -> list[dict]:
+    """Rozegrane gry z bazy (najnowsze najpierw), do przeglądania w menu. Gry bez tur są pomijane."""
+    store = get_store(request)
+    result = []
+    for run in store.play_runs():
+        if not run["turns"]:
+            continue
+        config = json.loads(run["config"])
+        title = json.loads(run["world"])["title"] if run["world"] else None
+        if title is None:
+            world = saved_world(store, run)
+            title = world.title if world else run["world_id"]
+        outcome = json.loads(run["outcome"])["status"] if run["outcome"] else None
+        result.append({
+            "game_id": run["run_id"], "created_at": run["created_at"], "title": title, "model": run["model"],
+            "turns": run["turns"], "outcome": outcome, "hints": config.get("difficulty") == "easy",
+            "custom": run["world"] is not None,
+            "thumb": f"/api/games/{run['run_id']}/thumb" if _thumb(store, run["run_id"]) else None,
+        })
+    return result
+
+
+@app.get("/api/games/{game_id}/thumb")
+def game_thumb(game_id: str, request: Request) -> FileResponse:
+    path = _thumb(get_store(request), game_id)
+    if path is None:
+        raise HTTPException(404, "Ta gra nie ma obrazów")
+    return FileResponse(path, media_type="image/png")
 
 
 @app.get("/api/games/{game_id}")
