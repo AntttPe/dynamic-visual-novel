@@ -67,7 +67,7 @@ function render({ animate = false } = {}) {
   const playing = !!ui.game && !ui.busy && !gameOver();
   $("#action").disabled = !playing;
   $("#send").disabled = !playing;
-  $("#action").placeholder = gameOver() ? "Gra się skończyła. Zacznij nową grę." : "Co robisz? Np. Pytam Borwina o koronę";
+  $("#action").placeholder = gameOver() ? "Gra się skończyła. Zacznij nową grę." : "Co robisz? Opisz dowolne działanie własnymi słowami";
 }
 
 // ---------- koniec gry ----------

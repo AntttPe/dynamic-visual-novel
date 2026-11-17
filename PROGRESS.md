@@ -69,8 +69,10 @@ Wzór wpisu w dzienniku:
 - `large-reasoning` przy domyślnym `NARRATOR_MAX_TOKENS` (1200) potrafi uciąć myślenie przed JSON. Ponowienia dają tury po 2,5 min.
 - `strata-big` 2026-11-08 chwilami nie odpowiadał przez ponad 150 s (przyczyna po stronie serwera, niepotwierdzona).
 - Długa narracja w nowym UI zasłania dolną część sceny (pasek z tekstem do 36% wysokości). Do zrobienia: chowanie tekstu.
-- Generator świata kopiuje szczegóły wzoru („Zaginiona korona”): w cyberpunkowym Krakowie pojawił się „Borwin”,
-  a `visual_style` był dosłownie przykładem z wytycznych. Do sprawdzenia w K2.
+- Modele kopiują przykłady z promptów: „Borwin” pojawiał się w innych światach, bo był w przykładzie podpowiedzi
+  w `narrator_easy.md` (poprawione 2026-11-17, przykład bez imion). `visual_style` cyberpunku był dosłownie przykładem
+  z wytycznych generatora. Do sprawdzenia w K2 na kilku pomysłach.
+- `strata-big` czasem pisze po polsku z drobnymi błędami składni (zwłaszcza w podpowiedziach na początku gry).
 - Obrazy w grze: portrety słabo oddają polskie opisy (np. Borwin bez rudych włosów) i bywają do siebie podobne,
   czasem pojawia się drobny tekst na obrazie, a akcja sceny bywa pominięta (np. brak wędki).
 
