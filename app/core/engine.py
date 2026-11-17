@@ -20,6 +20,7 @@ from app.core.context import (
 from app.core.memory import make_memory
 from app.core.schemas import (
     GameOutcome,
+    HintNarratorResponse,
     NarratorResponse,
     PlayNarratorResponse,
     TurnRecord,
@@ -31,6 +32,7 @@ from app.storage.db import Store
 
 NARRATOR_SCHEMA = NarratorResponse.model_json_schema()
 PLAY_NARRATOR_SCHEMA = PlayNarratorResponse.model_json_schema()
+HINT_NARRATOR_SCHEMA = HintNarratorResponse.model_json_schema()
 
 
 class GameOver(Exception):
@@ -159,8 +161,12 @@ class GameEngine:
             ending=self._ending,
             turn_info=turn_info,
         )
-        response_model = PlayNarratorResponse if self.endings else NarratorResponse
-        schema = PLAY_NARRATOR_SCHEMA if self.endings else NARRATOR_SCHEMA
+        if self.difficulty == "easy":
+            response_model, schema = HintNarratorResponse, HINT_NARRATOR_SCHEMA
+        elif self.endings:
+            response_model, schema = PlayNarratorResponse, PLAY_NARRATOR_SCHEMA
+        else:
+            response_model, schema = NarratorResponse, NARRATOR_SCHEMA
         conversation = list(prompt)
         parsed, raw, error = None, "", None
         tokens_in = tokens_out = tokens_cached = 0
@@ -213,6 +219,7 @@ class GameEngine:
         record = TurnRecord(
             t=t,
             outcome=outcome,
+            hint=(parsed.hint.strip() or None) if isinstance(parsed, HintNarratorResponse) else None,
             player_action=action,
             response=parsed,
             raw_output=raw,

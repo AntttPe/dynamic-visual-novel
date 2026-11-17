@@ -7,31 +7,49 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="/style.css?v=9" />
+  <link rel="stylesheet" href="/style.css?v=11" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <strong>Dynamic Visual Novel</strong>
-      <span id="worldTitle" class="muted"></span>
-    </div>
-    <div class="chips" id="chips"></div>
-    <div class="actions">
-      <button type="button" id="btnNew" class="btn">Menu</button>
-      <button type="button" id="btnTech" class="btn" aria-pressed="false">Dane techniczne</button>
-      <button type="button" id="btnPanel" class="btn" aria-pressed="true">Panel badawczy</button>
-    </div>
-  </header>
-
   <div id="banner" class="banner" hidden></div>
 
-  <main class="layout" id="layout">
-    <section class="play">
+  <main class="game" id="layout">
+    <section class="play" aria-label="Gra">
       <div class="stage" id="stage">
-        <div class="bg" id="bg"></div>
-        <div class="loc" id="loc"></div>
-        <div class="viewing" id="viewing" hidden></div>
+        <div class="bg" id="bg" aria-hidden="true"></div>
+        <div class="art" id="art" aria-hidden="true"></div>
+        <div class="shade" aria-hidden="true"></div>
+
+        <header class="hud">
+          <div class="hud-left">
+            <p class="world-title" id="worldTitle"></p>
+            <div class="loc" id="loc"></div>
+            <div class="chips" id="chips"></div>
+          </div>
+          <nav class="toolbar" aria-label="Gra">
+            <button type="button" class="tool" id="btnHistory" aria-pressed="false" title="Przeglądaj poprzednie tury (strzałki ← →)">Historia</button>
+            <button type="button" class="tool dev-only" id="btnTech" aria-pressed="false">Dane techniczne</button>
+            <button type="button" class="tool dev-only" id="btnPanel" aria-pressed="true">Panel badawczy</button>
+            <button type="button" class="tool" id="btnFull" title="Pełny ekran (F)">Pełny ekran</button>
+            <button type="button" class="tool" id="btnNew">Menu</button>
+          </nav>
+        </header>
+
+        <aside class="goal" id="goalCard" aria-label="Cel i podpowiedź" hidden>
+          <button type="button" class="goal-head" id="goalToggle" aria-expanded="true">
+            <span class="eyebrow">Cel</span><span class="chev" aria-hidden="true">›</span>
+          </button>
+          <div class="goal-body" id="goalBody">
+            <p class="goal-text" id="goalText"></p>
+            <div class="hint" id="hintBox" hidden>
+              <span class="eyebrow">Podpowiedź</span>
+              <p id="hintText"></p>
+            </div>
+          </div>
+        </aside>
         <div class="bgnote" id="bgNote" hidden></div>
+
+        <button type="button" class="nav prev" id="histPrev" aria-label="Poprzednia tura" hidden>‹</button>
+        <button type="button" class="nav next" id="histNext" aria-label="Następna tura" hidden>›</button>
 
         <div class="ending" id="ending" hidden>
           <p class="eyebrow">Koniec gry</p>
@@ -42,25 +60,33 @@
             <button type="button" class="btn ghost" id="btnEndHide">Pokaż ostatnią scenę</button>
           </div>
         </div>
-      </div>
 
-      <div class="box" id="box" hidden>
-        <p class="action" id="lastAction"></p>
-        <p class="narr" id="narr"></p>
-        <div class="dialogue" id="dialogue"></div>
-        <p class="turn-error" id="turnErr" hidden></p>
-        <div class="thinking" id="thinking" hidden>
-          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-          Narrator pisze… <span id="elapsed">0,0 s</span>
+        <div class="dock">
+          <div class="box" id="box" hidden>
+            <p class="action" id="lastAction"></p>
+            <p class="narr" id="narr"></p>
+            <div class="dialogue" id="dialogue"></div>
+            <p class="turn-error" id="turnErr" hidden></p>
+            <div class="thinking" id="thinking" hidden>
+              <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              Narrator pisze… <span id="elapsed">0,0 s</span>
+            </div>
+          </div>
+
+          <form id="form" class="input" autocomplete="off">
+            <label for="action" class="sr-only">Co robisz?</label>
+            <span class="prompt-mark" aria-hidden="true">›</span>
+            <input id="action" placeholder="Co robisz? Np. Pytam Borwina o koronę" maxlength="500" />
+            <button class="btn primary" id="send">Wyślij</button>
+          </form>
+
+          <div class="histbar" id="histBar" hidden>
+            <span id="histLabel"></span>
+            <div class="dots-row" id="histDots"></div>
+            <button type="button" class="btn ghost" id="histExit">Wróć do gry</button>
+          </div>
         </div>
       </div>
-
-      <form id="form" class="input" autocomplete="off">
-        <label for="action" class="sr-only">Co robisz?</label>
-        <input id="action" placeholder="Co robisz? Np. Pytam Borwina o koronę" maxlength="500" />
-        <button class="btn primary" id="send">Wyślij</button>
-      </form>
-      <p class="hint">Enter wysyła. Kliknięcie tekstu pomija animację.</p>
     </section>
 
     <aside class="panel" id="panel" aria-label="Panel badawczy">
@@ -211,6 +237,6 @@
     </div>
   </section>
 
-  <script src="/app.js?v=9"></script>
+  <script src="/app.js?v=11"></script>
 </body>
 </html>

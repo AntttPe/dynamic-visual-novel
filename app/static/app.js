@@ -2,10 +2,11 @@
 const $ = (s) => document.querySelector(s);
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const ui = { config: null, health: null, game: null, view: null, tab: "turn", busy: false, menu: true };
+const ui = { config: null, health: null, game: null, view: null, tab: "turn", busy: false, menu: true, history: false };
 // Tryb deweloperski: panel badawczy, dane techniczne i ustawienia modeli. Na razie jedyny tryb (projekt badawczy),
 // tryb gracza (tylko przeglądanie historii) dojdzie później.
 const DEV_ONLY = true;
+document.body.classList.toggle("dev-mode", DEV_ONLY);
 let typer = null;
 let timer = null;
 
@@ -59,6 +60,8 @@ function render({ animate = false } = {}) {
   renderTop();
   renderBanner();
   renderStage(animate);
+  renderGoal();
+  renderHistoryBar();
   renderEnding();
   renderPanel();
   const playing = !!ui.game && !ui.busy && !gameOver();
@@ -72,7 +75,7 @@ const gameOver = () => !!ui.game && (ui.game.outcome?.status ?? "ongoing") !== "
 let endingHidden = false; // gracz chce obejrzeć ostatnią scenę bez planszy końca
 function renderEnding() {
   const el = $("#ending");
-  const latest = ui.view === null || ui.view >= turns().length - 1;
+  const latest = !ui.history && (ui.view === null || ui.view >= turns().length - 1);
   const show = gameOver() && latest && !endingHidden;
   el.hidden = !show;
   if (!show) return;
@@ -85,7 +88,7 @@ $("#btnEndNew").addEventListener("click", () => openMenu());
 $("#btnEndHide").addEventListener("click", () => { endingHidden = true; renderEnding(); });
 
 function renderTop() {
-  $("#worldTitle").textContent = ui.game ? `· ${ui.game.world.title}` : "";
+  $("#worldTitle").textContent = ui.game ? ui.game.world.title : "";
   const chips = [];
   const model = currentModel();
   const st = modelStatus(model);
@@ -135,7 +138,21 @@ function setBackground(locationId) {
 const stageImages = new Map(); // klucz obrazu -> adres gotowego pliku
 let stageWatch = null; // to, na co teraz czekamy
 
-function setStageImage(url) { $("#bg").style.background = `url("${url}") center / cover no-repeat`; }
+let shownImage = null;
+function setStageImage(url) {
+  if (url === shownImage) return;
+  shownImage = url;
+  const art = $("#art");
+  const old = [...art.children];
+  old.forEach((el) => el.classList.remove("on"));
+  setTimeout(() => old.forEach((el) => el.remove()), 1200);
+  if (!url) return;
+  const layer = document.createElement("div");
+  layer.className = "layer";
+  layer.style.backgroundImage = `url("${url}")`;
+  art.append(layer);
+  requestAnimationFrame(() => requestAnimationFrame(() => layer.classList.add("on")));
+}
 function showBgNote(text) { $("#bgNote").textContent = text; $("#bgNote").hidden = !text; }
 const preload = (url) => new Promise((done) => {
   const im = new Image();
@@ -160,10 +177,7 @@ async function watchStage(loc, turn) {
   const placeKey = `${gameId}|place|${loc}`;
   const sceneKey = turn ? `${gameId}|turn|${turn}` : null;
   const wanted = sceneKey ?? placeKey;
-  const paint = () => {
-    const url = stageImages.get(sceneKey) ?? stageImages.get(placeKey);
-    if (url) setStageImage(url);
-  };
+  const paint = () => setStageImage(stageImages.get(sceneKey) ?? stageImages.get(placeKey) ?? null);
   paint();
   if (stageImages.has(wanted)) { stageWatch = null; showBgNote(""); return; }
   if (stageWatch === wanted) return;
@@ -194,7 +208,7 @@ function renderStage(animate) {
   $("#box").hidden = !game;
   if (!game) {
     $("#loc").innerHTML = "";
-    $("#viewing").hidden = true;
+    setStageImage(null);
     setBackground("start");
     stageWatch = null;
     showBgNote("");
@@ -206,12 +220,6 @@ function renderStage(animate) {
   $("#loc").innerHTML = `<span class="name">${esc(locationName(loc))}</span><span class="id">location_id: ${esc(loc)}</span>`;
   watchStage(loc, t?.response ? t.t : null);
 
-  const past = ui.view !== null && ui.view < turns().length - 1;
-  $("#viewing").hidden = !past;
-  if (past) {
-    $("#viewing").innerHTML = `Podgląd tury ${viewIndex() + 1} z ${turns().length} <button type="button" id="bLatest">wróć do bieżącej</button>`;
-    $("#bLatest").onclick = () => { ui.view = null; render(); };
-  }
 
   const err = $("#turnErr");
   err.hidden = true;
@@ -253,6 +261,84 @@ function showNarration(text, dialogue, animate) {
 function stopTyping() { if (typer) { clearInterval(typer.id); typer = null; } }
 $("#box").addEventListener("click", () => { if (typer) { clearInterval(typer.id); typer.finish(); } });
 
+// ---------- cel i podpowiedź (prawy górny róg) ----------
+let lastHint = "";
+function renderGoal() {
+  const card = $("#goalCard");
+  card.hidden = !ui.game || gameOver();
+  if (card.hidden) return;
+  $("#goalText").textContent = ui.game.world.goal;
+  const hints = ui.game.difficulty === "easy";
+  const t = viewedTurn();
+  const hint = t ? t.hint : null;
+  $("#hintBox").hidden = !hints;
+  if (!hints) return;
+  const text = hint || (ui.busy ? "Narrator myśli nad wskazówką…" : t ? "Narrator nie dał wskazówki w tej turze." : "Wskazówka pojawi się po pierwszej turze.");
+  $("#hintBox").classList.toggle("fresh", text !== lastHint);
+  lastHint = text;
+  $("#hintText").textContent = text;
+}
+function setGoalOpen(open) {
+  $("#goalToggle").setAttribute("aria-expanded", open);
+  $("#goalBody").hidden = !open;
+  store.set("dvn.goal", open ? "1" : "0");
+}
+$("#goalToggle").addEventListener("click", () => setGoalOpen($("#goalToggle").getAttribute("aria-expanded") !== "true"));
+setGoalOpen(store.get("dvn.goal") !== "0");
+
+// ---------- historia jako pokaz slajdów ----------
+// Indeks -1 to scena otwierająca (intro świata), 0..n-1 to tury.
+function showTurn(i) {
+  if (!ui.game) return;
+  ui.history = true;
+  ui.view = Math.max(-1, Math.min(i, turns().length - 1));
+  render();
+}
+function exitHistory() {
+  ui.history = false;
+  ui.view = null;
+  render();
+  $("#action").focus();
+}
+function renderHistoryBar() {
+  const on = ui.history && !!ui.game;
+  $("#btnHistory").setAttribute("aria-pressed", on);
+  $("#histBar").hidden = !on;
+  $("#form").hidden = on;
+  $("#histPrev").hidden = !on;
+  $("#histNext").hidden = !on;
+  if (!on) return;
+  const i = viewIndex();
+  const n = turns().length;
+  $("#histPrev").disabled = i <= -1;
+  $("#histNext").disabled = i >= n - 1;
+  const word = n === 1 ? "tura" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "tury" : "tur";
+  $("#histLabel").textContent = i < 0 ? `Początek historii · ${n} ${word}` : `Tura ${i + 1} z ${n}`;
+  const dots = [-1, ...turns().map((_, k) => k)];
+  $("#histDots").innerHTML = dots.map((k) => `<button type="button" data-k="${k}" class="${k === i ? "cur" : ""}" aria-label="${k < 0 ? "Początek" : `Tura ${k + 1}`}"></button>`).join("");
+  $("#histDots").querySelectorAll("[data-k]").forEach((b) => b.addEventListener("click", () => showTurn(Number(b.dataset.k))));
+}
+$("#btnHistory").addEventListener("click", () => (ui.history ? exitHistory() : showTurn(turns().length - 1)));
+$("#histPrev").addEventListener("click", () => showTurn(viewIndex() - 1));
+$("#histNext").addEventListener("click", () => showTurn(viewIndex() + 1));
+$("#histExit").addEventListener("click", exitHistory);
+document.addEventListener("keydown", (e) => {
+  if (ui.menu || !ui.game || e.target.closest?.("input, textarea, select")) return;
+  if (e.key === "ArrowLeft") showTurn(viewIndex() - 1);
+  else if (e.key === "ArrowRight" && ui.history) showTurn(viewIndex() + 1);
+  else if (e.key === "Escape" && ui.history) exitHistory();
+  else if (e.key.toLowerCase() === "f") toggleFull();
+});
+
+// ---------- pełny ekran i wysokość paska z tekstem ----------
+function toggleFull() {
+  if (document.fullscreenElement) document.exitFullscreen?.();
+  else document.documentElement.requestFullscreen?.().catch(() => {});
+}
+$("#btnFull").addEventListener("click", toggleFull);
+document.addEventListener("fullscreenchange", () => { $("#btnFull").textContent = document.fullscreenElement ? "Zamknij pełny ekran" : "Pełny ekran"; });
+new ResizeObserver(([e]) => $("#stage").style.setProperty("--dock-h", `${Math.round(e.contentRect.height) + 20}px`)).observe($(".dock"));
+
 // ---------- panel badawczy ----------
 function renderPanel() {
   document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === ui.tab));
@@ -260,9 +346,7 @@ function renderPanel() {
   if (!ui.game) { body.innerHTML = `<p class="empty">Zacznij grę, żeby zobaczyć dane tury.</p>`; return; }
   const t = viewedTurn();
   body.innerHTML = { turn: tabTurn, state: tabState, prompt: tabPrompt, json: tabJson, history: tabHistory }[ui.tab](t);
-  body.querySelectorAll("[data-view]").forEach((el) => el.addEventListener("click", () => {
-    ui.view = Number(el.dataset.view); render();
-  }));
+  body.querySelectorAll("[data-view]").forEach((el) => el.addEventListener("click", () => showTurn(Number(el.dataset.view))));
 }
 
 function tabTurn(t) {
@@ -368,6 +452,7 @@ $("#btnPanel").addEventListener("click", () => {
 // ---------- akcje ----------
 function setBusy(busy) {
   ui.busy = busy;
+  if (ui.game) renderGoal();
   $("#thinking").hidden = !busy;
   $("#action").disabled = busy || !ui.game;
   $("#send").disabled = busy || !ui.game;
@@ -384,6 +469,7 @@ $("#form").addEventListener("submit", async (e) => {
   const action = $("#action").value.trim();
   if (!action || ui.busy || !ui.game) return;
   ui.view = null;
+  ui.history = false;
   render();
   setBusy(true);
   $("#lastAction").textContent = `› ${action}`;
@@ -420,6 +506,7 @@ async function startGame(body) {
   const game = await api("/api/games", { method: "POST", body: JSON.stringify(body) });
   ui.game = game;
   ui.view = null;
+  ui.history = false;
   ui.menu = false;
   endingHidden = false;
   store.set("dvn.game", game.game_id);

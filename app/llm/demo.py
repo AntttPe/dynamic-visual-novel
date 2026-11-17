@@ -40,14 +40,18 @@ class DemoLLM:
         if location_id == "tavern":
             dialogue.append({"speaker": "Borwin", "text": "Czego sobie życzysz, wędrowcze?"})
 
-        text = json.dumps({
+        answer = {
             "narration": narration,
             "dialogue": dialogue,
             "scene": {"location_id": location_id,
                       "description": loc.description if loc else "nieznane miejsce"},
             "state_updates": updates,
             "characters_present": [d["speaker"] for d in dialogue],
-        }, ensure_ascii=False)
+        }
+        if "# Poziom łatwy" in messages[0]["content"]:  # gra z podpowiedziami
+            others = [x.name for x in self.world.locations if x.id != location_id]
+            answer["hint"] = f"(Demo) Rozejrzyj się albo idź dalej: {others[0]}." if others else "(Demo) Porozmawiaj z kimś."
+        text = json.dumps(answer, ensure_ascii=False)
         await asyncio.sleep(self.delay_s)
         tokens_in = sum(len(m["content"]) for m in messages) // 4
         return LLMResult(text=text, tokens_in=tokens_in, tokens_out=len(text) // 4,

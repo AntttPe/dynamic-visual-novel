@@ -147,6 +147,20 @@ async def test_normal_mode_and_experiments_have_no_easy_prompt():
         GameEngine(WORLD, FakeLLM(), endings=True, difficulty="hard")
 
 
+@pytest.mark.anyio
+async def test_hint_only_with_hints_on():
+    with_hint = json.loads(answer())
+    with_hint["hint"] = "Zapytaj Borwina o noc balu."
+    easy = GameEngine(WORLD, FakeLLM([json.dumps(with_hint, ensure_ascii=False)]), endings=True, difficulty="easy")
+    record = await easy.step("Rozglądam się")
+    assert record.hint == "Zapytaj Borwina o noc balu."
+    assert "`hint`" in easy.llm.calls[0][0]["content"]
+    normal = GameEngine(WORLD, FakeLLM([json.dumps(with_hint, ensure_ascii=False)]), endings=True)
+    assert (await normal.step("Rozglądam się")).hint is None
+    empty = GameEngine(WORLD, FakeLLM([answer()]), endings=True, difficulty="easy")
+    assert (await empty.step("Rozglądam się")).hint is None
+
+
 def test_api_difficulty(env):
     client, _ = env
     game = client.post("/api/games", json={"difficulty": "easy"}).json()

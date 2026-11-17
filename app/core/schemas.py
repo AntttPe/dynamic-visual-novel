@@ -51,6 +51,12 @@ class PlayNarratorResponse(NarratorResponse):
     outcome: GameOutcome = Field(default_factory=GameOutcome)
 
 
+class HintNarratorResponse(PlayNarratorResponse):
+    """Gra z podpowiedziami: do tego jedna wskazówka, co zrobić dalej, pokazywana obok sceny."""
+
+    hint: str = Field(default="", description="Jedno krótkie zdanie: następny krok gracza w stronę wygranej.")
+
+
 class RejectedUpdate(BaseModel):
     update: StateUpdate
     reason: str
@@ -78,3 +84,4 @@ class TurnRecord(BaseModel):
     state_after: list[Fact] = Field(default_factory=list)
     error: str | None = None
     outcome: GameOutcome | None = None  # tylko gra z wykrywaniem końca (None w eksperymentach)
+    hint: str | None = None  # tylko gra z podpowiedziami (None w eksperymentach i bez podpowiedzi)
