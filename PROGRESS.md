@@ -68,6 +68,9 @@ Wzór wpisu w dzienniku:
   całej tury (TTFT mierzyć skryptem `kv_cache`, bez JSON). Ważne dla Z4c. `large-reasoning` strumieniuje normalnie.
 - `large-reasoning` przy domyślnym `NARRATOR_MAX_TOKENS` (1200) potrafi uciąć myślenie przed JSON. Ponowienia dają tury po 2,5 min.
 - `strata-big` 2026-11-08 chwilami nie odpowiadał przez ponad 150 s (przyczyna po stronie serwera, niepotwierdzona).
+- Długa narracja w nowym UI zasłania dolną część sceny (pasek z tekstem do 36% wysokości). Do zrobienia: chowanie tekstu.
+- Generator świata kopiuje szczegóły wzoru („Zaginiona korona”): w cyberpunkowym Krakowie pojawił się „Borwin”,
+  a `visual_style` był dosłownie przykładem z wytycznych. Do sprawdzenia w K2.
 - Obrazy w grze: portrety słabo oddają polskie opisy (np. Borwin bez rudych włosów) i bywają do siebie podobne,
   czasem pojawia się drobny tekst na obrazie, a akcja sceny bywa pominięta (np. brak wędki).
 
@@ -89,8 +92,8 @@ Wpisz się w kolumnę „Kto”, zanim zaczniesz (osobny mały commit i push). O
 
 | Kto | Zadanie | Wymaga | Od kiedy |
 |---|---|---|---|
-| Antek | U1. Nowe UI: menu z okładką świata, generator świata widoczny w menu, potem ekran gry na pełny ekran, historia jako pokaz slajdów, przycisk trybu deweloperskiego (na razie zawsze włączony), „Podpowiedzi” zamiast „easy mode” z podpowiedzią w prawym górnym rogu | nic (tryb `demo`) | 2026-11-17 |
-| (wolne) | K1. Warunki końca gry (kod jest, Dziennik 2026-11-16): test na prawdziwym modelu (wygrana, przegrana, limit tur) i screenshoty | VPN | |
+| Antek | U1. Nowe UI. Zrobione: menu, ekran gry, historia, podpowiedzi (Dziennik 2026-11-17). Zostało: chowanie tekstu, tryb gracza | nic (tryb `demo`) | 2026-11-17 |
+| (wolne) | K1. Warunki końca gry (kod jest, Dziennik 2026-11-16). Wygrana sprawdzona na `strata-big` (Dziennik 2026-11-17), zostały przegrana i limit tur | VPN | |
 | (wolne) | K2. Generator scenariuszy (świat z pomysłu jest): ocena kilku pomysłów na 2 modelach (poprawność, czas, sens świata, kilka tur gry). Ustalić, czy chodzi też o scenariusze badawcze (komendy gracza w YAML) | VPN | |
 | (wolne) | K3. Konteneryzacja, tylko plan: profile `docker compose` (gra, serwer obrazów na GPU, obrazy przez API), co działa na jakim systemie | nic | |
 | (wolne) | K4. TTS: najpierw głos przeglądarki (Web Speech API), potem dostawca przez API (np. ElevenLabs), stały głos dla postaci | nic | |
@@ -115,7 +118,7 @@ Na serwerze GPU pobrane są już: FLUX.2 klein 4B, SDXL + IP-Adapter, Qwen-Image
 | Dudsztor | G2b. Adaptery tożsamości postaci. Zrobione: IP-Adapter Face (Dziennik 2026-11-09). PuLID i InstantID odłożone | GPU | 2026-11-08 |
 | (wolne) | G3a. Eksport prawdziwej gry do zestawu scen dla obrazów | VPN | |
 | (wolne) | G3b. Test całości: gra z narratorem, potem obrazy do każdej tury, czas i spójność | VPN, GPU, po G3a | |
-| (wolne) | G4. Screenshoty GUI do raportu | nic (tryb `demo`) albo VPN | |
+| Antek | G4. Screenshoty GUI. Zrobione: `docs/screenshots/` z prawdziwej gry z obrazami (Dziennik 2026-11-17) | nic | 2026-11-17 |
 
 **Sprint 4 (od 2026-11-03), wymagania prowadzącego (DoD: KV cache, model image-to-image, optymalizacja czasu):**
 
@@ -371,6 +374,28 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
   ale SDXL z nim nadal wyraźnie ustępuje FLUX.2 klein (pełny pomiar G1b).
 
 ## Dziennik
+
+### 2026-11-17, Antek: nowe UI, podpowiedzi, styl obrazów ze świata, test całości z obrazami
+- Co zrobione: menu na cały ekran (okładka świata, karta „Własny świat” z generatorem, ekran budowania świata, ustawienia
+  deweloperskie w wysuwanym panelu), ekran gry na cały ekran (scena za paskiem z tekstem, karta „Cel” i „Podpowiedź”
+  w prawym górnym rogu, historia jako pokaz slajdów strzałkami, ciemny panel badawczy). „Łatwy poziom” w UI to teraz „Podpowiedzi”
+  (w kodzie nadal `difficulty: easy`): narrator zwraca pole `hint` (`HintNarratorResponse`), eksperymenty bez zmian.
+- Poprawka: styl obrazów miał wpisane „medieval”, więc własne światy (np. cyberpunk) dostawały średniowieczne obrazy.
+  Świat ma teraz `visual_style` (epoka po angielsku, generator go wypełnia), wstawiany w style z `app/config.py` w miejsce `{era}`.
+  „Zaginiona korona” ma `visual_style: medieval`, więc jej prompty obrazów są identyczne jak w pomiarach.
+- Test całości (narrator + obrazy, skrypt przez API, nie w repo): `strata-big`, `full_cached`, podpowiedzi, FLUX.2 klein 4B przez tunel.
+  Po 2 do 4 stałych ruchach gracz robił to, co mówi podpowiedź.
+  - „Zaginiona korona”: wygrana w 7. turze. Tekst 23 do 45 s (mediana 29 s), obraz sceny 5 do 13 s po tekście, 7/7 JSON za 1. razem,
+    cache prefiksu 79 do 89% tokenów wejścia od 2. tury.
+  - Cyberpunkowy Kraków z generatora (świat 96 i 268 s): wygrana w 6. turze, tekst 28 do 100 s. Przed poprawką obrazy były mieszanką
+    średniowiecza i cyberpunku (rycerz w zbroi), po poprawce spójnie cyberpunkowe, bohaterka podobna w kolejnych scenach.
+  - Problemy obrazów: napis na obrazie (podpis „BRWIN”, szyld baru), bohater narysowany dwa razy w scenie z 4 postaciami (G1c),
+    pominięta akcja (podnoszenie deski), deszcz w środku biura (styl „neon and rain”).
+- Pliki: `app/static/`, `app/core/schemas.py`, `app/core/engine.py`, `app/prompts/narrator_easy.md`, `app/llm/demo.py`,
+  `app/core/world.py`, `app/core/world_builder.py`, `app/prompts/world_builder.md`, `app/config.py`, `app/images.py`, `app/main.py`
+  (`/api/worlds/{id}/cover`), `app/worlds/zaginiona_korona.jpg` (okładka z pomiaru FLUX), `docs/screenshots/`, testy.
+- Uwaga dla następnych: podpowiedzi sprawdzone tylko na `strata-big`. Okładka świata to plik `app/worlds/<id>.jpg`.
+  Skill do UI (`taste-skill`) jest tylko lokalnie: `.claude/skills/` w `.gitignore`, wersja w `skills-lock.json`.
 
 ### 2026-11-16, Dudsztor: łatwy poziom (easy mode)
 - Co zrobione: „Poziom trudności” w oknie „Nowa gra”. Łatwy dokleja do zasad końca gry blok

@@ -27,6 +27,7 @@ from app.images import (
     portrait_prompt,
     present_characters,
     scene_prompt,
+    styled,
 )
 from app.storage.db import Store
 
@@ -80,11 +81,11 @@ def request_background(request: Request, game: GameEngine, location: str, descri
     """Zamawia tło. Opis lokacji ze świata ma pierwszeństwo, bo jest stały, opis narratora zmienia się co turę."""
     known = game.world.location(location)
     get_images(request).request(game.game_id, location, known.description if known else description,
-                                game.config["seed"], t)
+                                game.config["seed"], t, game.world.visual_style)
 
 
 def request_portrait(request: Request, game: GameEngine, name: str, entity: str | None, t: int) -> None:
-    prompt = portrait_prompt(settings.image_portrait_style, name, game.state.facts(), entity)
+    prompt = portrait_prompt(styled(settings.image_portrait_style, game.world.visual_style), name, game.state.facts(), entity)
     get_images(request).request_portrait(game.game_id, name, prompt, game.config["seed"], t)
 
 
@@ -312,7 +313,8 @@ async def play_turn(game_id: str, req: PlayerTurn, request: Request) -> dict:
         for name in others:
             request_portrait(request, game, name, None, record.t)
         known = game.world.location(game.location)
-        prompt = scene_prompt(settings.image_scene_style, known.description if known else r.scene.description,
+        prompt = scene_prompt(styled(settings.image_scene_style, game.world.visual_style),
+                              known.description if known else r.scene.description,
                               game.world.player, game.state.facts(), visible, req.action, r.narration, hidden)
         images.request_scene(game.game_id, record.t, game.location, prompt, game.config["seed"],
                              [game.world.player, *others])

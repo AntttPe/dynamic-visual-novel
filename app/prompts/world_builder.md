@@ -15,6 +15,9 @@ Projektujesz świat startowy interaktywnej powieści wizualnej. Gracz opisuje sw
 - `lose_condition`: jedno zdanie o nieodwracalnej porażce: śmierć bohatera, utrata albo zniszczenie celu,
   uwięzienie bez wyjścia. Zwykłe niepowodzenie, z którego można się podnieść, to nie przegrana.
 - `rules`: 3 do 5 krótkich zasad świata, których narrator ma pilnować.
+- `visual_style`: epoka i klimat wizualny świata do generowania obrazów, PO ANGIELSKU, 2 do 8 słów, bez zdań,
+  np. „medieval”, „cyberpunk city in 2090, neon and rain”, „19th century fishing village”. Wstawiamy to w zwroty
+  „{visual_style} setting” i „{visual_style} clothing”, więc ma do nich pasować.
 - `intro`: scena otwierająca w 2. osobie („siedzisz”, „widzisz”), 2 do 4 zdań. Bohater jest w lokacji startowej, obok jest co najmniej jedna postać, z którą można porozmawiać, i jest pierwszy trop prowadzący do celu.
 - `locations`: 4 do 6 miejsc, między którymi bohater może chodzić. `description` to wygląd miejsca do narysowania tła: maks. 25 słów, bez postaci i bez akcji.
 - `start_location`: `id` jednej z lokacji, w której zaczyna się `intro`.

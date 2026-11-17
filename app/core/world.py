@@ -35,6 +35,8 @@ class World(BaseModel):
     win_condition: str = ""
     lose_condition: str = ""
     rules: list[str] = Field(default_factory=list)
+    # Epoka i klimat do obrazów, po angielsku (wstawiane w style z app/config.py w miejsce {era}). Puste = medieval.
+    visual_style: str = ""
     start_location: str
     intro: str
     locations: list[Location] = Field(default_factory=list)

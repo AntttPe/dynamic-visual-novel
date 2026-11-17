@@ -348,3 +348,14 @@ def test_failed_image_status_explains_why():
     images = BackgroundImages(FakeImages(), "unused")
     job = images.jobs[("g", "tavern")] = type("J", (), {"status": "failed", "error": gemini, "url": ""})()
     assert images.status("g", "tavern") == {"status": "failed", "error": short_error(job.error)}
+
+
+def test_world_visual_style_replaces_era():
+    from app.config import settings
+    from app.images import styled
+
+    assert "medieval setting" in styled(settings.image_style, "")
+    cyber = styled(settings.image_scene_style, "cyberpunk city in 2090")
+    assert "cyberpunk city in 2090 scene" in cyber and "medieval" not in cyber
+    assert "{era}" not in styled(settings.image_portrait_style, "19th century")
+    assert styled("Bez epoki.", "cyberpunk") == "Bez epoki."  # własny styl z .env bez {era} zostaje bez zmian

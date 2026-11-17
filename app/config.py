@@ -37,16 +37,16 @@ class Settings(BaseSettings):
     image_model: str = "flux2-klein-4b"
     image_timeout_s: float = 300  # zmiana generatora to wczytanie innego modelu
     image_style: str = (
-        "Digital painting, visual novel background, medieval setting, detailed environment, "
+        "Digital painting, visual novel background, {era} setting, detailed environment, "
         "cinematic lighting. No people, no text, no watermark. Location:"
     )
     image_scene_style: str = (
-        "Digital painting of a medieval scene, cinematic lighting. The first reference image shows the place. "
+        "Digital painting of a {era} scene, cinematic lighting. The first reference image shows the place. "
         "The next reference images show the characters in the order listed below: keep their faces, hair and "
         "clothes. Each character appears only once, in the place from the first image."
     )
     image_portrait_style: str = (
-        "Digital painting, full body character reference of a single person, medieval clothing, "
+        "Digital painting, full body character reference of a single person, {era} clothing, "
         "standing and facing the viewer, plain light grey background."
     )
 

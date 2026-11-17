@@ -130,6 +130,14 @@ def short_error(error: str | None) -> str:
     return first[:200]
 
 
+DEFAULT_ERA = "medieval"
+
+
+def styled(template: str, era: str) -> str:
+    """Styl obrazów dla świata: {era} z app/config.py zamienia się na epokę i klimat świata (visual_style)."""
+    return template.replace("{era}", era.strip() or DEFAULT_ERA)
+
+
 def location_seed(game_seed: int | None, location: str) -> int:
     """Stały seed lokacji: ta sama gra i lokacja dają zawsze ten sam seed."""
     return (game_seed or 0) + zlib.crc32(location.encode()) % 1_000_000
@@ -249,8 +257,10 @@ class BackgroundImages:
         self.jobs[(job.game_id, key)] = job
         job.task = asyncio.create_task(self._run(job))
 
-    def request(self, game_id: str, location: str, description: str, game_seed: int | None, t: int) -> None:
-        """Zamawia tło, jeśli tej lokacji jeszcze nie ma. Wymaga działającej pętli asyncio."""
+    def request(self, game_id: str, location: str, description: str, game_seed: int | None, t: int,
+                era: str = "") -> None:
+        """Zamawia tło, jeśli tej lokacji jeszcze nie ma. Wymaga działającej pętli asyncio.
+        era: epoka i klimat świata (World.visual_style), wstawiane w styl w miejsce {era}."""
         if self.client_for(game_id) is None:
             return
         job = self.jobs.get((game_id, location))
@@ -260,7 +270,7 @@ class BackgroundImages:
         self._start(location, Job(
             game_id, location, t, "background",
             f"/api/games/{game_id}/image/file?location={quote(location, safe='')}",
-            f"{self.style} {description}".strip(), location_seed(game_seed, location),
+            f"{styled(self.style, era)} {description}".strip(), location_seed(game_seed, location),
             self.root / game_id / f"{location[:80]}-{crc:08x}.png",
         ))
 

@@ -13,6 +13,7 @@ rules:
   - W świecie nie ma magii.
   - Bohater ma tylko to, co jest w jego ekwipunku.
   - Postacie mają własną wolę i nie zawsze mówią prawdę.
+visual_style: medieval
 start_location: tavern
 intro: >-
   Deszcz bębni o okiennice karczmy Pod Złamanym Kołem. Siedzisz przy kominku,

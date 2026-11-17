@@ -24,6 +24,7 @@ def world_json(start="Neon Bar", **changes):
         "win_condition": "Mira przyprowadza K-7 do swojego biura.",
         "lose_condition": "Mira ginie albo K-7 zostaje zniszczony.",
         "rules": ["Nie ma magii.", "Androidy nie mogą kłamać ludziom."],
+        "visual_style": "cyberpunk city in 2090, neon and rain",
         "start_location": start,
         "intro": "Siedzisz w barze Neon, a barman Jaro poleruje szklankę.",
         "locations": [
