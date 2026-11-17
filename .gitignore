@@ -13,3 +13,7 @@ bench/*/out/
 # prywatne ustawienia i notatki agenta Claude Code
 .claude/settings.local.json
 CLAUDE.local.md
+
+# Skille agentów instalowane lokalnie (npx skills experimental_install, wersje w skills-lock.json)
+.claude/skills/
+.taste-skill/

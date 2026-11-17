@@ -84,6 +84,21 @@ Wzór wpisu w dzienniku:
 
 Wpisz się w kolumnę „Kto”, zanim zaczniesz (osobny mały commit i push). Opisy zadań są niżej.
 
+**Sprint 6 (od 2026-11-17): warunki końca gry, generator scenariuszy, przygotowanie konteneryzacji
+(silnik gry + model graficzny, LLM i grafika opcjonalnie przez API), TTS. Do tego screenshoty i testy na prawdziwej grze.**
+
+| Kto | Zadanie | Wymaga | Od kiedy |
+|---|---|---|---|
+| Antek | U1. Nowe UI: menu z okładką świata, generator świata widoczny w menu, potem ekran gry na pełny ekran, historia jako pokaz slajdów, przycisk trybu deweloperskiego (na razie zawsze włączony), „Podpowiedzi” zamiast „easy mode” z podpowiedzią w prawym górnym rogu | nic (tryb `demo`) | 2026-11-17 |
+| (wolne) | K1. Warunki końca gry (kod jest, Dziennik 2026-11-16): test na prawdziwym modelu (wygrana, przegrana, limit tur) i screenshoty | VPN | |
+| (wolne) | K2. Generator scenariuszy (świat z pomysłu jest): ocena kilku pomysłów na 2 modelach (poprawność, czas, sens świata, kilka tur gry). Ustalić, czy chodzi też o scenariusze badawcze (komendy gracza w YAML) | VPN | |
+| (wolne) | K3. Konteneryzacja, tylko plan: profile `docker compose` (gra, serwer obrazów na GPU, obrazy przez API), co działa na jakim systemie | nic | |
+| (wolne) | K4. TTS: najpierw głos przeglądarki (Web Speech API), potem dostawca przez API (np. ElevenLabs), stały głos dla postaci | nic | |
+
+Pomysły na kolejne sprinty: FLUX 3 Image Klein przez API BFL (ok. $0.009 za obraz 1K, porównanie z FLUX.2 klein
+na `testset.yaml`), animacje między turami (przenikanie, ruch kamery po tle w czasie rysowania sceny),
+dźwięk tła generowany raz na lokację (cache po `location_id`), TTS przez API ze stałym głosem postaci.
+
 **Sprint 5 (od 2026-11-08), wymagania prowadzącego (DoD: więcej testów grafik, inne modele i adaptery,
 testy całości narrator + grafika, screenshoty GUI):**
 
