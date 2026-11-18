@@ -70,7 +70,8 @@ Dalsze kroki: pipeline obrazów (cache po location_id, stały styl i seed), kole
 - Commity: krótkie, po angielsku. NIE dodawaj "Co-Authored-By" ani wzmianek o AI/Claude
   w commitach i PR-ach.
 - Dokumentacja (README itp.) po polsku, prostym językiem, bez długich myślników (— i –).
-  Aktualizuj README, gdy zmienia się sposób uruchamiania.
+  README jest krótki, tylko do grania. Szczegóły dla zespołu są w `docs/dla_zespolu.md`, poradnik w `docs/poradnik.pdf`
+  (źródło `docs/poradnik.html`). Aktualizuj je, gdy zmienia się sposób uruchamiania albo UI.
 - Przed dużymi decyzjami (nowy provider, zmiana architektury, ciężkie zależności typu torch)
   zaproponuj plan i zapytaj.
 - Bez force push i przepisywania historii bez pytania. Push tylko na wyraźną prośbę użytkownika,

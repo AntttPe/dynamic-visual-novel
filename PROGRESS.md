@@ -100,9 +100,24 @@ Wpisz się w kolumnę „Kto”, zanim zaczniesz (osobny mały commit i push). O
 | (wolne) | K3. Konteneryzacja, tylko plan: profile `docker compose` (gra, serwer obrazów na GPU, obrazy przez API), co działa na jakim systemie | nic | |
 | (wolne) | K4. TTS: najpierw głos przeglądarki (Web Speech API), potem dostawca przez API (np. ElevenLabs), stały głos dla postaci | nic | |
 
-Pomysły na kolejne sprinty: FLUX 3 Image Klein przez API BFL (ok. $0.009 za obraz 1K, porównanie z FLUX.2 klein
-na `testset.yaml`), animacje między turami (przenikanie, ruch kamery po tle w czasie rysowania sceny),
-dźwięk tła generowany raz na lokację (cache po `location_id`), TTS przez API ze stałym głosem postaci.
+**Pomysły na kolejne sprinty** (lista zespołu z 2026-11-18 plus wcześniejsze; nikt jeszcze nad nimi nie pracuje,
+wpisz się do tabeli wyżej, zanim zaczniesz). „Stan” mówi, co już jest w kodzie.
+
+| Pomysł | Stan | Jak to zrobić (szkic) |
+|---|---|---|
+| FLUX 3 Image Klein przez API BFL | nic | ok. $0.009 za obraz 1K, bez GPU uczelni. Najpierw porównanie z FLUX.2 klein na `testset.yaml` |
+| Ukrywanie czasu generacji: spekulatywne obrazy | częściowo: obrazy idą w tle (`app/images.py`) | Tła wszystkich lokacji i portrety postaci są znane po zbudowaniu świata, więc można je narysować od razu, zanim gracz tam dojdzie. Sceny tur zależą od akcji, ich nie zgadujemy. Mierzyć: czas czekania na obraz przed i po |
+| Tekst narratora na żywo (strumień w UI) | serwer już odbiera strumień (`ttft_ms`), UI czeka na całą odpowiedź | Wysyłać kolejne kawałki pola `narration` do przeglądarki (SSE). Gracz czyta po kilku sekundach zamiast po 30 do 90 |
+| Rozgałęzienia i powrót do poprzedniej tury | zapis i odtwarzanie gry jest (`app/core/saved.py`, `GameEngine.restore`) | „Cofnij do tury k” = nowa gra ze stanem z tury k. Dla badań: ta sama sytuacja, różne akcje, porównanie spójności narratora |
+| Portret mówiącej postaci przy dialogu | portrety są rysowane (`char:<imię>`), UI ich nie pokazuje | Klasyczny element visual novel, mały koszt |
+| Notatnik gracza (postacie, przedmioty, fakty) | stan świata jest w każdej turze | Widok stanu świata dla gracza, nie tylko w panelu badawczym |
+| Mapa świata odkrywana w trakcie gry | lokacje i `location_id` odwiedzin są w bazie | Graf lokacji (SVG), nieodwiedzone zakryte. Później ewentualnie obraz mapy z modelu |
+| Płynne przejścia między scenami | częściowo: przenikanie obrazów w UI | Ruch kamery po tle (Ken Burns) w czasie rysowania sceny, przejście przy zmianie lokacji |
+| Parallax z mapy głębi (animowane tło) | nic | Bez generowania wideo: model głębi (np. Depth Anything V2, mały) liczy mapę głębi raz na obraz, a shader WebGL przesuwa piksele według głębi przy ruchu myszy albo powolnym ruchu kamery |
+| Efekty na obrazie: deszcz, migotanie światła, kurz | nic | Nakładki CSS/canvas, bez AI. Narrator zwraca np. pole `effects` (pogoda, światło), UI dobiera nakładkę |
+| Muzyka dobrana do nastroju | nic (wcześniej: dźwięk tła na lokację) | Narrator zwraca `mood` z krótkiej listy. Najprościej gotowe utwory CC0 na każdy nastrój, ambitniej generacja (MusicGen, Stable Audio Open) raz na lokację i nastrój |
+| TTS ze stałym głosem postaci | zadanie K4 wyżej | Głos przeglądarki, potem API (np. ElevenLabs) |
+| Komiks na koniec gry | przeglądanie zapisanej gry tura po turze jest | Strona z kadrami (obrazy scen) i dymkami z dialogów, eksport do PDF |
 
 **Sprint 5 (od 2026-11-08), wymagania prowadzącego (DoD: więcej testów grafik, inne modele i adaptery,
 testy całości narrator + grafika, screenshoty GUI):**
@@ -376,6 +391,14 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
   ale SDXL z nim nadal wyraźnie ustępuje FLUX.2 klein (pełny pomiar G1b).
 
 ## Dziennik
+
+### 2026-11-18, Antek: poradnik PDF, krótszy README, pomysły na kolejne sprinty
+- Poradnik uruchomienia gry ze zrzutami ekranu: `docs/poradnik.pdf` (źródło `docs/poradnik.html`, wydruk z Chrome).
+  Bez haseł i adresów serwerów.
+- README skrócony do grania (szybki start, jak grać, komendy, problemy). Reszta (modele, API, obrazy na GPU,
+  eksperymenty, agent, struktura) przeniesiona do `docs/dla_zespolu.md`.
+- Pomysły zespołu (spekulatywne obrazy, rozgałęzienia, muzyka, efekty, parallax, mapa, komiks) w tabeli
+  „Pomysły na kolejne sprinty” ze stanem w kodzie i szkicem rozwiązania. Dodane: tekst na żywo, portrety przy dialogu, notatnik gracza.
 
 ### 2026-11-17, Antek: nowe UI, podpowiedzi, styl obrazów ze świata, test całości z obrazami
 - Co zrobione: menu na cały ekran (okładka świata, karta „Własny świat” z generatorem, ekran budowania świata, ustawienia

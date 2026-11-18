@@ -1,16 +1,18 @@
 # Dynamic Visual Novel
 
-Gra typu Visual Novel, w której fabułę, dialogi i tła tworzą na bieżąco modele AI.
-Gracz wpisuje dowolne działanie, a model opowiada, co dzieje się dalej.
+Gra typu Visual Novel, w której fabułę, dialogi i obrazy tworzą na bieżąco modele AI.
+Nie ma gotowych wyborów: gracz wpisuje własnymi słowami, co robi, a narrator opowiada, co dzieje się dalej.
+Można też opisać własny pomysł na świat, a model zbuduje z niego całą przygodę.
 
 Projekt na przedmiot *Eksploracja modeli i metod AI*.
 
-Całość działa w jednym kontenerze Docker, więc u każdego (macOS, Windows, Linux)
-uruchamia się tak samo. Nie trzeba instalować Pythona ani bibliotek.
+![Ekran gry](docs/screenshots/02-gra-historia.jpg)
 
-## Szybki start (w skrócie)
+**Poradnik krok po kroku ze zrzutami ekranu: [docs/poradnik.pdf](docs/poradnik.pdf)**
 
-Masz już Dockera i Gita? Wpisz w terminalu:
+## Szybki start
+
+Potrzebujesz [Docker Desktop](https://www.docker.com/products/docker-desktop/) i Gita. W terminalu wpisz:
 
 ```bash
 git clone https://github.com/AntttPe/dynamic-visual-novel.git
@@ -19,414 +21,55 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Otwórz **http://localhost:8000** i wybierz jedną z trzech dróg:
+Pierwsze uruchomienie trwa kilka minut. Potem otwórz **http://localhost:8000**.
 
 | Chcę… | Co zrobić |
 |---|---|
-| tylko zobaczyć, jak to działa | kliknij **Szybki start w trybie demo** (bez modelu, bez kluczy) |
-| grać na modelu na swoim komputerze | uruchom Ollamę (sekcja [Model Llama (Ollama)](#model-llama-ollama-opcjonalnie)) i kliknij **Zacznij grę** |
-| grać na swoim API (OpenAI, Anthropic, Gemini, OpenRouter, vLLM…) | w menu otwórz **Ustawienia deweloperskie** i wpisz model, adres i klucz w polach „Własne API” (sekcja [Własne API](#własne-api-do-tekstu-i-obrazów)) |
+| tylko zobaczyć, jak to działa | kliknij **Podgląd bez modelu (demo)**, bez modelu i bez kluczy |
+| grać na swoim API (OpenAI, Anthropic, Gemini, OpenRouter…) | w menu otwórz **Ustawienia deweloperskie**, wybierz „Inny model”, wpisz nazwę (np. `openai/gpt-4o-mini`) i klucz |
+| grać na modelu zespołu | wklej plik `.env` od zespołu zamiast `cp .env.example .env` (model uczelni wymaga VPN) |
+| grać na modelu na swoim komputerze | uruchom Ollamę ([instrukcja](docs/dla_zespolu.md#model-llama-ollama-opcjonalnie)) |
 
-Pierwszy raz instalujesz Dockera? Przejdź krok po kroku przez instrukcję poniżej.
+**Windows:** najpierw zainstaluj WSL2 (`wsl --install` w PowerShellu jako administrator), w Docker Desktop
+włącz *Use the WSL 2 based engine* i *Resources > WSL Integration > Ubuntu*. Wszystkie komendy wpisuj
+w terminalu **Ubuntu**, a projekt pobieraj do katalogu domowego (`cd ~`), nie na dysk `C:\`.
 
----
+**Nigdy nie wrzucaj pliku `.env` na GitHuba.** Są w nim klucze (plik jest w `.gitignore`).
 
-## Krok 1. Zainstaluj programy
+## Jak grać
 
-**macOS**
-1. Zainstaluj [Docker Desktop](https://www.docker.com/products/docker-desktop/) i uruchom go.
-2. Git zwykle już jest. Sprawdź w terminalu: `git --version`
+![Menu](docs/screenshots/01-menu.jpg)
 
-**Windows**
-1. Zainstaluj WSL2. Otwórz PowerShell jako administrator i wpisz: `wsl --install`
-2. Zrestartuj komputer. Uruchom aplikację **Ubuntu** i ustaw login oraz hasło.
-3. Zainstaluj [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-   W ustawieniach zaznacz **Use the WSL 2 based engine** oraz w zakładce
-   *Resources > WSL Integration* włącz Ubuntu.
-4. **Wszystkie dalsze komendy wpisuj w terminalu Ubuntu**, nie w PowerShellu.
+1. W menu wybierz świat: gotową „Zaginioną koronę” albo **Własny świat** i wpisz kilka zdań pomysłu,
+   np. `Cyberpunkowy Kraków w 2090 roku, jestem detektywką i szukam zaginionego androida`.
+2. **Podpowiedzi** ułatwiają grę i pokazują następny krok w prawym górnym rogu. **Limit tur** jest opcjonalny.
+3. Kliknij **Zacznij grę** i wpisz w polu na dole, co robisz. Enter wysyła.
+4. Gra kończy się planszą **Wygrana** albo **Przegrana**, gdy osiągniesz cel świata albo coś pójdzie bardzo źle.
 
-**Linux**
-1. Zainstaluj Docker Engine oraz `docker compose` według [instrukcji](https://docs.docker.com/engine/install/).
-2. Zainstaluj Git, np. `sudo apt install git`
+| Na ekranie gry | Co robi |
+|---|---|
+| **Historia** albo ← → | przewija wcześniejsze tury jak slajdy, Esc wraca do gry |
+| **Pełny ekran** albo F | chowa przeglądarkę |
+| **Panel badawczy**, **Dane techniczne** | czas, tokeny, stan świata, prompt i surowy JSON każdej tury |
+| **Menu** | powrót do menu, gra zapisuje się sama |
 
-Sprawdź, czy Docker działa:
-```bash
-docker --version
-docker compose version
-```
+**Zapisane gry.** W menu przycisk **Zapisane gry** pokazuje rozegrane gry. Wybrana gra otwiera się od pierwszej tury
+w trybie historii (strzałki ← →), a **Wróć do gry** pozwala grać dalej. Działa po restarcie i bez serwera obrazów.
+Zapis jest tylko na twoim komputerze, w katalogu `data/`.
 
-## Krok 2. Pobierz projekt
-
-```bash
-git clone https://github.com/AntttPe/dynamic-visual-novel.git
-cd dynamic-visual-novel
-```
-
-> **Windows:** rób to w terminalu Ubuntu, w swoim katalogu domowym (np. `cd ~`).
-> Nie klonuj na dysk `C:\`, bo wtedy automatyczne przeładowanie kodu nie działa.
-
-## Krok 3. Utwórz plik z ustawieniami
-
-```bash
-cp .env.example .env
-```
-
-Plik `.env` zawiera ustawienia i klucze API. Na start nie musisz nic w nim zmieniać.
-**Nigdy nie wrzucaj `.env` na GitHuba** (jest dodany do `.gitignore`).
-
-## Krok 4. Uruchom aplikację
-
-```bash
-docker compose up -d --build
-```
-
-Pierwsze uruchomienie trwa kilka minut. Potem otwórz w przeglądarce:
-
-* **http://localhost:8000** to gra (menu, scena na cały ekran, narracja i panel badawczy)
-* **http://localhost:8000/docs** to dokumentacja API
-
-Bez uruchomionego modelu kliknij **Szybki start w trybie demo**. Tryb demo nie opowiada
-prawdziwej historii, ale pokazuje cały przepływ: scenę, stan świata, prompt i JSON.
-
-## Krok 5. Sprawdź, czy wszystko działa
-
-```bash
-docker compose exec app pytest -v
-```
-
-Poprawny wynik wygląda tak (liczby mogą być inne, ważne, żeby nie było `failed`):
-```
-21 passed, 1 skipped
-```
-Jeden test jest pominięty, jeśli nie masz uruchomionej Ollamy (patrz niżej). To normalne.
-
-**Gotowe, środowisko działa.**
-
-## Krok 6. Zagraj
-
-1. Wejdź na http://localhost:8000. Otworzy się menu (w trakcie gry wracasz do niego przyciskiem **Menu**).
-2. Wybierz kartę świata: „Zaginiona korona” albo **Własny świat** (opis niżej).
-3. W **Ustawieniach deweloperskich** (przycisk w prawym górnym rogu menu) wybierz **model narratora**,
-   własne API, grafikę, pamięć i seed. Na serwerze uczelni najszybszy jest `openai/strata-big`.
-4. Kliknij **Zacznij grę** i wpisz w polu na dole, co robisz, np. `Pytam karczmarza o koronę`. Enter wysyła.
-5. Ekran gry: obraz sceny na cały ekran, narracja w pasku na dole, w prawym górnym rogu cel gry (i podpowiedź).
-   **Historia** (albo strzałka ←) przewija wcześniejsze tury jak slajdy, **Pełny ekran** (albo F) chowa przeglądarkę.
-6. **Panel badawczy** i **Dane techniczne** pokazują dane każdej tury: czas, tokeny, stan świata, prompt i surowy JSON.
-
-### Zapisane gry
-
-Każda tura zapisuje się w `data/dvn.sqlite`, a obrazy w `data/images/`. W menu przycisk **Zapisane gry** pokazuje
-rozegrane gry (miniatura, liczba tur, wynik, model). Wybrana gra otwiera się od początku w trybie historii:
-strzałki ← → przewijają tury, a **Wróć do gry** pozwala grać dalej. Działa też po restarcie serwera i bez serwera
-obrazów. Zapis jest tylko na twoim komputerze (katalog `data/` nie trafia do repo).
-
-### Własny świat
-
-W menu wybierz kartę **Własny świat** i wpisz kilka zdań w polu po prawej (albo kliknij jeden z przykładów), np.
-`Cyberpunkowy Kraków w 2090 roku, jestem detektywką i szukam zaginionego androida`.
-Wybrany model narratora zamieni pomysł w pełny świat: bohatera, cel, zasady, 4 do 6 lokacji,
-fakty niezmienne (wygląd postaci, materiały przedmiotów) i scenę otwierającą. Potem ten sam model prowadzi grę.
-
-* Wytyczne dla modelu są w `app/prompts/world_builder.md`, a wzorem jest świat „Zaginiona korona”
-  (`app/worlds/zaginiona_korona.yaml`). Zmiana wytycznych zmienia każdy kolejny świat.
-* Tworzenie świata trwa od kilku sekund do kilku minut (`strata-big`: 1 do 5 minut, `large-reasoning` dłużej,
-  bo najpierw myśli). W trakcie czekania można kliknąć **Anuluj**. Mały model czasem nie trzyma formatu,
-  wtedy gra ponawia prośbę, a po kilku nieudanych próbach pokazuje błąd.
-* Gotowy świat, pomysł gracza, prompt i odpowiedź modelu zapisują się w tabeli `worlds` bazy `data/dvn.sqlite`.
-  Opis świata widać też w panelu badawczym, w zakładce **Tura**.
-* W trybie `demo` nie ma modelu, więc zamiast nowego świata dostajesz „Zaginioną koronę” z twoim pomysłem w opisie.
-* Model nadaje też światu cel oraz warunek wygranej i przegranej (patrz niżej).
-
-### Wygrana, przegrana i limit tur
-
-* Każdy świat ma cel oraz warunek wygranej i przegranej. W „Zaginionej koronie” wygrana to oddanie korony królowi
-  albo straży, a przegrana to śmierć, loch na zawsze albo zniszczenie korony. Własny świat dostaje je od modelu.
-* Po każdej turze narrator ocenia, czy gra się skończyła (pole `outcome` w JSON). Gdy tak, na scenie pojawia się
-  plansza „Wygrana!” albo „Przegrana” z powodem, a pole akcji się blokuje.
-* W menu możesz ustawić **Limit tur**. Gdy limit minie, a cel nie jest osiągnięty, gra kończy się przegraną.
-  Narrator wie, która to tura, więc pod koniec przyspiesza akcję.
-* **Podpowiedzi** (przełącznik w menu, w kodzie `difficulty: "easy"`): narrator dostaje dodatkowe zasady
-  z `app/prompts/narrator_easy.md`. Rozsądne pomysły się udają, postacie chętnie pomagają, narrator ostrzega
-  przed niebezpieczeństwem, a po każdej turze zwraca pole `hint` z następnym krokiem w stronę wygranej.
-  Podpowiedź widać w prawym górnym rogu ekranu gry. Zasady świata i fakty niezmienne obowiązują dalej.
-* Wynik każdej tury zapisuje się w kolumnie `outcome` tabeli `turns`.
-* Dotyczy to tylko gry w przeglądarce. Eksperymenty (`app.eval.run`) mają ten sam prompt i format JSON co wcześniej.
-
-Gra zapamiętuje bieżącą rozgrywkę w przeglądarce, więc po odświeżeniu strony wracasz do niej.
-Po restarcie serwera gra odtwarza się z bazy (patrz „Zapisane gry”) i można grać dalej.
-
----
+Obrazy scen rysuje osobny serwer obrazów albo API obrazów (opis w [dokumentacji dla zespołu](docs/dla_zespolu.md#gra-z-obrazami-serwer-gpu-instytutu)).
+Bez niego gra działa z samym tekstem.
 
 ## Najważniejsze komendy
 
 | Co chcesz zrobić | Komenda |
 |---|---|
-| Uruchomić aplikację | `docker compose up -d` |
-| Wstrzymać aplikację (na przerwę) | `docker compose stop` |
-| Wznowić po wstrzymaniu | `docker compose start` |
-| Usunąć kontener | `docker compose down` |
+| Uruchomić grę | `docker compose up -d` |
+| Wstrzymać na przerwę / wznowić | `docker compose stop` / `docker compose start` |
+| Pobrać nowszą wersję | `git pull`, potem `docker compose up -d --build` |
+| Usunąć kontener (zapisane gry zostają) | `docker compose down` (bez `-v`) |
 | Zobaczyć logi | `docker compose logs -f app` |
 | Uruchomić testy | `docker compose exec app pytest -v` |
-| Wejść do kontenera | `docker compose exec app bash` |
-| Dodać bibliotekę Pythona | `docker compose exec app uv add <nazwa>` a potem `docker compose up -d --build` |
-
-Kod jest połączony z kontenerem. Gdy zmienisz plik `.py`, serwer sam się zrestartuje.
-Gdy zmienisz plik w `app/static/`, wystarczy odświeżyć stronę.
-
-Po dodaniu biblioteki wrzuć na GitHuba pliki `pyproject.toml` i `uv.lock`,
-żeby reszta zespołu miała te same wersje.
-
-`docker compose down` usuwa kontener, ale nic ważnego nie ginie: kod i `data/` są na twoim
-komputerze, a pamięć agenta Claude Code jest w osobnym wolumenie.
-Wolumen usuwa dopiero `docker compose down -v`, więc **nie dodawaj `-v`**, chyba że chcesz wyczyścić wszystko.
-
-## Agent Claude Code w kontenerze
-
-Claude Code jest zainstalowany w kontenerze. Wejdź do środka i uruchom go:
-```bash
-docker compose exec app bash
-claude
-```
-Przy pierwszym uruchomieniu trzeba się zalogować. Logowanie, historia rozmów i pamięć agenta
-zapisują się w wolumenie `claude_home`, więc zostają po `docker compose down` i po przebudowie obrazu.
-
-Agent czyta plik `CLAUDE.md` z opisem projektu i zasadami pracy. Gdy zmienia się coś ważnego
-w projekcie, zaktualizuj ten plik, bo z niego korzysta cały zespół.
-
-**Commity z kontenera:** w `.env` odkomentuj i uzupełnij linie `GIT_AUTHOR_...` i `GIT_COMMITTER_...`.
-Wypychanie na GitHuba (`git push`) rób na swoim komputerze, bo kontener nie ma dostępu do twojego konta GitHub.
-
-## Struktura projektu
-
-```
-app/
-  main.py            adresy API gry
-  config.py          odczyt ustawień z .env
-  core/              silnik gry: jedna tura od akcji gracza do zapisu
-    engine.py        przebieg tury, ponowienia przy złym JSON
-    context.py       składanie promptu
-    memory.py        strategie pamięci (pełna historia, okno)
-    state.py         stan świata i walidator faktów niezmiennych
-    schemas.py       format odpowiedzi narratora (JSON)
-    world.py         wczytywanie świata z pliku YAML
-  llm/               połączenie z modelami (LiteLLM, tryb demo, model na niby do testów)
-  storage/db.py      zapis każdej tury do SQLite
-  prompts/           prompt narratora
-  worlds/            światy gry (YAML)
-  static/            wygląd strony (HTML, CSS, JS)
-  eval/              scenariusze badawcze, runner, metryki, raport
-tests/               testy (działają bez modelu)
-CLAUDE.md            opis projektu i zasady dla agenta Claude Code
-data/                baza dvn.sqlite z zapisem gier, nie trafia na GitHuba
-```
-
-Każda tura zapisuje się w `data/dvn.sqlite`: prompt, odpowiedź modelu, tokeny, czas,
-lokacja i zmiany stanu. To surowe dane do metryk.
-
----
-
-## Model Llama (Ollama), opcjonalnie
-
-Aplikacja rozmawia z lokalnym modelem przez program **Ollama**.
-Ollama działa na komputerze, a nie w kontenerze, bo Docker na Macu nie ma dostępu do karty graficznej.
-
-**macOS**
-```bash
-brew install ollama
-ollama serve               # zostaw ten terminal otwarty
-ollama pull llama3.1:8b    # w nowym terminalu, pobiera ok. 5 GB
-```
-
-**Windows i Linux:** zainstaluj Ollamę ze strony [ollama.com](https://ollama.com/download)
-i pobierz model komendą `ollama pull llama3.1:8b`.
-
-**Linux lub Windows z kartą NVIDIA:** Ollama może działać w kontenerze.
-1. Zainstaluj [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
-2. W pliku `.env` ustaw `OLLAMA_BASE_URL=http://ollama:11434`
-3. Uruchom: `docker compose --profile local-gpu up -d`
-4. Pobierz model: `docker compose exec ollama ollama pull llama3.1:8b`
-
-Po uruchomieniu Ollamy odśwież http://localhost:8000. Przy nazwie modelu pojawi się
-zielona kropka i można grać.
-
----
-
-## Wybór modelu narratora
-
-Połączenie z modelami idzie przez bibliotekę **LiteLLM**, więc zmiana modelu to zmiana
-jednej linijki w `.env` (`NARRATOR_MODEL`) albo pola „Model narratora” w menu (Ustawienia deweloperskie).
-
-| Gdzie działa model | Ustawienia w `.env` |
-|---|---|
-| Ollama na twoim komputerze | `NARRATOR_MODEL=ollama_chat/llama3.1:8b` |
-| Ollama na wynajętym GPU (np. RunPod) | to samo, plus tunel SSH (niżej) |
-| vLLM na wynajętym GPU | `NARRATOR_MODEL=hosted_vllm/<nazwa-modelu>` i `NARRATOR_API_BASE=http://host.docker.internal:8001/v1` |
-| Model przez API | np. `NARRATOR_MODEL=anthropic/claude-haiku-5-5` i klucz `ANTHROPIC_API_KEY` |
-| Bez modelu | `NARRATOR_MODEL=demo` |
-
-**Wynajęte GPU.** Na komputerze otwórz tunel SSH do maszyny z GPU i zostaw terminal otwarty:
-```bash
-ssh -N -L 11434:localhost:11434 root@<adres-maszyny> -p <port> -i ~/.ssh/<twój-klucz>
-```
-Model na GPU jest wtedy widoczny tak, jakby działał lokalnie, więc `OLLAMA_BASE_URL` się nie zmienia.
-Dla vLLM przekieruj port 8001 (`-L 8001:localhost:8000`).
-**Nie wystawiaj portu Ollamy publicznie** w panelu RunPod: Ollama nie ma hasła.
-
-Wersja LiteLLM jest przypięta w `pyproject.toml`. Nie aktualizuj jej bez sprawdzenia
-(w marcu 2026 w PyPI pojawiły się złośliwe wersje 1.82.7 i 1.82.8).
-
----
-
-## Własne API do tekstu i obrazów
-
-Nie musisz edytować `.env`, żeby zagrać na swoim koncie u dostawcy modeli.
-Wszystko ustawisz w menu, w panelu **Ustawienia deweloperskie**. Ustawienia działają tylko dla tej jednej gry.
-
-### Model tekstowy (narrator)
-
-1. W polu **Model narratora** wybierz **Inny model (wpisz nazwę)** i wpisz nazwę w formacie LiteLLM:
-   `<dostawca>/<model>`.
-2. Rozwiń **Własne API modelu tekstowego** i wpisz:
-   * **Adres API**: potrzebny tylko dla serwerów zgodnych z API OpenAI (vLLM, LM Studio, OpenRouter itp.).
-     Dla OpenAI, Anthropic i Gemini zostaw puste.
-   * **Klucz API**: twój klucz. Puste = klucz z `.env`.
-3. Kliknij **Zacznij**. Przy nazwie modelu pojawi się zielona kropka z opisem „własne API”.
-
-| Dostawca | Model narratora | Adres API |
-|---|---|---|
-| OpenAI | `openai/gpt-4o-mini` | puste |
-| Anthropic | `anthropic/claude-haiku-5-5` | puste |
-| Google Gemini | `gemini/gemini-3.8-flash` | puste |
-| OpenRouter | `openrouter/<model>`, np. `openrouter/meta-llama/llama-3.1-8b-instruct` | puste |
-| Groq, Mistral, DeepSeek… | `groq/<model>`, `mistral/<model>`, `deepseek/<model>` | puste |
-| vLLM, LM Studio, inny serwer zgodny z OpenAI | `openai/<nazwa-modelu>` | np. `http://host.docker.internal:1234/v1` |
-
-Pełna lista dostawców: [docs.litellm.ai/docs/providers](https://docs.litellm.ai/docs/providers).
-Serwer działający na twoim komputerze (poza kontenerem) jest widoczny pod adresem `host.docker.internal`, nie `localhost`.
-
-### Obrazy (tła i sceny)
-
-W polu **Grafika** wybierz, kto rysuje:
-
-| Opcja | Kiedy | Co wpisać |
-|---|---|---|
-| **Serwer obrazów z .env** (albo **Bez obrazów**, gdy w `.env` nie ma `IMAGE_SERVER_URL`) | ustawienie domyślne | nic |
-| **Własny serwer obrazów projektu** | masz uruchomiony `bench/images/consistency/serve.py` pod innym adresem | adres, np. `http://host.docker.internal:8420`, i generator |
-| **Własne API obrazów** | chcesz rysować przez zewnętrzne API, np. OpenAI | model, np. `openai/gpt-image-1` albo `openai/dall-e-3`, klucz i rozmiar obrazu |
-
-Własne API obrazów idzie przez LiteLLM, więc działa każdy dostawca obrazów, którego LiteLLM obsługuje
-(OpenAI, Azure, Vertex AI, Bedrock, serwery zgodne z API OpenAI przez pole **Adres**).
-Takie API rysuje tylko z opisu sceny, bez obrazów wejściowych, więc postacie mogą wyglądać
-trochę inaczej w kolejnych turach. Serwer obrazów projektu rysuje sceny na podstawie stałego tła i portretów,
-dlatego jest bardziej spójny.
-
-Gemini: model np. `gemini/gemini-3.1-flash-image` (Nano Banana 2), adres pusty, klucz pusty albo `GEMINI_API_KEY` z `.env`.
-Modele obrazów Gemini nie działają w darmowym planie, potrzebny jest klucz z włączonymi płatnościami.
-
-Uwaga na koszty: każda tura to jeden obraz sceny, a nowa lokacja i nowa postać to dodatkowe obrazy.
-
-### Gdzie trafiają klucze
-
-* Klucz wpisany w oknie trafia tylko do serwera gry na twoim komputerze i stamtąd do dostawcy.
-  Nie zapisuje się w bazie `data/dvn.sqlite` ani w odpowiedziach serwera.
-* Po zaznaczeniu **Zapamiętaj adresy i klucze w tej przeglądarce** dane zostają w pamięci przeglądarki
-  (localStorage), żeby nie wpisywać ich przy każdej grze. Nie zaznaczaj tego na cudzym komputerze.
-* Na stałe (dla wszystkich gier i eksperymentów) klucze ustawiasz w `.env`: `OPENAI_API_KEY`,
-  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` albo `NARRATOR_API_BASE` i `NARRATOR_API_KEY`.
-
----
-
-## Gra z obrazami (serwer GPU instytutu)
-
-Obrazy powstają w trakcie gry. Gra nie czeka na nie: tekst pojawia się od razu, a obraz po chwili.
-Każda lokacja ma jedno stałe tło (wzorzec miejsca), a każda tura osobny obraz sceny rysowany na jego podstawie.
-Bez serwera obrazów gra działa jak zwykle.
-
-1. W `.env` ustaw `IMAGE_SERVER_URL=http://host.docker.internal:8420` i wykonaj `docker compose up -d --force-recreate app`.
-2. Na serwerze GPU, przy wolnym GPU (`nvidia-smi`), uruchom serwer obrazów w `tmux`:
-   ```bash
-   eval "$(conda shell.bash hook)" && conda activate ~/data/conda/dvn-images
-   cd ~/data/dvn && git pull && cd bench/images/consistency
-   python serve.py
-   ```
-3. Na laptopie, przy włączonym VPN, w osobnym oknie terminala zestaw tunel i zostaw go otwartego:
-   ```bash
-   ssh -N -L 8420:127.0.0.1:8420 -i ~/.ssh/id_ed25519 <login>@<adres serwera>
-   ```
-4. Graj na http://localhost:8000. Generator grafiki wybierzesz w menu, w **Ustawieniach deweloperskich**
-   (domyślny ustawia `IMAGE_MODEL` w `.env`). Styl obrazów bierze epokę z pola `visual_style` świata.
-   Na GPU mieści się jeden model naraz, więc po zmianie generatora serwer wczytuje inny model i pierwszy obraz powstaje dłużej.
-   Obrazy zapisują się w `data/images/`, a czasy i prompty w tabeli `images` bazy.
-5. Po graniu obowiązkowo wyłącz serwer obrazów przez `Ctrl+C` (regulamin: żadnych usług działających na stałe).
-   Dla pewności sam wyłączy się po 30 minutach bez zadań.
-
-Obrazy i pomiary na jednym GPU się nie mieszczą: nie uruchamiaj gry z obrazami w trakcie pomiaru.
-
-## Eksperymenty (badanie modeli)
-
-Scenariusze badawcze leżą w `app/eval/scenarios/`. Każdy to z góry napisana lista akcji gracza
-z oczekiwaniami (opis pól w `_template.yaml`). Runner przepuszcza scenariusz przez model
-tym samym silnikiem co gra, a każda tura trafia do `data/dvn.sqlite`.
-
-Wszystkie komendy wpisuj w kontenerze (`docker compose exec app bash`).
-
-**1. Sprawdź scenariusz** (po każdej zmianie w YAML):
-```bash
-python -m app.eval.check main_v2
-```
-
-**2. Szybki test bez modelu** (tryb demo, ok. minuty):
-```bash
-python -m app.eval.run --model demo --reps 1 --tag demo
-```
-
-**3. Uruchom badanie** (włącz VPN instytutu):
-```bash
-python -m app.eval.run --model openai/large-reasoning --reps 3 --tag sprint1
-python -m app.eval.run --model openai/strata-big --reps 3 --tag sprint1
-python -m app.eval.run --model openai/large-reasoning --reps 3 --tag sprint1 --no-state   # bez stanu świata
-```
-Jedna tura trwa 30 do 90 s, więc 28 tur × 3 powtórzenia to ok. 1 do 2 godzin na konfigurację.
-Na krótki test dodaj `--max-turns 3`.
-
-**Gdy coś przerwie badanie** (VPN, Ctrl+C, zamknięty laptop): uruchom **tę samą komendę** jeszcze raz.
-Runner wznowi od ostatniej zapisanej tury i pominie ukończone powtórzenia.
-
-**Długie badanie w tle** (na hoście, nie w kontenerze; `caffeinate -di` nie pozwala Macowi zasnąć ani wygasić ekranu, bo wygaszacz rozłącza VPN):
-```bash
-caffeinate -di docker compose exec app sh -c \
-  "python -m app.eval.run --model openai/large-reasoning --reps 3 --tag sprint1 >> data/eval/run.log 2>&1"
-```
-Postęp: `tail -f data/eval/run.log`. Nie używaj `docker compose down` w trakcie, bo przerwie badanie.
-
-**4. Wyniki:**
-```bash
-python -m app.eval.report --tag sprint1                 # podsumowanie metryk dla każdej konfiguracji
-python -m app.eval.report --tag sprint1 --details       # plus lista nieudanych sprawdzeń
-python -m app.eval.report --tag sprint1 --csv data/eval/sprint1.csv   # do analizy i wykresów
-python -m app.eval.extra_metrics --tag sprint1 --csv data/eval/sprint1_extra.csv   # metryki X1 do X5 i porównanie ze stanem/bez stanu
-```
-
-| Metryka | Co mierzy | Jak liczona |
-|---|---|---|
-| M1 pamięć faktów | czy model pamięta fakt podany przez gracza k tur wcześniej | w odpowiedzi musi paść słowo z `accept` |
-| M2 fakty niezmienne | czy model utrzymuje stałe cechy świata | słowa z `accept`, próby zmiany wykryte przez walidator, gaslighting oceni sędzia |
-| M3 dziwne komendy | czy model logicznie reaguje na nietypowe akcje | sędzia LLM (w przygotowaniu) |
-| M4 spójność lokacji | czy to samo miejsce ma zawsze ten sam `location_id` | porównanie z oczekiwaną lokacją albo między wizytami |
-
-**5. Pomiar cache promptu (KV cache)** (VPN, ok. 15 minut):
-```bash
-python -m app.eval.kv_cache --reps 3 --tag kv1                  # oba modele, prompty 2k, 4k, 8k, 11k tokenów
-python -m app.eval.kv_cache --summary data/eval/kv_cache.csv --tag kv1   # sama tabela z zapisanych wyników
-```
-Skrypt składa prompty z prawdziwej gry z bazy (jak pamięć `full_cached`) i mierzy czas do pierwszego tokenu (TTFT)
-w 4 scenariuszach: pierwszy raz (`cold`), powtórka (`warm`), dopisanie następnej tury (`append`)
-i zmiana początku (`invalidate`). Przed dłuższym pomiarem sprawdź obciążenie serwera na dashboardzie Grafana.
-
-Gra domyślnie odbiera odpowiedź strumieniem i zapisuje w każdej turze `ttft_ms` (koniec czytania promptu)
-i `first_answer_ms` (koniec myślenia modelu). Wyłączenie: `NARRATOR_STREAM=false` w `.env`.
-
----
 
 ## Gdy coś nie działa
 
@@ -434,12 +77,23 @@ i `first_answer_ms` (koniec myślenia modelu). Wyłączenie: `NARRATOR_STREAM=fa
 |---|---|
 | `Cannot connect to the Docker daemon` | Docker Desktop nie jest uruchomiony. Włącz go. |
 | `port is already allocated` | Port 8000 jest zajęty. W `docker-compose.yml` zmień `"8000:8000"` na np. `"8080:8000"` i wejdź na localhost:8080 |
-| Zmiany w kodzie nie restartują serwera | W `.env` ustaw `WATCHFILES_FORCE_POLLING=true` i uruchom ponownie |
-| „Ollama nie odpowiada” (żółty pasek w grze) | Sprawdź, czy działa `ollama serve` albo tunel SSH do GPU |
-| „Narrator nie zwrócił poprawnej odpowiedzi” | Model nie trzyma formatu JSON. Spróbuj jeszcze raz albo użyj większego modelu |
-| `model not found` | Pobierz model: `ollama pull llama3.1:8b` |
+| Strona się nie otwiera | Poczekaj minutę i sprawdź `docker compose logs -f app` |
+| Model nie odpowiada (kropka przy modelu nie jest zielona) | Sprawdź internet, VPN (model uczelni), klucz albo `ollama serve`. Do oglądania wystarczy demo |
+| „Narrator nie zwrócił poprawnej odpowiedzi” | Model pomylił format JSON. Wyślij akcję jeszcze raz albo użyj większego modelu |
 | Błąd 401 albo `AuthenticationError` przy własnym API | Zły klucz albo klucz do innego dostawcy niż przedrostek modelu (`openai/`, `anthropic/`…) |
 | Własny serwer na komputerze nie odpowiada | W adresie użyj `host.docker.internal` zamiast `localhost` |
-| „Nie udało się narysować obrazu” przy własnym API obrazów | Sprawdź nazwę modelu, klucz i rozmiar (np. `dall-e-3` przyjmuje `1792x1024`, `gpt-image-1` przyjmuje `1536x1024`) |
-| `claude: command not found` w kontenerze | Obraz jest stary. Uruchom `docker compose up -d --build` |
-| Dziwne błędy po zmianie bibliotek | `docker compose down`, potem `docker compose build --no-cache`, potem `docker compose up -d` |
+| Zmiany w kodzie nie restartują serwera | W `.env` ustaw `WATCHFILES_FORCE_POLLING=true` i uruchom ponownie |
+| Dziwne błędy po zmianie bibliotek | `docker compose down`, `docker compose build --no-cache`, `docker compose up -d` |
+
+## Dla zespołu
+
+Wszystko poza samym graniem jest w **[docs/dla_zespolu.md](docs/dla_zespolu.md)**:
+
+* własny świat i warunki końca gry w szczegółach,
+* wybór modelu narratora, Ollama, własne API do tekstu i obrazów,
+* gra z obrazami na serwerze GPU,
+* eksperymenty i metryki (`app.eval`),
+* agent Claude Code w kontenerze, struktura projektu, testy.
+
+Stan projektu, zadania i dziennik zmian: [PROGRESS.md](PROGRESS.md). Zasady pracy dla agentów: [CLAUDE.md](CLAUDE.md).
+Benchmark modeli obrazów: [bench/images/](bench/images/).

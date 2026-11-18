@@ -10,3 +10,12 @@ Gra skończyła się wygraną w 7. turze. Gracz po 4 stałych ruchach robił to,
 | `02-gra-historia.jpg` | Ekran gry w trybie historii (tura 3 z 7): obraz sceny, narracja i dialogi, przewijanie tur strzałkami |
 | `03-panel-badawczy.jpg` | Tryb deweloperski: dane techniczne (model, pamięć, `location_id`) i panel badawczy z czasem, tokenami, cache i zmianami stanu |
 | `04-wygrana.jpg` | Plansza końca gry z powodem wygranej podanym przez narratora |
+
+## Poradnik PDF
+
+`docs/poradnik.pdf` powstaje z `docs/poradnik.html` (używa tych zrzutów). Po zmianie HTML wydrukuj go na nowo:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --no-pdf-header-footer \
+  --print-to-pdf=docs/poradnik.pdf "file://$PWD/docs/poradnik.html"
+```
