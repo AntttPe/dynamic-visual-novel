@@ -3,203 +3,137 @@
 <head>
 <meta charset="utf-8">
 <title>Dynamic Visual Novel: jak uruchomić grę</title>
-<!-- Źródło poradnika. PDF: docs/poradnik.pdf (wydruk tej strony z Chrome, instrukcja w docs/README.md). -->
+<!-- Źródło poradnika. PDF: docs/poradnik.pdf (komenda w docs/screenshots/README.md). -->
 <style>
   @page { size: A4; margin: 16mm 16mm 18mm; }
   :root { --ink: #1d1b19; --muted: #6b645c; --line: #e3ddd4; --accent: #8a5a1f; --soft: #f6f2ec; }
   * { box-sizing: border-box; }
   body { font-family: "Helvetica Neue", Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.5; margin: 0; background: #fff; }
-  h1 { font-family: Georgia, serif; font-size: 26pt; margin: 0 0 4px; letter-spacing: -0.01em; }
-  h2 { font-family: Georgia, serif; font-size: 15pt; margin: 22px 0 8px; padding-top: 6px; border-top: 1px solid var(--line); break-after: avoid; }
+  h1 { font-family: Georgia, serif; font-size: 24pt; margin: 0 0 2px; }
+  h2 { font-family: Georgia, serif; font-size: 15pt; margin: 20px 0 8px; padding-top: 6px; border-top: 1px solid var(--line); break-after: avoid; }
   h2 .n { color: var(--accent); margin-right: 6px; }
   h3 { font-size: 11pt; margin: 12px 0 4px; break-after: avoid; }
   p { margin: 0 0 8px; }
-  .lead { font-size: 12pt; color: var(--muted); margin-bottom: 14px; }
+  .lead { font-size: 12pt; color: var(--muted); margin-bottom: 12px; }
   code, pre { font-family: Menlo, Consolas, monospace; font-size: 9pt; }
   code { background: var(--soft); padding: 1px 4px; border-radius: 3px; }
-  pre { background: #1f1d1b; color: #f3eee6; padding: 10px 12px; border-radius: 6px; margin: 6px 0 10px; white-space: pre-wrap; break-inside: avoid; }
+  pre { background: #1f1d1b; color: #f3eee6; padding: 9px 12px; border-radius: 6px; margin: 4px 0 10px; white-space: pre-wrap; break-inside: avoid; }
   pre .c { color: #a89f93; }
+  pre .t { color: #f0c98a; }
   ol, ul { margin: 4px 0 10px; padding-left: 20px; }
-  li { margin: 2px 0; }
+  li { margin: 3px 0; }
   table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 9.5pt; break-inside: avoid; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { background: var(--soft); font-weight: 600; }
-  figure { margin: 8px 0 12px; break-inside: avoid; }
-  figure img { width: 78%; margin: 0 auto; border-radius: 6px; border: 1px solid var(--line); display: block; }
-  figcaption { text-align: center; font-size: 9pt; color: var(--muted); margin-top: 4px; }
+  figure { margin: 8px 0 10px; break-inside: avoid; }
+  figure img { width: 72%; margin: 0 auto; border-radius: 6px; border: 1px solid var(--line); display: block; }
   .box { background: var(--soft); border-left: 3px solid var(--accent); padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 8px 0 12px; break-inside: avoid; }
-  .cols { break-inside: avoid; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-  .cols > div { background: var(--soft); border-radius: 6px; padding: 8px 10px; font-size: 9.5pt; }
-  .cols h3 { margin-top: 0; }
-  .kbd { display: inline-block; border: 1px solid #c9c1b6; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 9pt; background: #fff; }
-  .page-break { break-before: page; }
-  .toc { columns: 2; font-size: 10pt; margin: 6px 0 0; }
+  .warn { border-left-color: #b4432f; }
+  .step { break-inside: avoid; }
+  .kbd { display: inline-block; border: 1px solid #c9c1b6; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 9pt; background: #fff; color: var(--ink); }
+  a { color: var(--accent); }
 </style>
 </head>
 <body>
 
 <h1>Dynamic Visual Novel</h1>
-<p class="lead">Jak uruchomić grę na swoim komputerze i w nią zagrać.</p>
+<p class="lead">Jak uruchomić grę: na laptopie, z modelem tekstowym i z obrazami z GPU uczelni.</p>
 
-<p>Dynamic Visual Novel to gra, w której fabułę, dialogi i obrazy tworzą na bieżąco modele AI.
-Nie ma gotowych wyborów: wpisujesz własnymi słowami, co robisz, a narrator opowiada, co dzieje się dalej.
-Możesz też opisać własny pomysł na świat, a model zbuduje z niego całą przygodę.</p>
+<figure><img src="screenshots/02-gra-historia.jpg" alt="Ekran gry"></figure>
 
-<figure>
-  <img src="screenshots/02-gra-historia.jpg" alt="Ekran gry: scena, cel w prawym górnym rogu, narracja na dole">
-  <figcaption>Ekran gry: obraz sceny, cel i podpowiedź w prawym górnym rogu, narracja i pole akcji na dole.</figcaption>
-</figure>
+<div class="box">Potrzebujesz: <b>Docker Desktop</b>, <b>Git</b>, a od zespołu: plik <code>.env</code>,
+dostęp do VPN uczelni oraz login i klucz SSH do serwera GPU. W komendach niżej
+<code>&lt;login&gt;</code> i <code>&lt;adres serwera&gt;</code> zastąp danymi, które dostałeś.</div>
 
-<ol class="toc">
-  <li>Czego potrzebujesz</li>
-  <li>Instalacja programów</li>
-  <li>Pobranie i uruchomienie gry</li>
-  <li>Menu i pierwsza gra</li>
-  <li>Jak grać</li>
-  <li>Zapisane gry</li>
-  <li>Wyłączanie i ponowne uruchomienie</li>
-  <li>Gdy coś nie działa</li>
-</ol>
+<h2><span class="n">1</span>Uruchom grę na laptopie</h2>
+<p>Zainstaluj <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a> i włącz go.
+Na Windowsie najpierw <code>wsl --install</code> w PowerShellu (jako administrator), a wszystkie komendy wpisuj w terminalu <b>Ubuntu</b>.</p>
+<pre>git clone https://github.com/AntttPe/dynamic-visual-novel.git
+cd dynamic-visual-novel</pre>
+<p>Wklej do tego katalogu plik <code>.env</code> od zespołu (bez niego wpisz <code>cp .env.example .env</code>, wtedy działa tylko demo). Potem:</p>
+<pre>docker compose up -d --build    <span class="c"># pierwszy raz kilka minut</span></pre>
+<p>Otwórz <b>http://localhost:8000</b>. Przycisk <b>Podgląd bez modelu (demo)</b> działa od razu, bez niczego więcej.</p>
 
-<h2><span class="n">1</span>Czego potrzebujesz</h2>
-<ul>
-  <li>Komputer z macOS, Windows 10/11 albo Linuksem.</li>
-  <li>Około 5 GB wolnego miejsca na dysku i połączenie z internetem przy pierwszym uruchomieniu.</li>
-  <li>Programy <b>Docker Desktop</b> i <b>Git</b> (instalacja w punkcie 2).</li>
-  <li>Przeglądarkę na komputerze. Gra jest przygotowana na ekran komputera, nie na telefon.</li>
-</ul>
-<div class="box">Nie trzeba instalować Pythona ani żadnych bibliotek. Cała gra działa w jednym kontenerze Docker,
-więc na każdym systemie uruchamia się tak samo.</div>
+<h2><span class="n">2</span>Model tekstowy (narrator)</h2>
+<p>Model tekstowy działa na serwerze uczelni przez API. Wystarczy plik <code>.env</code> od zespołu i <b>włączony VPN</b>.
+W menu przy nazwie modelu ma być zielona kropka. Najszybszy jest <code>openai/strata-big</code>
+(wybór w <b>Ustawieniach deweloperskich</b>, prawy górny róg menu).</p>
 
-<h2 style="break-before: page"><span class="n">2</span>Instalacja programów</h2>
-<div class="cols">
-  <div>
-    <h3>macOS</h3>
-    <ol>
-      <li>Pobierz i zainstaluj <b>Docker Desktop</b> ze strony docker.com.</li>
-      <li>Uruchom Docker Desktop i poczekaj, aż ikona wieloryba przestanie się animować.</li>
-      <li>Git zwykle już jest. Sprawdź w Terminalu: <code>git --version</code></li>
-    </ol>
-  </div>
-  <div>
-    <h3>Windows</h3>
-    <ol>
-      <li>Otwórz PowerShell jako administrator i wpisz <code>wsl --install</code>.</li>
-      <li>Zrestartuj komputer, uruchom aplikację <b>Ubuntu</b> i ustaw login.</li>
-      <li>Zainstaluj <b>Docker Desktop</b>, w ustawieniach włącz <i>Use the WSL 2 based engine</i> oraz
-        <i>Resources &gt; WSL Integration &gt; Ubuntu</i>.</li>
-      <li>Dalsze komendy wpisuj w terminalu <b>Ubuntu</b>.</li>
-    </ol>
-  </div>
-  <div>
-    <h3>Linux</h3>
-    <ol>
-      <li>Zainstaluj Docker Engine i <code>docker compose</code> według instrukcji na docs.docker.com.</li>
-      <li>Zainstaluj Git, np. <code>sudo apt install git</code>.</li>
-    </ol>
-  </div>
+<h2><span class="n">3</span>Obrazy z GPU uczelni</h2>
+<p>Obrazy rysuje model FLUX.2 klein na serwerze GPU. Potrzebne są <b>dwa okna terminala</b> i włączony VPN.
+Bez tego kroku gra też działa, tylko bez obrazów.</p>
+
+<div class="step">
+<h3>Krok A (tylko raz). Laptop: powiedz grze, gdzie są obrazy</h3>
+<p>W pliku <code>.env</code> usuń <code>#</code> z początku linii z <code>IMAGE_SERVER_URL</code>, żeby wyglądała tak:</p>
+<pre>IMAGE_SERVER_URL=http://host.docker.internal:8420</pre>
+<p>i uruchom ponownie grę:</p>
+<pre>docker compose up -d --force-recreate app</pre>
 </div>
-<p>Sprawdź, czy Docker działa:</p>
-<pre>docker --version
-docker compose version</pre>
 
-<h2><span class="n">3</span>Pobranie i uruchomienie gry</h2>
-<p>W terminalu wpisz po kolei:</p>
-<pre><span class="c"># 1. pobierz projekt</span>
-git clone https://github.com/AntttPe/dynamic-visual-novel.git
-cd dynamic-visual-novel
+<div class="step">
+<h3>Krok B. Okno 1: włącz serwer obrazów na GPU</h3>
+<pre><span class="t">ssh &lt;login&gt;@&lt;adres serwera&gt;</span>
+nvidia-smi                        <span class="c"># czy GPU jest wolne (brak cudzych procesów)</span>
+eval "$(conda shell.bash hook)" &amp;&amp; conda activate ~/data/conda/dvn-images
+tmux ls                           <span class="c"># czy nie działa już stara sesja z serve.py</span>
+tmux new -s dvn                   <span class="c"># nowa sesja, która przetrwa zerwanie połączenia</span></pre>
+<p>Jeśli <code>tmux ls</code> pokazuje sesję <code>dvn</code>, nie twórz nowej: wejdź do niej przez <code>tmux attach -t dvn</code>
+i sprawdź, czy serwer już działa (wtedy przejdź do kroku C). Jeśli jest tam tylko pusta linia poleceń, wpisz dalsze komendy w niej.</p>
+<p>Już w tmux. Nowa sesja nie ma aktywnego środowiska, więc aktywujesz je jeszcze raz:</p>
+<pre>eval "$(conda shell.bash hook)" &amp;&amp; conda activate ~/data/conda/dvn-images
+cd ~/data/dvn &amp;&amp; git pull &amp;&amp; cd bench/images/consistency
+python serve.py</pre>
+<p>Poczekaj na napis <code>Gotowe: 127.0.0.1:8420</code> (pierwszy raz ok. minuty, model się wczytuje). Zostaw to okno otwarte.</p>
+</div>
 
-<span class="c"># 2. utwórz plik z ustawieniami (na start nic w nim nie zmieniasz)</span>
-cp .env.example .env
+<div class="step">
+<h3>Krok C. Okno 2 (na laptopie): tunel do serwera</h3>
+<pre><span class="t">ssh -N -L 8420:127.0.0.1:8420 &lt;login&gt;@&lt;adres serwera&gt;</span></pre>
+<p>Komenda nic nie wypisuje i tak ma być. Zostaw to okno otwarte przez całą grę.</p>
+</div>
 
-<span class="c"># 3. zbuduj i uruchom grę (pierwszy raz trwa kilka minut)</span>
-docker compose up -d --build</pre>
-<p>Gdy komenda się skończy, otwórz w przeglądarce adres <b>http://localhost:8000</b>.</p>
-<div class="box"><b>Windows:</b> projekt pobieraj w terminalu Ubuntu, w katalogu domowym (<code>cd ~</code>), a nie na dysk <code>C:\</code>.<br>
-<b>Plik z ustawieniami od zespołu:</b> jeśli dostałeś gotowy plik <code>.env</code>, wklej go do katalogu
-<code>dynamic-visual-novel</code> zamiast kroku 2. Nie wysyłaj tego pliku dalej i nie wrzucaj go do internetu.</div>
+<div class="step">
+<h3>Krok D. Graj</h3>
+<p>Odśwież http://localhost:8000 i zacznij grę. Tekst pojawia się po 30 do 90 s, obraz sceny kilka do kilkunastu sekund później.</p>
+</div>
 
-<h2><span class="n">4</span>Menu i pierwsza gra</h2>
-<figure>
-  <img src="screenshots/01-menu.jpg" alt="Menu gry z kartami światów">
-  <figcaption>Menu: wybór świata, własny pomysł, podpowiedzi, limit tur, zapisane gry i ustawienia.</figcaption>
-</figure>
+<div class="step">
+<h3>Krok E. Po graniu: wyłącz wszystko</h3>
+<pre><span class="c"># Okno 1 (serwer GPU):</span>
+Ctrl+C        <span class="c"># zatrzymuje serwer obrazów i zwalnia GPU</span>
+exit          <span class="c"># zamyka sesję tmux</span>
+exit          <span class="c"># wylogowanie z serwera</span>
+
+<span class="c"># Okno 2 (tunel):</span>
+Ctrl+C</pre>
+<div class="box warn"><b>Zasady serwera:</b> nie zostawiaj serwera obrazów włączonego, gdy nie grasz (dla pewności sam wyłączy się po 30 minutach bez pracy).
+Uruchamiaj go tylko przy wolnym GPU. Gdy połączenie się zerwie, zaloguj się znowu przez <code>ssh</code> i wpisz <code>tmux attach -t dvn</code>.</div>
+</div>
+
+<h2><span class="n">4</span>Jak grać</h2>
+<figure><img src="screenshots/01-menu.jpg" alt="Menu gry"></figure>
 <ol>
-  <li><b>Wybierz świat.</b> „Zaginiona korona” to gotowa przygoda. <b>Własny świat</b> tworzy przygodę z twojego pomysłu (punkt 5).</li>
-  <li><b>Podpowiedzi</b> zostaw włączone, jeśli grasz pierwszy raz. Gra łatwiej przyjmuje twoje pomysły i podpowiada następny krok.</li>
-  <li><b>Limit tur</b> jest opcjonalny. Gdy minie, a cel nie jest osiągnięty, gra kończy się przegraną.</li>
-  <li>Kliknij <b>Zacznij grę</b>.</li>
+  <li>Wybierz świat: „Zaginiona korona” albo <b>Własny świat</b> i wpisz kilka zdań pomysłu (budowa świata trwa 1 do 5 minut).</li>
+  <li>Zostaw włączone <b>Podpowiedzi</b>: w prawym górnym rogu gry widać cel i następny krok.</li>
+  <li>Kliknij <b>Zacznij grę</b>, wpisz w polu na dole, co robisz, i naciśnij <span class="kbd">Enter</span>.</li>
+  <li><b>Historia</b> albo <span class="kbd">←</span> <span class="kbd">→</span> przewija tury, <span class="kbd">F</span> to pełny ekran,
+    <b>Panel badawczy</b> pokazuje czas, tokeny i stan świata.</li>
+  <li><b>Zapisane gry</b> w menu: każda rozegrana gra do przejrzenia tura po turze, także bez GPU.</li>
 </ol>
 
-<h3>Skąd gra bierze model AI</h3>
+<h2><span class="n">5</span>Wyłączanie gry i problemy</h2>
 <table>
-  <tr><th style="width:32%">Sytuacja</th><th>Co zrobić</th></tr>
-  <tr><td>Chcesz tylko zobaczyć, jak wygląda gra</td><td>Kliknij <b>Podgląd bez modelu (demo)</b>. Działa od razu, bez kluczy i bez internetu.
-    Odpowiedzi są sztuczne, ale widać cały ekran gry.</td></tr>
-  <tr><td>Masz plik <code>.env</code> od zespołu</td><td>Wybierz świat i kliknij <b>Zacznij grę</b>. Model jest już ustawiony.
-    Model na serwerze uczelni działa tylko przy włączonym VPN uczelni.</td></tr>
-  <tr><td>Masz własne konto u dostawcy AI (OpenAI, Anthropic, Google Gemini, OpenRouter)</td><td>Otwórz <b>Ustawienia deweloperskie</b> (prawy górny róg menu).
-    W polu <b>Model narratora</b> wybierz „Inny model” i wpisz nazwę, np. <code>openai/gpt-4o-mini</code>
-    albo <code>anthropic/claude-haiku-5-5</code>. Rozwiń <b>Własne API modelu tekstowego</b> i wklej swój klucz.
-    Klucz zostaje na twoim komputerze.</td></tr>
+  <tr><th style="width:42%">Co</th><th>Komenda albo rozwiązanie</th></tr>
+  <tr><td>Wyłącz / włącz grę</td><td><code>docker compose stop</code> / <code>docker compose start</code></td></tr>
+  <tr><td>Nowsza wersja gry</td><td><code>git pull</code>, potem <code>docker compose up -d --build</code></td></tr>
+  <tr><td><code>Cannot connect to the Docker daemon</code></td><td>Włącz Docker Desktop.</td></tr>
+  <tr><td>Kropka przy modelu nie jest zielona</td><td>Włącz VPN uczelni i sprawdź, czy masz plik <code>.env</code> od zespołu.</td></tr>
+  <tr><td>Brak obrazów</td><td>Czy w oknie 1 jest napis <code>Gotowe</code>, a w oknie 2 działa tunel? Czy w <code>.env</code> linia <code>IMAGE_SERVER_URL</code> jest bez <code>#</code>?</td></tr>
+  <tr><td>Gram bez GPU i widzę błędy obrazów</td><td>Dodaj <code>#</code> przed <code>IMAGE_SERVER_URL</code> w <code>.env</code> i wpisz <code>docker compose up -d --force-recreate app</code>.</td></tr>
+  <tr><td>„Narrator nie zwrócił poprawnej odpowiedzi”</td><td>Wyślij akcję jeszcze raz.</td></tr>
 </table>
-<p>Przy nazwie modelu w menu zielona kropka oznacza, że model odpowiada.</p>
-
-<h2><span class="n">5</span>Jak grać</h2>
-<p>W polu na dole ekranu wpisz własnymi słowami, co robisz, i naciśnij <span class="kbd">Enter</span>. Na przykład:</p>
-<pre>Rozglądam się po karczmie i siadam przy barze.
-Pytam karczmarza, czy widział ostatnio kogoś obcego.
-Idę za zakapturzonym mężczyzną, starając się nie dać się zauważyć.</pre>
-<p>Odpowiedź narratora pojawia się po kilkudziesięciu sekundach (zależy od modelu). Obraz sceny, jeśli jest włączony, dochodzi chwilę później.
-Gra kończy się planszą <b>Wygrana</b> albo <b>Przegrana</b>, gdy osiągniesz cel świata albo coś pójdzie bardzo źle.</p>
-
-<table>
-  <tr><th style="width:32%">Element ekranu</th><th>Do czego służy</th></tr>
-  <tr><td>Karta <b>Cel</b> (prawy górny róg)</td><td>Cel przygody. Przy włączonych podpowiedziach także propozycja następnego kroku.</td></tr>
-  <tr><td><b>Historia</b> albo <span class="kbd">←</span> <span class="kbd">→</span></td><td>Przewijanie wcześniejszych tur jak pokazu slajdów. <span class="kbd">Esc</span> wraca do gry.</td></tr>
-  <tr><td><b>Pełny ekran</b> albo <span class="kbd">F</span></td><td>Chowa przeglądarkę, zostaje sama gra.</td></tr>
-  <tr><td><b>Panel badawczy</b>, <b>Dane techniczne</b></td><td>Dane każdej tury: czas odpowiedzi, liczba tokenów, stan świata, prompt i surowa odpowiedź modelu.</td></tr>
-  <tr><td><b>Menu</b></td><td>Powrót do menu. Bieżąca gra zapisuje się sama.</td></tr>
-</table>
-
-<h3>Własny świat</h3>
-<p>W menu wybierz kartę <b>Własny świat</b> i wpisz kilka zdań pomysłu (albo kliknij jeden z przykładów), np.
-<i>„Cyberpunkowy Kraków w 2090 roku, jestem detektywką i szukam zaginionego androida”</i>.
-Model tworzy z tego bohatera, cel, lokacje i postacie. Trwa to od jednej do kilku minut. W trakcie możesz kliknąć <b>Anuluj</b>.</p>
-
-<h2><span class="n">6</span>Zapisane gry</h2>
-<figure>
-  <img src="screenshots/04-wygrana.jpg" alt="Plansza wygranej w zapisanej grze">
-  <figcaption>Zapisaną grę można przejrzeć tura po turze, z obrazami i narracją.</figcaption>
-</figure>
-<ol>
-  <li>W menu kliknij <b>Zapisane gry</b>. Zobaczysz listę rozegranych gier z miniaturą, liczbą tur i wynikiem.</li>
-  <li>Kliknij grę. Otworzy się od pierwszej tury w trybie historii.</li>
-  <li>Strzałkami <span class="kbd">←</span> <span class="kbd">→</span> przechodzisz między turami. <b>Wróć do gry</b> pozwala grać dalej.</li>
-</ol>
-<p>Zapis jest tylko na twoim komputerze, w katalogu <code>data/</code> w folderze projektu. Usunięcie tego katalogu usuwa wszystkie gry.</p>
-
-<h2><span class="n">7</span>Wyłączanie i ponowne uruchomienie</h2>
-<table>
-  <tr><th style="width:40%">Co chcesz zrobić</th><th>Komenda (w katalogu <code>dynamic-visual-novel</code>)</th></tr>
-  <tr><td>Wyłączyć grę na przerwę</td><td><code>docker compose stop</code></td></tr>
-  <tr><td>Włączyć ją z powrotem</td><td><code>docker compose start</code>, potem http://localhost:8000</td></tr>
-  <tr><td>Pobrać nowszą wersję gry</td><td><code>git pull</code>, potem <code>docker compose up -d --build</code></td></tr>
-  <tr><td>Usunąć kontener (zapisane gry zostają)</td><td><code>docker compose down</code></td></tr>
-</table>
-
-<h2><span class="n">8</span>Gdy coś nie działa</h2>
-<table>
-  <tr><th style="width:40%">Problem</th><th>Rozwiązanie</th></tr>
-  <tr><td><code>Cannot connect to the Docker daemon</code></td><td>Docker Desktop nie jest włączony. Uruchom go i powtórz komendę.</td></tr>
-  <tr><td><code>port is already allocated</code></td><td>Port 8000 zajmuje inny program. Zamknij go albo w pliku <code>docker-compose.yml</code> zmień <code>"8000:8000"</code> na <code>"8080:8000"</code> i wejdź na localhost:8080.</td></tr>
-  <tr><td>Strona localhost:8000 się nie otwiera</td><td>Poczekaj minutę po uruchomieniu. Sprawdź logi: <code>docker compose logs -f app</code>.</td></tr>
-  <tr><td>Przy modelu czerwona albo żółta kropka</td><td>Model nie odpowiada. Sprawdź internet, VPN (dla modelu uczelni) albo klucz w Ustawieniach deweloperskich. Do samego oglądania użyj trybu demo.</td></tr>
-  <tr><td>„Narrator nie zwrócił poprawnej odpowiedzi”</td><td>Model pomylił format. Wyślij akcję jeszcze raz albo wybierz większy model.</td></tr>
-  <tr><td>Błąd 401 przy własnym kluczu</td><td>Klucz jest zły albo pasuje do innego dostawcy niż początek nazwy modelu (<code>openai/</code>, <code>anthropic/</code>…).</td></tr>
-  <tr><td>Brak obrazów</td><td>To normalne bez serwera obrazów. Gra działa wtedy z samym tekstem.</td></tr>
-</table>
-<p style="color:var(--muted);font-size:9pt;margin-top:14px">Więcej szczegółów (modele, obrazy, eksperymenty): README projektu na GitHubie, github.com/AntttPe/dynamic-visual-novel.</p>
+<p style="color:var(--muted);font-size:9pt">Więcej: README projektu na GitHubie, github.com/AntttPe/dynamic-visual-novel.</p>
 
 </body>
 </html>
