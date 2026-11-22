@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app import llm
+from app import auth, llm
 from app.config import settings
 from app.core.engine import GameEngine, GameOver
 from app.core.saved import load_game, saved_world
@@ -34,6 +34,12 @@ from app.images import (
 from app.storage.db import Store
 
 app = FastAPI(title="Dynamic Visual Novel")
+
+# Logowanie hasłem z GAME_PASSWORD (puste = gra bez hasła), patrz app/auth.py
+app.middleware("http")(auth.require_login)
+app.add_api_route("/login", auth.login_form, methods=["GET"], include_in_schema=False)
+app.add_api_route("/login", auth.login_submit, methods=["POST"], include_in_schema=False)
+app.add_api_route("/logout", auth.logout, methods=["GET", "POST"], include_in_schema=False)
 
 # Wymienne w testach: fabryka klientów LLM i magazyn danych
 app.state.llm_factory = lambda model, world, **api: llm.make_client(model, world, settings, **api)

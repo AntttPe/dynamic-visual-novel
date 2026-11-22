@@ -392,6 +392,22 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ## Dziennik
 
+### 2026-11-19, Dudsztor: lektor (czytanie tekstu na głos)
+- Co zrobione: przycisk „Lektor” (klawisz L) czyta nową turę głosem przeglądarki, kobiety kobiecym, mężczyzn męskim.
+  Narrator w grze podaje `gender` przy każdej kwestii (prompt `narrator_ending.md`, schemat `PlayNarratorResponse`).
+- Pliki: `app/static/app.js`, `app/static/index.html`, `app/core/schemas.py`, `app/core/engine.py`, `app/core/saved.py`,
+  `app/prompts/narrator_ending.md`, `tests/test_endings.py`.
+- Uwaga dla następnych: zmienia się tylko prompt i schemat gry w przeglądarce, eksperymenty bez zmian.
+  Jakość głosu zależy od przeglądarki (najlepiej Edge).
+
+### 2026-11-19, Dudsztor: hasło do gry i gra w internecie przez Tailscale Funnel
+- Co zrobione: logowanie hasłem z `GAME_PASSWORD` (puste = bez hasła), strona `/login`, API bez sesji zwraca 401.
+  Port 8000 tylko na `127.0.0.1`. Instrukcja wystawienia gry przez Tailscale Funnel.
+- Pliki: `app/auth.py`, `app/static/login.html`, `app/main.py`, `app/config.py`, `tests/test_auth.py`,
+  `tests/conftest.py`, `docker-compose.yml`, `.env.example`, `docs/dla_zespolu.md`.
+- Jak sprawdzić: `pytest -v` (testy nie czytają hasła z `.env`), w `.env` ustaw `GAME_PASSWORD` i wejdź na `localhost:8000`.
+- Uwaga dla następnych: gra z sieci lokalnej (inny komputer w LAN) nie działa po zmianie portu, użyj Funnel.
+
 ### 2026-11-18, Antek: poradnik PDF, krótszy README, pomysły na kolejne sprinty
 - Poradnik uruchomienia gry ze zrzutami ekranu: `docs/poradnik.pdf` (źródło `docs/poradnik.html`, wydruk z Chrome).
   Bez haseł i adresów serwerów.

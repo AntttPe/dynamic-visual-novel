@@ -45,9 +45,16 @@ class GameOutcome(BaseModel):
     reason: str = Field(default="", description="Krótko, dlaczego gra się skończyła. Puste, gdy trwa.")
 
 
-class PlayNarratorResponse(NarratorResponse):
-    """Odpowiedź narratora w grze: to samo co w eksperymentach plus wynik gry."""
+class VoicedLine(DialogueLine):
+    """Kwestia w grze: do tego płeć mówiącego, żeby lektor czytał ją kobiecym albo męskim głosem."""
 
+    gender: Literal["female", "male"] | None = Field(default=None, description="Płeć postaci, która mówi.")
+
+
+class PlayNarratorResponse(NarratorResponse):
+    """Odpowiedź narratora w grze: to samo co w eksperymentach plus wynik gry i płeć mówiących."""
+
+    dialogue: list[VoicedLine] = Field(default_factory=list)
     outcome: GameOutcome = Field(default_factory=GameOutcome)
 
 
@@ -85,3 +92,11 @@ class TurnRecord(BaseModel):
     error: str | None = None
     outcome: GameOutcome | None = None  # tylko gra z wykrywaniem końca (None w eksperymentach)
     hint: str | None = None  # tylko gra z podpowiedziami (None w eksperymentach i bez podpowiedzi)
+    voices: dict[str, str] | None = None  # płeć mówiących dla lektora, tylko gra w przeglądarce
+
+
+def voices_of(parsed: NarratorResponse | None) -> dict[str, str] | None:
+    """Płeć mówiących z odpowiedzi narratora w grze: {"Borwin": "male"}. None w eksperymentach."""
+    if not isinstance(parsed, PlayNarratorResponse):
+        return None
+    return {line.speaker: line.gender for line in parsed.dialogue if line.gender}

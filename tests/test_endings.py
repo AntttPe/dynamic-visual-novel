@@ -166,3 +166,36 @@ def test_api_difficulty(env):
     game = client.post("/api/games", json={"difficulty": "easy"}).json()
     assert game["difficulty"] == "easy"
     assert client.post("/api/games", json={"difficulty": "hard"}).status_code == 422
+
+
+def voiced_answer():
+    return json.dumps({
+        "narration": "Karczma milknie.", "scene": {"location_id": "tavern", "description": "karczma"},
+        "dialogue": [{"speaker": "Borwin", "text": "Czego?", "gender": "male"},
+                     {"speaker": "Ida", "text": "Spokojnie.", "gender": "female"},
+                     {"speaker": "Ktoś", "text": "Hej!"}],
+        "outcome": {"status": "ongoing", "reason": ""},
+    }, ensure_ascii=False)
+
+
+@pytest.mark.anyio
+async def test_game_asks_for_speaker_gender_but_experiments_do_not():
+    fake = FakeLLM([voiced_answer()])
+    record = await GameEngine(WORLD, fake, endings=True).step("Wchodzę")
+    assert "gender" in fake.calls[0][0]["content"]
+    assert record.voices == {"Borwin": "male", "Ida": "female"}  # bez płci = lektor zgaduje w przeglądarce
+    assert "gender" not in json.dumps(NARRATOR_SCHEMA)
+    eval_record = await GameEngine(WORLD, FakeLLM([voiced_answer()]), mode="eval").step("Wchodzę")
+    assert eval_record.voices is None
+
+
+def test_api_returns_voices_also_after_restore(env):
+    client, fake = env
+    fake.responses = [voiced_answer()]
+    game = client.post("/api/games", json={}).json()
+    turn = client.post(f"/api/games/{game['game_id']}/turns", json={"action": "Wchodzę"}).json()["turn"]
+    assert turn["voices"] == {"Borwin": "male", "Ida": "female"}
+    from app.main import GAMES
+    GAMES.clear()  # jak po restarcie serwera: gra wraca z bazy
+    restored = client.get(f"/api/games/{game['game_id']}").json()
+    assert restored["turns"][0]["voices"] == {"Borwin": "male", "Ida": "female"}
