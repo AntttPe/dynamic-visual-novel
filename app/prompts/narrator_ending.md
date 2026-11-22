@@ -11,3 +11,5 @@ $limit
   to "ongoing".
 - Przy "won" albo "lost" narracja opisuje zakończenie historii, a "reason" mówi w jednym zdaniu, co rozstrzygnęło grę.
   Przy "ongoing" pole "reason" jest puste.
+- Każda kwestia w `dialogue` ma też płeć mówiącej postaci, bo tekst czyta lektor kobiecym albo męskim głosem:
+  {"speaker": "...", "text": "...", "gender": "female" albo "male"}. Ta sama postać ma zawsze tę samą płeć.

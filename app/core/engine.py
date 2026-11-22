@@ -24,6 +24,7 @@ from app.core.schemas import (
     NarratorResponse,
     PlayNarratorResponse,
     TurnRecord,
+    voices_of,
 )
 from app.core.state import WorldState
 from app.core.world import Fact, World
@@ -220,6 +221,7 @@ class GameEngine:
             t=t,
             outcome=outcome,
             hint=(parsed.hint.strip() or None) if isinstance(parsed, HintNarratorResponse) else None,
+            voices=voices_of(parsed),
             player_action=action,
             response=parsed,
             raw_output=raw,

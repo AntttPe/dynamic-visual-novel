@@ -50,6 +50,9 @@ w terminalu **Ubuntu**, a projekt pobieraj do katalogu domowego (`cd ~`), nie na
 |---|---|
 | **Historia** albo ← → | przewija wcześniejsze tury jak slajdy, Esc wraca do gry |
 | **Pełny ekran** albo F | chowa przeglądarkę |
+| suwak **↕** obok pola akcji | zmienia wysokość okna z tekstem |
+| suwak **◐** obok pola akcji | widoczność okna z tekstem, gdy myszka jest poza nim |
+| **Lektor** albo L | czyta tekst na głos: narrację lektor, kwestie postaci kobiecy albo męski głos (najlepiej brzmi w Edge) |
 | **Panel badawczy**, **Dane techniczne** | czas, tokeny, stan świata, prompt i surowy JSON każdej tury |
 | **Menu** | powrót do menu, gra zapisuje się sama |
 

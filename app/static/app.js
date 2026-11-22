@@ -26,6 +26,7 @@ async function api(path, opts = {}) {
   const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
   let data = null;
   try { data = await r.json(); } catch {}
+  if (r.status === 401) location.href = "/login"; // sesja wygasła albo zmieniono hasło
   if (!r.ok) {
     const d = data?.detail;
     const msg = typeof d === "string" ? d : d ? d.map((x) => x.msg).join("; ") : `Błąd HTTP ${r.status}`;
@@ -261,6 +262,79 @@ function showNarration(text, dialogue, animate) {
 function stopTyping() { if (typer) { clearInterval(typer.id); typer = null; } }
 $("#box").addEventListener("click", () => { if (typer) { clearInterval(typer.id); typer.finish(); } });
 
+// ---------- lektor: czytanie tekstu głosem przeglądarki (Web Speech API) ----------
+// Narracja głosem lektora, kwestie postaci kobiecym albo męskim głosem. Płeć podaje narrator (turn.voices),
+// a gdy jej brak, zgadujemy po polskiej końcówce imienia. Głosy zależą od przeglądarki: w Edge są naturalne
+// głosy Marek i Zofia, w Chrome zwykle tylko kobiecy, wtedy męski głos to ten sam z niższym tonem.
+const synth = window.speechSynthesis;
+const tts = { on: store.get("dvn.tts") === "1", female: null, male: null, other: null, timer: null, queue: [] };
+const FEMALE_VOICE = /paulina|zofia|agnieszka|ewa|maja|zosia|google polski|female/i;
+const MALE_VOICE = /marek|adam|jacek|krzysztof|\bmale\b/i;
+function loadVoices() {
+  const pl = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith("pl"))
+    .sort((a, b) => /natural|online/i.test(b.name) - /natural|online/i.test(a.name));
+  tts.female = pl.find((v) => FEMALE_VOICE.test(v.name)) ?? null;
+  tts.male = pl.find((v) => !FEMALE_VOICE.test(v.name) && MALE_VOICE.test(v.name)) ?? null;
+  tts.other = pl[0] ?? null;
+  tts.voicesLoaded = synth.getVoices().length > 0;
+}
+function voiceFor(gender) {
+  if (gender === "female") return tts.female ? [tts.female, 1] : [tts.other, 1.35];
+  if (gender === "male") return tts.male ? [tts.male, 1] : [tts.other ?? tts.female, 0.6];
+  return [tts.male ?? tts.other, 1]; // lektor
+}
+function genderOf(speaker, turn) {
+  const known = turn.voices?.[speaker] ?? turns().map((t) => t.voices?.[speaker]).find(Boolean);
+  if (known) return known;
+  const word = speaker.trim().split(/\s+/)[0].toLowerCase(); // „Pani Ewa”, „Stara Zielarka”
+  return /a$/.test(word) && !/^(kuba|barnaba|kosma|bonawentura)$/.test(word) ? "female" : "male";
+}
+function say(text, gender) {
+  const [voice, pitch] = voiceFor(gender);
+  for (const part of text.split(/(?<=[.!?…])\s+/)) { // Chrome ucina długie wypowiedzi, więc po zdaniu
+    if (!part.trim()) continue;
+    const u = new SpeechSynthesisUtterance(part);
+    u.lang = "pl-PL";
+    if (voice) u.voice = voice;
+    u.pitch = pitch;
+    u.onerror = (e) => { if (e.error !== "interrupted" && e.error !== "canceled") console.warn("Lektor:", e.error); };
+    tts.queue.push(u); // Chrome gubi wypowiedzi, do których nic się nie odwołuje
+    synth.speak(u);
+  }
+}
+function stopSpeaking() {
+  clearTimeout(tts.timer);
+  tts.queue = [];
+  synth?.cancel();
+}
+function speakTurn(turn) {
+  if (!synth || !tts.on) return;
+  stopSpeaking();
+  // Chrome i Edge po cancel() potrafią zgubić speak() wywołane od razu, stąd chwila przerwy
+  tts.timer = setTimeout(() => {
+    if (!tts.voicesLoaded) loadVoices();
+    synth.resume();
+    if (!turn) return say(ui.game?.world.intro ?? "");
+    if (!turn.response) return;
+    say(turn.response.narration);
+    for (const d of turn.response.dialogue) say(d.text, genderOf(d.speaker, turn));
+  }, 150);
+}
+function setTts(on) {
+  tts.on = on;
+  store.set("dvn.tts", on ? "1" : null);
+  $("#btnTts").setAttribute("aria-pressed", on);
+  if (on) speakTurn(viewedTurn());
+  else stopSpeaking();
+}
+if (synth) {
+  loadVoices();
+  synth.addEventListener?.("voiceschanged", loadVoices);
+  $("#btnTts").hidden = false;
+  $("#btnTts").setAttribute("aria-pressed", tts.on);
+  $("#btnTts").addEventListener("click", () => setTts(!tts.on));
+}
+
 // ---------- cel i podpowiedź (prawy górny róg) ----------
 let lastHint = "";
 function renderGoal() {
@@ -328,6 +402,7 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "ArrowRight" && ui.history) showTurn(viewIndex() + 1);
   else if (e.key === "Escape" && ui.history) exitHistory();
   else if (e.key.toLowerCase() === "f") toggleFull();
+  else if (e.key.toLowerCase() === "l" && synth) setTts(!tts.on);
 });
 
 // ---------- pełny ekran i wysokość paska z tekstem ----------
@@ -337,6 +412,21 @@ function toggleFull() {
 }
 $("#btnFull").addEventListener("click", toggleFull);
 document.addEventListener("fullscreenchange", () => { $("#btnFull").textContent = document.fullscreenElement ? "Zamknij pełny ekran" : "Pełny ekran"; });
+// Suwak obok pola akcji: wysokość okna z tekstem w % wysokości ekranu, zapamiętana w przeglądarce
+function setBoxSize(vh) {
+  $("#boxSize").value = vh;
+  $("#stage").style.setProperty("--box-h", `${vh}vh`);
+}
+setBoxSize(Number(store.get("dvn.boxH")) || 30);
+$("#boxSize").addEventListener("input", (e) => { setBoxSize(e.target.value); store.set("dvn.boxH", e.target.value); });
+// Drugi suwak: widoczność okna (tło i tekst), gdy myszka jest poza nim, w procentach
+function setBoxIdle(pct) {
+  $("#boxIdle").value = pct;
+  $("#stage").style.setProperty("--box-idle", pct / 100);
+}
+const savedIdle = store.get("dvn.boxIdle");
+setBoxIdle(savedIdle === null ? 50 : Number(savedIdle));
+$("#boxIdle").addEventListener("input", (e) => { setBoxIdle(e.target.value); store.set("dvn.boxIdle", e.target.value); });
 new ResizeObserver(([e]) => $("#stage").style.setProperty("--dock-h", `${Math.round(e.contentRect.height) + 20}px`)).observe($(".dock"));
 
 // ---------- panel badawczy ----------
@@ -472,6 +562,7 @@ $("#form").addEventListener("submit", async (e) => {
   ui.history = false;
   render();
   setBusy(true);
+  stopSpeaking();
   $("#lastAction").textContent = `› ${action}`;
   $("#narr").textContent = "";
   $("#dialogue").innerHTML = "";
@@ -486,6 +577,7 @@ $("#form").addEventListener("submit", async (e) => {
     $("#action").value = "";
     setBusy(false);
     render({ animate: true });
+    speakTurn(data.turn);
   } catch (err) {
     setBusy(false);
     if (err.status === 404) {

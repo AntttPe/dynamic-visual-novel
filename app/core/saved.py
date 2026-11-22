@@ -17,6 +17,7 @@ from app.core.schemas import (
     RejectedUpdate,
     StateUpdate,
     TurnRecord,
+    voices_of,
 )
 from app.core.world import Fact, World, WorldNotFound, load_world
 from app.storage.db import Store
@@ -59,6 +60,7 @@ def turn_record(row: dict, model: type[NarratorResponse]) -> TurnRecord:
         error=row["error"],
         outcome=GameOutcome.model_validate_json(row["outcome"]) if row["outcome"] else None,
         hint=(parsed.hint.strip() or None) if isinstance(parsed, HintNarratorResponse) else None,
+        voices=voices_of(parsed),
     )
 
 

@@ -12,6 +12,7 @@ Szczegóły, których nie trzeba do samego grania. Jak uruchomić grę, opisuje 
 * [Model Llama (Ollama), opcjonalnie](#model-llama-ollama-opcjonalnie)
 * [Wybór modelu narratora](#wybór-modelu-narratora)
 * [Własne API do tekstu i obrazów](#własne-api-do-tekstu-i-obrazów)
+* [Gra w internecie (Tailscale Funnel)](#gra-w-internecie-tailscale-funnel)
 * [Gra z obrazami (serwer GPU instytutu)](#gra-z-obrazami-serwer-gpu-instytutu)
 * [Eksperymenty (badanie modeli)](#eksperymenty-badanie-modeli)
 
@@ -45,6 +46,10 @@ fakty niezmienne (wygląd postaci, materiały przedmiotów) i scenę otwierając
   przed niebezpieczeństwem, a po każdej turze zwraca pole `hint` z następnym krokiem w stronę wygranej.
   Podpowiedź widać w prawym górnym rogu ekranu gry. Zasady świata i fakty niezmienne obowiązują dalej.
 * Wynik każdej tury zapisuje się w kolumnie `outcome` tabeli `turns`.
+* **Lektor** (przycisk na scenie albo klawisz L) czyta nową turę głosem przeglądarki (Web Speech API, bez serwera).
+  Narrator w grze podaje płeć mówiących (`gender` w `dialogue`, w odpowiedzi API pole `voices` tury), więc kobiety
+  czyta kobiecy głos, a mężczyzn męski. Bez płci lektor zgaduje po końcówce imienia. Naturalne polskie głosy
+  (Marek, Zofia) są w Edge. W Chrome zwykle jest tylko głos kobiecy, wtedy męski to ten sam głos z niższym tonem.
 * Dotyczy to tylko gry w przeglądarce. Eksperymenty (`app.eval.run`) mają ten sam prompt i format JSON co wcześniej.
 
 Gra zapamiętuje bieżącą rozgrywkę w przeglądarce, więc po odświeżeniu strony wracasz do niej.
@@ -209,6 +214,27 @@ Uwaga na koszty: każda tura to jeden obraz sceny, a nowa lokacja i nowa postać
   (localStorage), żeby nie wpisywać ich przy każdej grze. Nie zaznaczaj tego na cudzym komputerze.
 * Na stałe (dla wszystkich gier i eksperymentów) klucze ustawiasz w `.env`: `OPENAI_API_KEY`,
   `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` albo `NARRATOR_API_BASE` i `NARRATOR_API_KEY`.
+
+## Gra w internecie (Tailscale Funnel)
+
+Gra może być dostępna z internetu pod stałym adresem `https://<komputer>.<tailnet>.ts.net`,
+dopóki komputer jest włączony. Bez kupowania domeny i bez otwierania portów na routerze.
+
+1. Ustaw hasło w `.env`: `GAME_PASSWORD=...` i uruchom grę (`docker compose up -d`).
+   Bez hasła każdy z adresem gra za Twoje klucze API, więc nie wystawiaj gry bez niego.
+2. Zainstaluj Tailscale na komputerze (nie w kontenerze), np. na Windows `winget install Tailscale.Tailscale`,
+   i zaloguj się: `tailscale up`.
+3. Wystaw grę: `tailscale funnel --bg 8000`. Za pierwszym razem polecenie poda link, pod którym trzeba
+   włączyć HTTPS i Funnel w panelu Tailscale. Adres gry pokaże `tailscale funnel status`.
+4. Wyłączenie: `tailscale funnel reset`.
+
+Jak działa logowanie: `app/auth.py`. Bez ciasteczka sesji strony przekierowują na `/login`, a API zwraca 401.
+Sesja trwa 30 dni, zmiana hasła w `.env` (i restart kontenera) wylogowuje wszystkich. Wylogowanie: `/logout`.
+Puste `GAME_PASSWORD` = gra bez hasła, jak dotąd.
+
+Port 8000 w `docker-compose.yml` jest wystawiony tylko na `127.0.0.1`, więc z sieci lokalnej gry nie widać,
+tylko z tego komputera i przez Funnel. Żeby gra działała po zamknięciu klapki laptopa, wyłącz usypianie
+przy zasilaniu w ustawieniach zasilania.
 
 ## Gra z obrazami (serwer GPU instytutu)
 

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="/style.css?v=13" />
+  <link rel="stylesheet" href="/style.css?v=17" />
 </head>
 <body>
   <div id="banner" class="banner" hidden></div>
@@ -29,6 +29,7 @@
             <button type="button" class="tool" id="btnHistory" aria-pressed="false" title="Przeglądaj poprzednie tury (strzałki ← →)">Historia</button>
             <button type="button" class="tool dev-only" id="btnTech" aria-pressed="false">Dane techniczne</button>
             <button type="button" class="tool dev-only" id="btnPanel" aria-pressed="true">Panel badawczy</button>
+            <button type="button" class="tool" id="btnTts" aria-pressed="false" title="Czytaj tekst na głos (L)" hidden>Lektor</button>
             <button type="button" class="tool" id="btnFull" title="Pełny ekran (F)">Pełny ekran</button>
             <button type="button" class="tool" id="btnNew">Menu</button>
           </nav>
@@ -77,6 +78,14 @@
             <label for="action" class="sr-only">Co robisz?</label>
             <span class="prompt-mark" aria-hidden="true">›</span>
             <input id="action" placeholder="Co robisz? Opisz dowolne działanie własnymi słowami" maxlength="500" />
+            <label class="box-size" title="Wysokość okna z tekstem">
+              <span aria-hidden="true">↕</span><span class="sr-only">Wysokość okna z tekstem</span>
+              <input type="range" id="boxSize" min="10" max="70" step="1" value="30" />
+            </label>
+            <label class="box-size" title="Widoczność okna z tekstem, gdy myszka jest poza nim">
+              <span aria-hidden="true">◐</span><span class="sr-only">Widoczność okna z tekstem bez myszki</span>
+              <input type="range" id="boxIdle" min="0" max="100" step="5" value="50" />
+            </label>
             <button class="btn primary" id="send">Wyślij</button>
           </form>
 
@@ -250,6 +259,6 @@
     </div>
   </section>
 
-  <script src="/app.js?v=12"></script>
+  <script src="/app.js?v=17"></script>
 </body>
 </html>
