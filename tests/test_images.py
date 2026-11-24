@@ -17,13 +17,15 @@ sys.path.insert(0, str(BENCH))
 from models import FakeAdapter
 from serve import ImageServer, watch_idle
 
-from app.core.world import Fact
+from app.core.world import CharacterLook, load_world
 from app.images import (
     TALKING,
     BackgroundImages,
     HttpImageClient,
+    Looks,
     SceneCast,
     location_seed,
+    portrait_prompt,
     scene_prompt,
     visual_text,
 )
@@ -100,20 +102,21 @@ def test_background_per_location_and_scene_per_turn(game_env):
     assert client.get(scene["url"]).content == b"png-bytes"
     assert wait_scene(client, game_id, 1)["status"] == "ready"
 
-    assert len(images.calls) == 5  # tło, portret bohatera, scena, nowe tło i scena: powrót nie zamawia nowego tła
+    assert len(images.calls) == 6  # tło, portrety bohatera i Borwina z intro, scena, nowe tło i scena
     prompts = [c[0] for c in images.calls]
-    assert prompts[0].startswith("STYL zadymiona drewniana karczma")  # stały opis ze świata
+    assert prompts[0].startswith("STYL Interior of a smoky wooden medieval tavern")  # stały opis ze świata
     assert "piwnica z beczkami" in next(p for p in prompts if p.startswith("STYL piwnica"))
     scene_1 = next(c for c in images.calls if "szukam korony" in c[0])
     assert scene_1[1] == location_seed(7, "tavern") + 1
-    assert "zadymiona drewniana karczma" in scene_1[0]  # miejsce ze świata, a nie z opisu narratora
+    assert "Interior of a smoky wooden medieval tavern" in scene_1[0]  # miejsce ze świata, nie od narratora
+    assert "a lean man in his thirties" in scene_1[0] and "Aren" not in scene_1[0]  # wygląd, bez imienia
     assert "Idziesz." in scene_1[0]
     assert scene_1[2] == [b"png-bytes", b"png-bytes"]  # scena rysowana na podstawie tła i portretu bohatera
 
     rows = store.images(game_id)
     assert sorted((r["kind"], r["location_id"], r["t"], r["status"]) for r in rows) == [
         ("background", "mroczna_piwnica", 2, "ready"), ("background", "tavern", 0, "ready"),
-        ("portrait", "aren wędrowny najemnik", 0, "ready"),
+        ("portrait", "aren wędrowny najemnik", 0, "ready"), ("portrait", "borwin", 0, "ready"),
         ("scene", "mroczna_piwnica", 2, "ready"), ("scene", "tavern", 1, "ready")]
 
 
@@ -144,7 +147,8 @@ def test_portrait_drawn_once_and_used_in_later_scenes(game_env):
     rows = store.images(game_id)
     assert sorted(r["location_id"] for r in rows if r["kind"] == "portrait") == [
         "aren wędrowny najemnik", "borwin", "straż"]
-    borwin = next(c for c in images.calls if "karczmarz, rudy" in c[0] or "rudy, jednooki, karczmarz" in c[0])
+    borwin = next(c for c in images.calls if "a stocky middle-aged man with red hair" in c[0])
+    assert "Borwin" not in borwin[0]
     assert borwin[2] == []  # portret powstaje bez obrazów wejściowych
     scenes = [c for c in images.calls if len(c[2]) >= 2]
     assert len(scenes) == 2
@@ -164,18 +168,33 @@ def test_turn_does_not_wait_for_failed_server_and_retries(game_env):
     assert client.post(f"/api/games/{game_id}/turns", json={"action": "czekam"}).status_code == 200
     assert wait_scene(client, game_id, 1)["status"] == "ready"
     assert wait(client, game_id, "tavern")["status"] == "ready"
-    assert [r["status"] for r in store.images(game_id)] == ["failed", "ready", "ready", "ready"]  # tło ponowione
+    assert [r["status"] for r in store.images(game_id)] == ["failed", "ready", "ready", "ready", "ready"]
     assert "ConnectionError" in store.images(game_id)[0]["error"]
 
 
-def test_scene_prompt_describes_people_from_world_facts():
-    facts = [Fact(entity="bohater", attribute="znak szczególny", value="blizna na lewej dłoni"),
-             Fact(entity="borwin", attribute="wygląd", value="rudy, jednooki"),
-             Fact(entity="borwin", attribute="zawód", value="karczmarz")]
-    prompt = scene_prompt("STYL", "karczma", "Aren, wędrowny najemnik", facts, ["Borwin", "Aren", "Straż"],
-                          "szukam korony", "Borwin marszczy brwi.")
-    assert prompt == ("STYL karczma. Aren, wędrowny najemnik (blizna na lewej dłoni); "
-                      "Borwin (rudy, jednooki); Straż. szukam korony. Borwin marszczy brwi.")
+def test_scene_prompt_is_english_without_names():
+    prompt = scene_prompt("STYLE", "Interior of a tavern.", ["a lean man, scar on his left hand", "a red-haired man"],
+                          "The innkeeper frowns at the hero.")
+    assert prompt == ("STYLE Interior of a tavern. Characters in the order of the reference images: "
+                      "1) a lean man, scar on his left hand; 2) a red-haired man. Exactly 2 characters in the "
+                      "picture, each one only once. The innkeeper frowns at the hero.")
+    assert portrait_prompt("STYLE", "a huge black cat.") == "STYLE a huge black cat."
+
+
+def test_looks_match_name_variants():
+    world = load_world("zaginiona_korona").model_copy(update={"characters": [
+        CharacterLook(name="senne", look="a 30-year-old woman"),
+        CharacterLook(name="szkiełkarz bodo", look="an old man with white sideburns"),
+        CharacterLook(name="pani beata", look="a young teacher"),
+    ]})
+    looks = Looks.of_world(world)
+    assert looks.find("Senna") == "a 30-year-old woman"
+    assert looks.find("Bodo") == "an old man with white sideburns"
+    assert looks.find("Aren") == looks.find("bohater") == world.hero_look
+    assert looks.find("pani Halina") == ""  # sam tytuł nie wystarcza
+    assert looks.canonical("Senna") == "senne"
+    looks.add("Senna", "a man")  # pierwszy opis zostaje
+    assert looks.find("Senne") == "a 30-year-old woman"
 
 
 def test_people_stay_behind_when_player_leaves():
@@ -359,3 +378,29 @@ def test_world_visual_style_replaces_era():
     assert "cyberpunk city in 2090 scene" in cyber and "medieval" not in cyber
     assert "{era}" not in styled(settings.image_portrait_style, "19th century")
     assert styled("Bez epoki.", "cyberpunk") == "Bez epoki."  # własny styl z .env bez {era} zostaje bez zmian
+
+
+def test_narrator_english_picture_and_new_character_look(game_env):
+    client, llm, images, store = game_env
+    game_id = client.post("/api/games", json={"seed": 7}).json()["game_id"]
+    llm.responses = [json.dumps({
+        "narration": "Do karczmy wchodzi Senna i kłania się.", "dialogue": [],
+        "scene": {"location_id": "ciemna_piwnica", "description": "piwnica",
+                  "look": "Interior of a dark cellar with wine barrels"},
+        "state_updates": [], "characters_present": ["Senna"],
+        "picture": "A tall woman bows to the lean man.",
+        "new_characters": [{"name": "Senna", "look": "a tall woman in her forties with silver braids"}],
+    })]
+    assert client.post(f"/api/games/{game_id}/turns", json={"action": "czekam"}).status_code == 200
+    assert wait_scene(client, game_id, 1)["status"] == "ready"
+    prompts = [c[0] for c in images.calls]
+    assert "STYL Interior of a dark cellar with wine barrels" in prompts  # tło po angielsku od narratora
+    assert any(p.endswith("The character: a tall woman in her forties with silver braids.") for p in prompts)
+    scene = next(p for p in prompts if "A tall woman bows" in p)
+    assert "2) a tall woman in her forties with silver braids" in scene and "Senna" not in scene
+    # Po restarcie wygląd wraca z zapisanych tur
+    app.state.images.looks.clear()
+    llm.responses = [narrator("ciemna_piwnica", characters=["Senne"])]
+    assert client.post(f"/api/games/{game_id}/turns", json={"action": "patrzę"}).status_code == 200
+    assert wait_scene(client, game_id, 2)["status"] == "ready"
+    assert "silver braids" in next(c[0] for c in images.calls if "patrzę" in c[0])

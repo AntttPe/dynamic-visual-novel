@@ -220,11 +220,27 @@ Uwaga na koszty: każda tura to jeden obraz sceny, a nowa lokacja i nowa postać
 * Na stałe (dla wszystkich gier i eksperymentów) klucze ustawiasz w `.env`: `OPENAI_API_KEY`,
   `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` albo `NARRATOR_API_BASE` i `NARRATOR_API_KEY`.
 
-## Hasło do gry
+## Konta: administrator i gracze
 
-Gdy w `.env` jest `GAME_PASSWORD=...`, gra wymaga logowania. Bez ciasteczka sesji strony przekierowują na `/login`,
-a API zwraca 401. Sesja trwa 30 dni, zmiana hasła w `.env` (i restart kontenera) wylogowuje wszystkich.
-Wylogowanie: `/logout`. Puste `GAME_PASSWORD` = gra bez hasła. Kod: `app/auth.py`.
+Gdy w `.env` jest `ADMIN_PASSWORD=...`, gra wymaga logowania loginem i hasłem (strona `/login`, wylogowanie `/logout`).
+Puste hasło = gra bez logowania, jak wcześniej. Stare `GAME_PASSWORD` działa jako hasło administratora.
+
+- **Administrator** loguje się loginem `ADMIN_LOGIN` (domyślnie `administrator`). Ma wszystko, co zwykła gra,
+  i **Panel administratora** (`/admin`, przycisk w menu).
+- W panelu zakłada konto gracza: login, hasło, scenariusz (gotowy świat albo własny opis, limit tur, podpowiedzi, pamięć),
+  model tekstowy (z `.env`, inny model, własny adres i klucz API) i grafikę (serwer obrazów z `.env`, inny serwer `serve.py`,
+  API obrazów przez LiteLLM albo bez obrazów).
+- Po zapisaniu serwer w tle buduje świat i zamawia pierwsze tło i portret bohatera. Stan konta: „gra się przygotowuje”,
+  „gra gotowa” albo „błąd” (z opisem i przyciskiem **Ponów**). Lista odświeża się sama.
+- **Gracz** po zalogowaniu od razu widzi swoją grę. Nie ma menu, ustawień ani panelu badawczego, nie widzi cudzych gier.
+  Po końcu gry ma swój komiks. Uprawnienia sprawdza serwer (`app/auth.py`), nie tylko strona.
+- **Nowa gra** w panelu daje graczowi nową grę z tymi samymi ustawieniami. Stara zostaje w **Zapisanych grach** administratora.
+  Usunięcie konta nie usuwa rozegranych gier (zostają do metryk).
+- Klucze API graczy są w bazie zaszyfrowane sekretem `SECRET_KEY` z `.env` (puste = losowy w `data/secret.key`).
+  Nie wracają do przeglądarki. Zmiana albo utrata sekretu wylogowuje wszystkich, a klucze trzeba wpisać od nowa.
+- Hasła graczy są w bazie tylko jako skrót (scrypt). Sesja trwa 30 dni, zmiana hasła wylogowuje tę osobę.
+- Kod: `app/auth.py` (logowanie i uprawnienia), `app/admin.py` (panel i przygotowanie gier), `app/accounts.py`
+  (hasła i szyfrowanie), `app/static/admin.html`, tabela `users` w `data/dvn.sqlite`.
 
 ## Gra z obrazami (serwer GPU instytutu)
 
@@ -251,6 +267,18 @@ Bez serwera obrazów gra działa jak zwykle.
    Dla pewności sam wyłączy się po 30 minutach bez zadań.
 
 Obrazy i pomiary na jednym GPU się nie mieszczą: nie uruchamiaj gry z obrazami w trakcie pomiaru.
+
+### Co trafia do modelu obrazów
+Model obrazów dostaje opisy tylko po angielsku i bez imion postaci (imiona rysował jako napisy na obrazie).
+- Świat ma pola do obrazów: `hero_look` (wygląd bohatera), `characters` (wygląd pozostałych postaci, także zwierząt)
+  i `look` przy lokacji („Interior of …” albo „Exterior of …”). Twórca świata wypełnia je sam z pomysłu gracza,
+  zaczynając od płci i wieku. Narrator ich nie widzi, więc eksperymenty się nie zmieniają.
+- W grze narrator dopisuje do JSON-a po angielsku: `picture` (co widać w turze), `scene.look` (nowe miejsce)
+  i `new_characters` (wygląd postaci, która pojawia się pierwszy raz).
+- Postać jest rozpoznawana także po innej formie imienia („Senna” i „Senne”, „Bodo” i „szkiełkarz Bodo”),
+  więc ma jeden portret i jeden opis na całą grę.
+- Portrety postaci z wstępu powstają razem ze światem, przed pierwszą turą.
+- Stare gry i światy bez tych pól dostają, jak wcześniej, wygląd z faktów i zdania z narracji po polsku.
 
 ## Eksperymenty (badanie modeli)
 

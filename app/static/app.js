@@ -2,7 +2,7 @@
 const $ = (s) => document.querySelector(s);
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const ui = { config: null, health: null, game: null, view: null, tab: "turn", busy: false, menu: true, history: false };
+const ui = { me: null, config: null, health: null, game: null, view: null, tab: "turn", busy: false, menu: true, history: false };
 // Tryb deweloperski: panel badawczy, dane techniczne i ustawienia modeli. Na razie jedyny tryb (projekt badawczy),
 // tryb gracza (tylko przeglądanie historii) dojdzie później.
 const DEV_ONLY = true;
@@ -68,7 +68,7 @@ function render({ animate = false } = {}) {
   const playing = !!ui.game && !ui.busy && !gameOver();
   $("#action").disabled = !playing;
   $("#send").disabled = !playing;
-  $("#action").placeholder = gameOver() ? "Gra się skończyła. Zacznij nową grę." : "Co robisz? Opisz dowolne działanie własnymi słowami";
+  $("#action").placeholder = gameOver() ? (ui.me?.role === "player" ? "Gra się skończyła. Zobacz komiks z rozgrywki." : "Gra się skończyła. Zacznij nową grę.") : "Co robisz? Opisz dowolne działanie własnymi słowami";
 }
 
 // ---------- koniec gry ----------
@@ -92,6 +92,12 @@ $("#btnEndHide").addEventListener("click", () => { endingHidden = true; renderEn
 function renderTop() {
   $("#worldTitle").textContent = ui.game ? ui.game.world.title : "";
   const chips = [];
+  if (ui.me?.role === "player") { // gracz widzi tylko licznik tur i wynik, bez danych badawczych
+    if (ui.game) chips.push(`<span class="chip">tura: <b>${turns().length}${ui.game.max_turns ? ` / ${ui.game.max_turns}` : ""}</b></span>`);
+    if (gameOver()) chips.push(`<span class="chip"><b>${ui.game.outcome.status === "won" ? "wygrana" : "przegrana"}</b></span>`);
+    $("#chips").innerHTML = chips.join("");
+    return;
+  }
   const model = currentModel();
   const st = modelStatus(model);
   chips.push(`<span class="chip" title="${esc(st.label)}"><span class="dot ${st.cls}"></span><b>${esc(model)}</b></span>`);
@@ -115,7 +121,7 @@ function renderBanner() {
     b.hidden = false;
     return;
   }
-  if (model.startsWith("ollama") && !ui.health.providers.ollama) {
+  if (model.startsWith("ollama") && !ui.health.providers.ollama && ui.me?.role !== "player") {
     b.innerHTML = `<span><b>Ollama nie odpowiada</b> pod ${esc(ui.health.ollama_base_url)}. Uruchom ją na komputerze (<code>ollama serve</code>) albo zestaw tunel do wynajętego GPU.</span>
       <span class="row"><button type="button" class="btn" id="bRetry">Sprawdź ponownie</button><button type="button" class="btn" id="bDemo">Graj w trybie demo</button></span>`;
     b.hidden = false;
@@ -899,23 +905,70 @@ $("#newForm").addEventListener("submit", async (e) => {
   }
 });
 
+// ---------- konto gracza: tylko gra przygotowana przez administratora ----------
+let waitTimer = null;
+function showPlayerWait(me) {
+  const failed = me.status === "failed";
+  $("#playerWait").hidden = me.status === "ready" && !!me.game_id;
+  $("#waitRing").hidden = failed;
+  $("#waitEyebrow").textContent = failed ? "Gra nie jest gotowa" : "Twoja gra się przygotowuje";
+  $("#waitTitle").textContent = failed ? "Nie udało się przygotować gry" : "Narrator buduje świat";
+  $("#waitText").textContent = failed
+    ? "Poproś administratora, żeby przygotował grę jeszcze raz (przycisk „Ponów” w panelu administratora)."
+    : "To zwykle trwa kilka minut. Strona sama otworzy grę, gdy będzie gotowa.";
+}
+async function startPlayer(me) {
+  document.body.classList.remove("dev-mode");
+  document.body.classList.add("player");
+  $("#layout").classList.add("no-panel");
+  clearTimeout(waitTimer);
+  showPlayerWait(me);
+  if (me.status === "ready" && me.game_id) {
+    ui.game = await api(`/api/games/${me.game_id}`);
+    ui.menu = false;
+    ui.view = null;
+    render({ animate: true });
+    return;
+  }
+  ui.menu = false;
+  render();
+  if (me.status === "pending") {
+    waitTimer = setTimeout(async () => startPlayer(await api("/api/me").catch(() => me)), 4000);
+  }
+}
+
 // ---------- start ----------
 (async function init() {
   ui.tab = store.get("dvn.tab") || "turn";
   if (store.get("dvn.panel") === "0") { $("#btnPanel").setAttribute("aria-pressed", "false"); $("#layout").classList.add("no-panel"); }
   try {
+    ui.me = await api("/api/me");
     ui.config = await api("/api/config");
   } catch {
     ui.health = null;
     render();
     return;
   }
-  ui.health = await api("/api/health").catch(() => null);
-  const saved = store.get("dvn.game");
-  if (saved) {
-    try { ui.game = await api(`/api/games/${saved}`); } catch { store.set("dvn.game", null); }
+  $("#btnLogout").hidden = $("#mLogout").hidden = !ui.me.accounts;
+  $("#btnAdmin").hidden = !(ui.me.accounts && ui.me.role === "admin");
+  if (ui.me.role === "player") {
+    ui.health = await api("/api/health").catch(() => null);
+    await startPlayer(ui.me).catch((e) => showPlayerWait({ status: "failed", error: e.message }));
+    return;
   }
+  ui.health = await api("/api/health").catch(() => null);
+  // ?game=<id>: administrator otwiera grę gracza z panelu administratora
+  const fromUrl = new URLSearchParams(location.search).get("game");
+  const saved = fromUrl || store.get("dvn.game");
+  if (saved) {
+    try {
+      ui.game = await api(`/api/games/${saved}`);
+      if (fromUrl) store.set("dvn.game", fromUrl);
+    } catch { if (!fromUrl) store.set("dvn.game", null); }
+  }
+  if (fromUrl) history.replaceState(null, "", "/");
   fillMenu();
   ui.menu = !ui.game;
   render();
+  if (fromUrl && ui.game) showTurn(-1);
 })();

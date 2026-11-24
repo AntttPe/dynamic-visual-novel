@@ -27,10 +27,13 @@
 <body>
   <form method="post" action="/login">
     <h1>Dynamic Visual Novel</h1>
-    <p>Podaj hasło, żeby zagrać.</p>
+    <p>Zaloguj się, żeby zagrać.</p>
     {{error}}
+    <label>Login
+      <input name="login" value="{{login}}" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus required />
+    </label>
     <label>Hasło
-      <input type="password" name="password" autocomplete="current-password" autofocus required />
+      <input type="password" name="password" autocomplete="current-password" required />
     </label>
     <button type="submit">Wejdź</button>
   </form>

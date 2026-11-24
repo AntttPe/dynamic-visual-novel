@@ -13,7 +13,7 @@ from string import Template
 from pydantic import BaseModel, Field, ValidationError
 
 from app.core.engine import extract_json, normalize_location
-from app.core.world import Fact, Location, World, load_world
+from app.core.world import CharacterLook, Fact, Location, World, load_world
 from app.llm.base import LLMClient
 
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "world_builder.md"
@@ -25,6 +25,7 @@ class LocationDraft(BaseModel):
     id: str
     name: str
     description: str
+    look: str = ""
 
 
 class WorldDraft(BaseModel):
@@ -42,6 +43,8 @@ class WorldDraft(BaseModel):
     intro: str = Field(min_length=1)
     locations: list[LocationDraft] = Field(min_length=1)
     facts: list[Fact] = Field(default_factory=list)
+    hero_look: str = ""
+    characters: list[CharacterLook] = Field(default_factory=list)
 
 
 DRAFT_SCHEMA = WorldDraft.model_json_schema()
@@ -99,7 +102,7 @@ def to_world(draft: WorldDraft, world_id: str) -> World:
             # Aliasy z nazwy (tryb demo rozpoznaje po nich lokację w akcji gracza)
             words = [w[:max(4, len(w) - 2)] for w in re.findall(r"\w{4,}", loc.name.lower())]
             locations.append(Location(id=loc_id, name=loc.name.strip(), description=loc.description.strip(),
-                                      aliases=words[:3]))
+                                      aliases=words[:3], look=loc.look.strip()))
     start = normalize_location(draft.start_location)
     if all(loc.id != start for loc in locations):
         start = locations[0].id
@@ -110,7 +113,9 @@ def to_world(draft: WorldDraft, world_id: str) -> World:
         goal=draft.goal.strip(), win_condition=draft.win_condition.strip(),
         lose_condition=draft.lose_condition.strip(), rules=[r.strip() for r in draft.rules if r.strip()],
         visual_style=draft.visual_style.strip(), start_location=start,
-        intro=draft.intro.strip(), locations=locations, facts=facts,
+        intro=draft.intro.strip(), locations=locations, facts=facts, hero_look=draft.hero_look.strip(),
+        characters=[CharacterLook(name=c.name.strip(), look=c.look.strip())
+                    for c in draft.characters if c.name.strip() and c.look.strip()],
     )
 
 

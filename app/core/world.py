@@ -23,6 +23,15 @@ class Location(BaseModel):
     description: str
     # Rdzenie słów, po których rozpoznajemy lokację w tekście gracza (tryb demo, później scenariusze)
     aliases: list[str] = Field(default_factory=list)
+    # Wygląd miejsca PO ANGIELSKU dla modelu obrazów („Interior of …” albo „Exterior of …”). Puste = description.
+    look: str = ""
+
+
+class CharacterLook(BaseModel):
+    """Wygląd postaci PO ANGIELSKU dla modelu obrazów: płeć i wiek na początku, potem sylwetka, włosy, ubranie."""
+
+    name: str
+    look: str
 
 
 class World(BaseModel):
@@ -41,6 +50,9 @@ class World(BaseModel):
     intro: str
     locations: list[Location] = Field(default_factory=list)
     facts: list[Fact] = Field(default_factory=list)
+    # Wygląd bohatera i pozostałych postaci po angielsku, tylko do obrazów (narrator korzysta z faktów)
+    hero_look: str = ""
+    characters: list[CharacterLook] = Field(default_factory=list)
 
     def location(self, location_id: str) -> Location | None:
         return next((loc for loc in self.locations if loc.id == location_id), None)

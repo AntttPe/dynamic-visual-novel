@@ -8,11 +8,17 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app import auth, llm
+from app import admin, auth, llm
 from app.config import settings
 from app.core.engine import GameEngine, GameOver
 from app.core.saved import load_game, saved_world
-from app.core.world import COVER_TYPES, WorldNotFound, cover_path, list_worlds, load_world
+from app.core.world import (
+    COVER_TYPES,
+    WorldNotFound,
+    cover_path,
+    list_worlds,
+    load_world,
+)
 from app.core.world_builder import (
     CUSTOM_WORLD,
     EXAMPLE_WORLD,
@@ -26,10 +32,14 @@ from app.images import (
     BackgroundImages,
     HttpImageClient,
     LiteLLMImageClient,
+    Looks,
+    legacy_look,
+    mentioned,
     portrait_prompt,
     present_characters,
     scene_prompt,
     styled,
+    visual_text,
 )
 from app.storage.db import Store
 
@@ -40,6 +50,8 @@ app.middleware("http")(auth.require_login)
 app.add_api_route("/login", auth.login_form, methods=["GET"], include_in_schema=False)
 app.add_api_route("/login", auth.login_submit, methods=["POST"], include_in_schema=False)
 app.add_api_route("/logout", auth.logout, methods=["GET", "POST"], include_in_schema=False)
+# Panel administratora: konta graczy z przygotowanymi grami, patrz app/admin.py
+app.include_router(admin.router)
 
 # Wymienne w testach: fabryka klientów LLM i magazyn danych
 app.state.llm_factory = lambda model, world, **api: llm.make_client(
@@ -86,16 +98,46 @@ def get_images(request: Request) -> BackgroundImages:
     return request.app.state.images
 
 
-def request_background(request: Request, game: GameEngine, location: str, description: str, t: int) -> None:
-    """Zamawia tło. Opis lokacji ze świata ma pierwszeństwo, bo jest stały, opis narratora zmienia się co turę."""
+def place_look(game: GameEngine, location: str, narrator_look: str = "", description: str = "") -> str:
+    """Wygląd miejsca do obrazu. Opis ze świata ma pierwszeństwo, bo jest stały. Po angielsku, a po polsku
+    tylko w starych grach i światach bez pola look."""
     known = game.world.location(location)
-    get_images(request).request(game.game_id, location, known.description if known else description,
+    if known:
+        return known.look or narrator_look or known.description
+    return narrator_look or description
+
+
+def request_background(request: Request, game: GameEngine, location: str, description: str, t: int,
+                       look: str = "") -> None:
+    get_images(request).request(game.game_id, location, place_look(game, location, look, description),
                                 game.config["seed"], t, game.world.visual_style)
 
 
-def request_portrait(request: Request, game: GameEngine, name: str, entity: str | None, t: int) -> None:
-    prompt = portrait_prompt(styled(settings.image_portrait_style, game.world.visual_style), name, game.state.facts(), entity)
-    get_images(request).request_portrait(game.game_id, name, prompt, game.config["seed"], t)
+def looks_of(request: Request, game: GameEngine) -> Looks:
+    """Wygląd postaci gry po angielsku: ze świata i z new_characters we wszystkich turach (także po restarcie)."""
+    images = get_images(request)
+    looks = images.looks.get(game.game_id)
+    if looks is None:
+        looks = images.looks[game.game_id] = Looks.of_world(game.world)
+        for turn in game.turns:
+            for character in getattr(turn.response, "new_characters", None) or []:
+                looks.add(character.name, character.look)
+    return looks
+
+
+def character_look(game: GameEngine, looks: Looks, name: str, hero: bool = False) -> str:
+    """Wygląd postaci po angielsku, a w starych grach wygląd z faktów świata."""
+    if hero:
+        return looks.find(Looks.HERO) or looks.find(game.world.player.split(",")[0]) or             legacy_look(game.state.facts(), Looks.HERO)
+    return looks.find(name) or legacy_look(game.state.facts(), name)
+
+
+def request_portrait(request: Request, game: GameEngine, name: str, t: int, hero: bool = False) -> None:
+    looks = looks_of(request, game)
+    look = character_look(game, looks, name, hero)
+    prompt = portrait_prompt(styled(settings.image_portrait_style, game.world.visual_style), look)
+    get_images(request).request_portrait(game.game_id, name if hero else looks.canonical(name), prompt,
+                                         game.config["seed"], t)
 
 
 class TextApi(BaseModel):
@@ -241,6 +283,11 @@ async def make_world(req: NewGame, request: Request, model: str, text_api: dict)
 
 @app.post("/api/games")
 async def new_game(req: NewGame, request: Request) -> dict:
+    return game_view(await create_game(req, request), get_images(request))
+
+
+async def create_game(req: NewGame, request: Request, images_off: bool = False) -> GameEngine:
+    """Nowa gra: świat (z YAML albo z pomysłu gracza), silnik tury i zamówienie pierwszych obrazów."""
     image_model = req.image_model or settings.image_model
     if image_model not in {m["id"] for m in IMAGE_MODELS}:
         raise HTTPException(422, f"Nie ma generatora obrazów „{image_model}”")
@@ -282,9 +329,14 @@ async def new_game(req: NewGame, request: Request) -> dict:
     images.models[game.game_id] = image_model
     if image_client:
         images.clients[game.game_id] = image_client
+    if images_off:
+        images.disabled.add(game.game_id)
     request_background(request, game, game.location, "", 0)
-    request_portrait(request, game, game.world.player, "bohater", 0)
-    return game_view(game, get_images(request))
+    request_portrait(request, game, game.world.player, 0, hero=True)
+    # Postacie z intro rysujemy od razu, żeby pierwsza scena miała gotowe portrety
+    for character in [c for c in game.world.characters if mentioned(c.name, game.world.intro)][:MAX_PORTRAITS - 1]:
+        request_portrait(request, game, character.name, 0)
+    return game
 
 
 def _game(game_id: str) -> GameEngine:
@@ -310,6 +362,9 @@ def _game(game_id: str) -> GameEngine:
             Path(settings.data_dir) / "images", store, settings.image_style,
         )
     images.restore(game_id, store.images(game_id))
+    user = store.user_by_game(game_id)
+    if user:  # gra z konta gracza: jej model i API obrazów z ustawień konta (klucze z bazy)
+        admin.apply_player_setup(game, user, app.state.llm_factory, images)
     return game
 
 
@@ -327,9 +382,12 @@ def _thumb(store: Store, game_id: str) -> Path | None:
 def saved_games(request: Request) -> list[dict]:
     """Rozegrane gry z bazy (najnowsze najpierw), do przeglądania w menu. Gry bez tur są pomijane."""
     store = get_store(request)
+    user = getattr(request.state, "user", auth.LOCAL_ADMIN)
     result = []
     for run in store.play_runs():
         if not run["turns"]:
+            continue
+        if user["role"] == "player" and run["run_id"] != user["game_id"]:
             continue
         config = json.loads(run["config"])
         title = json.loads(run["world"])["title"] if run["world"] else None
@@ -374,17 +432,23 @@ async def play_turn(game_id: str, req: PlayerTurn, request: Request) -> dict:
             raise HTTPException(409, "Ta gra już się skończyła. Zacznij nową grę.") from None
     if record.response:
         r = record.response
-        request_background(request, game, game.location, r.scene.description, record.t)
+        narrator_look = getattr(r.scene, "look", "")
+        request_background(request, game, game.location, r.scene.description, record.t, narrator_look)
         images = get_images(request)
+        looks = looks_of(request, game)
+        for character in getattr(r, "new_characters", None) or []:
+            looks.add(character.name, character.look)
+        present = [looks.canonical(name) for name in present_characters(game.world.player, r.characters_present)]
         visible, hidden = images.cast(game.game_id, game.world.start_location).update(
-            game.location, present_characters(game.world.player, r.characters_present), req.action)
+            game.location, present_characters(game.world.player, present), req.action)
         others = visible[:MAX_PORTRAITS - 1]
         for name in others:
-            request_portrait(request, game, name, None, record.t)
-        known = game.world.location(game.location)
+            request_portrait(request, game, name, record.t)
+        people = [character_look(game, looks, game.world.player, hero=True),
+                  *(character_look(game, looks, name) for name in others)]
+        picture = getattr(r, "picture", "").strip() or visual_text(req.action, r.narration, hidden)
         prompt = scene_prompt(styled(settings.image_scene_style, game.world.visual_style),
-                              known.description if known else r.scene.description,
-                              game.world.player, game.state.facts(), visible, req.action, r.narration, hidden)
+                              place_look(game, game.location, narrator_look, r.scene.description), people, picture)
         images.request_scene(game.game_id, record.t, game.location, prompt, game.config["seed"],
                              [game.world.player, *others])
     return {"turn": record.model_dump(), "location": game.location,

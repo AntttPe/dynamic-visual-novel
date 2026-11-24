@@ -60,6 +60,11 @@ w terminalu **Ubuntu**, a projekt pobieraj do katalogu domowego (`cd ~`), nie na
 w trybie historii (strzałki ← →), a **Wróć do gry** pozwala grać dalej. Działa po restarcie i bez serwera obrazów.
 Zapis jest tylko na twoim komputerze, w katalogu `data/`.
 
+**Konta graczy.** Gdy w `.env` jest `ADMIN_PASSWORD`, gra wymaga logowania. Administrator (login `ADMIN_LOGIN`,
+domyślnie `administrator`) w menu ma **Panel administratora**: zakłada konta graczy i każdemu ustawia scenariusz,
+model tekstowy i grafikę. Gra gracza przygotowuje się od razu w tle, więc gracz po zalogowaniu nie czeka na budowę świata.
+Gracz widzi tylko swoją grę i jej komiks. Szczegóły w [dokumentacji dla zespołu](docs/dla_zespolu.md#konta-administrator-i-gracze).
+
 Obrazy scen rysuje osobny serwer obrazów albo API obrazów (opis w [dokumentacji dla zespołu](docs/dla_zespolu.md#gra-z-obrazami-serwer-gpu-instytutu)).
 Bez niego gra działa z samym tekstem.
 

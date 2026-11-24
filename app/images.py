@@ -11,6 +11,7 @@ turze w tej lokacji. Bez adresu serwera (IMAGE_SERVER_URL) moduł jest wyłączo
 
 import asyncio
 import base64
+import difflib
 import re
 import time
 import zlib
@@ -215,24 +216,85 @@ def visual_text(action: str, narration: str, hidden: Sequence[str] = ()) -> str:
     return " ".join([first, *sentences[:MAX_SENTENCES]])
 
 
-def scene_prompt(style: str, place: str, player: str, facts: Iterable, characters: Sequence[str], action: str,
-                 narration: str, hidden: Sequence[str] = ()) -> str:
-    """Opis sceny z danych tury. Postacie w tej samej kolejności, co ich portrety na wejściu modelu."""
-    facts = list(facts)
-    hero_look = _looks(facts, "bohater", APPEARANCE_ATTRIBUTES)
-    people = [f"{player} ({hero_look})" if hero_look else player]
-    for name in present_characters(player, characters):
-        look = _looks(facts, name, APPEARANCE_ATTRIBUTES)
-        shown = name.replace("_", " ")
-        people.append(f"{shown} ({look})" if look else shown)
-    return f"{style} {place}. {'; '.join(people)}. {visual_text(action, narration, hidden)}"
+def scene_prompt(style: str, place: str, people: Sequence[str], picture: str) -> str:
+    """Opis sceny po angielsku. people: wygląd postaci w tej samej kolejności, co ich portrety na wejściu modelu
+    (bohater pierwszy). Bez imion, bo model obrazów rysuje je jako napisy."""
+    shown = [look.strip().rstrip(".") for look in people if look.strip()]
+    cast = ""
+    if shown:
+        listed = "; ".join(f"{i}) {look}" for i, look in enumerate(shown, 1))
+        cast = (f" Characters in the order of the reference images: {listed}. "
+                f"Exactly {len(shown)} {'character' if len(shown) == 1 else 'characters'} in the picture, "
+                "each one only once.")
+    return f"{style} {place.strip().rstrip('.')}.{cast} {picture.strip()}".strip()
 
 
-def portrait_prompt(style: str, name: str, facts: Iterable, entity: str | None = None) -> str:
-    """Opis portretu postaci. entity to nazwa postaci w stanie świata, jeśli inna niż name."""
-    details = _looks(list(facts), entity or name, PORTRAIT_ATTRIBUTES)
-    shown = name.replace("_", " ")
-    return f"{style} {shown} ({details})." if details else f"{style} {shown}."
+def portrait_prompt(style: str, look: str) -> str:
+    """Opis portretu postaci po angielsku, bez imienia (model obrazów wypisywał je na obrazie)."""
+    return f"{style} {look.strip().rstrip('.') or 'A person'}."
+
+
+def legacy_look(facts: Iterable, entity: str) -> str:
+    """Wygląd z faktów świata (po polsku): tylko stare gry i światy bez opisów po angielsku."""
+    return _looks(list(facts), entity, PORTRAIT_ATTRIBUTES)
+
+
+# Słowa, które nie wyróżniają postaci przy szukaniu po imieniu („pani Beata” i „pani Halina” to dwie osoby)
+_TITLES = {"pan", "pani", "panie", "panna", "mistrz", "mistrzyni", "stary", "stara", "młody", "młoda", "the"}
+
+
+def _name_stems(name: str) -> set[str]:
+    words = [w for w in character_key(name).split() if len(w) >= 3 and w not in _TITLES]
+    return {w[:max(4, len(w) - 2)] for w in words}
+
+
+class Looks:
+    """Wygląd postaci jednej gry po angielsku: ze świata (World.hero_look, World.characters) i od narratora
+    (new_characters). Znajduje postać także po innej formie imienia: „Senna” i „Senne”, „Bodo” i „szkiełkarz Bodo”."""
+
+    HERO = "bohater"
+
+    def __init__(self):
+        self.entries: dict[str, tuple[str, str]] = {}  # klucz imienia -> (imię, wygląd)
+
+    @classmethod
+    def of_world(cls, world) -> "Looks":
+        looks = cls()
+        if world.hero_look.strip():
+            looks.add(cls.HERO, world.hero_look)
+            looks.add(world.player.split(",")[0], world.hero_look)
+        for character in world.characters:
+            looks.add(character.name, character.look)
+        return looks
+
+    def add(self, name: str, look: str) -> None:
+        """Pierwszy opis postaci zostaje: wygląd się nie zmienia, nawet gdy narrator opisze go drugi raz."""
+        key = character_key(name)
+        if key and look.strip() and self.match(name) is None:
+            self.entries[key] = (name.strip(), look.strip())
+
+    def match(self, name: str) -> str | None:
+        """Klucz znanej postaci o tym imieniu albo podobnym. None = postać bez opisu."""
+        key = character_key(name)
+        if not key:
+            return None
+        if key in self.entries:
+            return key
+        stems = _name_stems(name)
+        for known in self.entries:
+            if stems & _name_stems(known):
+                return known
+        close = difflib.get_close_matches(key, list(self.entries), n=1, cutoff=0.8)
+        return close[0] if close else None
+
+    def find(self, name: str) -> str:
+        known = self.match(name)
+        return self.entries[known][1] if known else ""
+
+    def canonical(self, name: str) -> str:
+        """Imię, pod którym postać jest zapisana (ten sam portret dla „Senna” i „Senne”)."""
+        known = self.match(name)
+        return self.entries[known][0] if known else name
 
 
 class BackgroundImages:
@@ -245,9 +307,13 @@ class BackgroundImages:
         self.casts: dict[str, SceneCast] = {}
         self.models: dict[str, str] = {}  # gra -> generator wybrany przy jej tworzeniu
         self.clients: dict[str, ImageClient] = {}  # gra -> własne API obrazów z okna „Nowa gra”
+        self.disabled: set[str] = set()  # gry bez obrazów (konto gracza z wyłączoną grafiką)
+        self.looks: dict[str, Looks] = {}  # gra -> wygląd postaci po angielsku
 
     def client_for(self, game_id: str) -> ImageClient | None:
         """Własne API obrazów tej gry, a bez niego serwer z .env (IMAGE_SERVER_URL)."""
+        if game_id in self.disabled:
+            return None
         return self.clients.get(game_id) or self.client
 
     def cast(self, game_id: str, start_location: str) -> SceneCast:

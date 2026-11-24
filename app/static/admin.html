@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Panel administratora</title>
+  <style>
+    :root { --bg: #0f1217; --surface: #171b22; --soft: #1d222b; --ink: #e6eaf0; --muted: #9aa4b1; --line: #2a313b;
+            --gold: #e3b26b; --gold-ink: #1a1208; --bad: #f0766b; --good: #7cc895; --wait: #8fb4e8; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+             padding: 16px clamp(16px, 4vw, 40px); border-bottom: 1px solid var(--line); }
+    h1 { margin: 0; font: 600 24px/1.2 "Palatino Linotype", Palatino, Georgia, serif; color: var(--gold); }
+    h2 { margin: 0 0 12px; font-size: 17px; }
+    nav { display: flex; gap: 8px; }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 440px); gap: 24px; align-items: start;
+           padding: 24px clamp(16px, 4vw, 40px) 48px; max-width: 1280px; margin: 0 auto; }
+    @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+    section, form.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+    a { color: var(--gold); }
+    .btn { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line);
+           background: var(--soft); color: var(--ink); cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn:hover { border-color: var(--gold); }
+    .btn.primary { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); }
+    .btn.danger:hover { border-color: var(--bad); color: var(--bad); }
+    .btn:disabled { opacity: .6; cursor: wait; }
+    .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    label { display: grid; gap: 5px; font-size: 13px; color: var(--muted); }
+    input, select, textarea { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+                              border-radius: 8px; padding: 8px 10px; width: 100%; }
+    textarea { resize: vertical; min-height: 110px; }
+    fieldset { border: 1px solid var(--line); border-radius: 10px; margin: 0; padding: 12px 14px 14px; display: grid; gap: 12px; }
+    legend { padding: 0 6px; font-size: 13px; font-weight: 600; color: var(--gold); }
+    form.card { display: grid; gap: 14px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .check { display: flex; gap: 8px; align-items: center; color: var(--ink); font-size: 14px; }
+    .check input { width: auto; }
+    small, .muted { color: var(--muted); font-size: 12.5px; }
+    .error { color: var(--bad); min-height: 1.2em; margin: 0; font-size: 14px; }
+    ul.players { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .player { border: 1px solid var(--line); background: var(--soft); border-radius: 10px; padding: 14px; display: grid; gap: 8px; }
+    .player-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; justify-content: space-between; }
+    .player-head b { font-size: 16px; }
+    .badge { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; }
+    .badge.ready { color: var(--good); } .badge.failed { color: var(--bad); } .badge.pending { color: var(--wait); }
+    .meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+    .meta b { color: var(--ink); font-weight: 500; }
+    .idea { margin: 0; font-size: 13.5px; color: var(--ink); overflow-wrap: anywhere; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .empty { color: var(--muted); margin: 0; }
+    .row-error { color: var(--bad); font-size: 13px; margin: 0; overflow-wrap: anywhere; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Panel administratora</h1>
+    <nav>
+      <a class="btn" href="/">Do gry</a>
+      <a class="btn" href="/logout">Wyloguj</a>
+    </nav>
+  </header>
+
+  <main>
+    <section aria-labelledby="hPlayers">
+      <h2 id="hPlayers">Gracze</h2>
+      <p class="error" id="listErr" role="status"></p>
+      <ul class="players" id="players"><li class="empty">Wczytuję…</li></ul>
+    </section>
+
+    <form class="card" id="newPlayer" autocomplete="off">
+      <h2>Nowy gracz</h2>
+      <p class="muted" style="margin:-6px 0 0">Gra przygotuje się w tle (świat, wstęp, pierwsze obrazy). Gracz po zalogowaniu od razu ją zobaczy.</p>
+      <div class="grid2">
+        <label>Login <input name="login" required pattern="[A-Za-z0-9_.\-]{2,40}" title="2 do 40 znaków: litery, cyfry, _ . -" autocapitalize="none" spellcheck="false" /></label>
+        <label>Hasło <input name="password" type="text" required minlength="6" autocomplete="new-password" spellcheck="false" /></label>
+      </div>
+
+      <fieldset>
+        <legend>Scenariusz</legend>
+        <label>Świat <select name="world_id" id="world"></select></label>
+        <label id="ideaWrap">Opis scenariusza
+          <textarea name="world_idea" maxlength="2000" placeholder="Gdzie i kiedy, kim jest bohater, czego szuka, jakie postacie spotka i jak wyglądają. Warunek wygranej i przegranej."></textarea>
+        </label>
+        <div class="grid2">
+          <label>Limit tur <input name="max_turns" type="number" min="1" max="500" placeholder="bez limitu" /></label>
+          <label>Pamięć narratora
+            <select name="history">
+              <option value="full_cached">Cała historia, cache (szybsza)</option>
+              <option value="full">Cała historia</option>
+              <option value="window">Okno ostatnich tur</option>
+            </select>
+          </label>
+        </div>
+        <label class="check"><input type="checkbox" name="hints" /> Podpowiedzi (łatwiejsza gra)</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Model tekstowy</legend>
+        <label>Model <select id="modelPick"></select></label>
+        <input name="model" id="model" placeholder="np. anthropic/claude-haiku-5-5" spellcheck="false" hidden />
+        <details>
+          <summary class="muted">Własne API (adres i klucz)</summary>
+          <div style="display:grid; gap:12px; margin-top:10px">
+            <label>Adres API <input name="text_api_base" spellcheck="false" placeholder="puste = adres z .env" /></label>
+            <label>Klucz API <input name="text_api_key" type="password" spellcheck="false" autocomplete="off" placeholder="puste = klucz z .env" /></label>
+            <small>Klucz zapisuje się w bazie zaszyfrowany i nie wraca do przeglądarki.</small>
+          </div>
+        </details>
+      </fieldset>
+
+      <fieldset>
+        <legend>Grafika</legend>
+        <label>Źródło obrazów
+          <select name="image_kind" id="imageKind">
+            <option value="server" id="serverOpt">Serwer obrazów z .env</option>
+            <option value="dvn">Inny serwer obrazów projektu (serve.py)</option>
+            <option value="litellm">API obrazów (np. OpenAI)</option>
+            <option value="off">Bez obrazów</option>
+          </select>
+        </label>
+        <label id="imageModelWrap">Generator <select name="image_model" id="imageModel"></select></label>
+        <label id="imageUrlWrap"><span id="imageUrlLabel">Adres serwera obrazów</span> <input name="image_url" spellcheck="false" /></label>
+        <label id="imageLmWrap">Model obrazów <input name="image_lm_model" spellcheck="false" placeholder="np. openai/gpt-image-1" /></label>
+        <div class="grid2" id="imageKeyWrap">
+          <label>Klucz API <input name="image_api_key" type="password" spellcheck="false" autocomplete="off" placeholder="puste = klucz z .env" /></label>
+          <label>Rozmiar <input name="image_size" value="1536x1024" spellcheck="false" /></label>
+        </div>
+      </fieldset>
+
+      <p class="error" id="formErr" role="status"></p>
+      <button class="btn primary" id="submit">Dodaj gracza i przygotuj grę</button>
+    </form>
+  </main>
+
+  <script>
+    const $ = (s, root = document) => root.querySelector(s);
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const STATUS = { pending: ["pending", "gra się przygotowuje…"], ready: ["ready", "gra gotowa"], failed: ["failed", "błąd"] };
+    const IMAGE_KIND = { server: "serwer z .env", dvn: "inny serwer projektu", litellm: "API obrazów", off: "bez obrazów" };
+    let config = null;
+    let pollTimer = null;
+
+    async function api(path, opts = {}) {
+      const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+      let data = null;
+      try { data = await r.json(); } catch {}
+      if (r.status === 401) location.href = "/login";
+      if (!r.ok) {
+        const d = data?.detail;
+        throw new Error(typeof d === "string" ? d : d ? d.map((x) => `${x.loc?.at(-1) ?? ""}: ${x.msg}`).join("; ") : `Błąd HTTP ${r.status}`);
+      }
+      return data;
+    }
+
+    function worldTitle(id) { return config.worlds.find((w) => w.id === id)?.title ?? id; }
+
+    function renderPlayers(users) {
+      const list = $("#players");
+      if (!users.length) { list.innerHTML = `<li class="empty">Nie ma jeszcze kont graczy. Dodaj pierwsze w formularzu.</li>`; return; }
+      list.innerHTML = users.map((u) => {
+        const s = u.setup;
+        const [cls, label] = STATUS[u.status] ?? ["", u.status];
+        const scenario = s.world_id === "custom" ? `<p class="idea">„${esc((s.world_idea ?? "").slice(0, 220))}${(s.world_idea ?? "").length > 220 ? "…" : ""}”</p>`
+          : `<p class="idea">Świat: <b>${esc(worldTitle(s.world_id))}</b></p>`;
+        const image = s.image_kind === "litellm" ? `${s.image_lm_model}` : s.image_kind === "off" ? "bez obrazów"
+          : `${IMAGE_KIND[s.image_kind]}${s.image_model ? `, ${s.image_model}` : ""}`;
+        const game = u.game_id ? `<a class="btn" href="/?game=${encodeURIComponent(u.game_id)}">Otwórz grę</a>
+          <a class="btn" href="/comic.html?game=${encodeURIComponent(u.game_id)}" target="_blank" rel="noopener">Komiks</a>` : "";
+        return `<li class="player" data-login="${esc(u.login)}">
+          <div class="player-head"><b>${esc(u.login)}</b><span class="badge ${cls}">${label}</span></div>
+          ${scenario}
+          <div class="meta">
+            <span>model: <b>${esc(s.model || config.defaults.model)}</b>${u.has_text_key ? " (własny klucz)" : ""}${s.text_api_base ? ` · ${esc(s.text_api_base)}` : ""}</span>
+            <span>grafika: <b>${esc(image)}</b>${u.has_image_key ? " (własny klucz)" : ""}</span>
+            <span>tury: <b>${s.max_turns ?? "bez limitu"}</b></span>
+            <span>podpowiedzi: <b>${s.difficulty === "easy" ? "tak" : "nie"}</b></span>
+          </div>
+          ${u.error ? `<p class="row-error">${esc(u.error)}</p>` : ""}
+          <div class="actions">
+            ${game}
+            <button type="button" class="btn" data-act="game" ${u.status === "pending" ? "disabled" : ""}>${u.status === "failed" ? "Ponów" : "Nowa gra"}</button>
+            <button type="button" class="btn" data-act="password">Zmień hasło</button>
+            <button type="button" class="btn danger" data-act="delete">Usuń konto</button>
+          </div>
+        </li>`;
+      }).join("");
+    }
+
+    async function loadPlayers() {
+      clearTimeout(pollTimer);
+      try {
+        const users = await api("/api/admin/users");
+        renderPlayers(users);
+        $("#listErr").textContent = "";
+        if (users.some((u) => u.status === "pending")) pollTimer = setTimeout(loadPlayers, 3000);
+      } catch (e) { $("#listErr").textContent = e.message; }
+    }
+
+    $("#players").addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-act]");
+      if (!btn) return;
+      const login = btn.closest("[data-login]").dataset.login;
+      const path = `/api/admin/users/${encodeURIComponent(login)}`;
+      try {
+        if (btn.dataset.act === "game") {
+          if (!confirm(`Przygotować nową grę dla „${login}”? Obecna gra zostanie w zapisanych grach, ale gracz zobaczy już nową.`)) return;
+          btn.disabled = true;
+          await api(`${path}/game`, { method: "POST" });
+        } else if (btn.dataset.act === "password") {
+          const password = prompt(`Nowe hasło dla „${login}” (co najmniej 6 znaków):`);
+          if (!password) return;
+          await api(`${path}/password`, { method: "POST", body: JSON.stringify({ password }) });
+          alert("Hasło zmienione. Gracz musi zalogować się nowym hasłem.");
+        } else if (btn.dataset.act === "delete") {
+          if (!confirm(`Usunąć konto „${login}”? Rozegrane gry zostaną w bazie.`)) return;
+          await api(path, { method: "DELETE" });
+        }
+      } catch (err) { $("#listErr").textContent = err.message; }
+      loadPlayers();
+    });
+
+    function showScenario() {
+      const custom = $("#world").value === "custom";
+      $("#ideaWrap").hidden = !custom;
+      $("[name=world_idea]").required = custom;
+    }
+    function showImage() {
+      const kind = $("#imageKind").value;
+      $("#imageModelWrap").hidden = !(kind === "dvn" || (kind === "server" && config.image_server));
+      $("#imageUrlWrap").hidden = !(kind === "dvn" || kind === "litellm");
+      $("#imageUrlLabel").textContent = kind === "dvn" ? "Adres serwera obrazów" : "Adres API (opcjonalnie)";
+      $("[name=image_url]").placeholder = kind === "dvn" ? "np. http://host.docker.internal:8420" : "puste = domyślny adres providera";
+      $("[name=image_url]").required = kind === "dvn";
+      $("#imageLmWrap").hidden = kind !== "litellm";
+      $("[name=image_lm_model]").required = kind === "litellm";
+      $("#imageKeyWrap").hidden = kind !== "litellm";
+    }
+    $("#world").addEventListener("change", showScenario);
+    $("#imageKind").addEventListener("change", showImage);
+    $("#modelPick").addEventListener("change", () => {
+      const other = $("#modelPick").value === "__other";
+      $("#model").hidden = !other;
+      $("#model").value = other ? "" : $("#modelPick").value;
+      if (other) $("#model").focus();
+    });
+
+    $("#newPlayer").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const kind = f.get("image_kind");
+      const body = {
+        login: f.get("login").trim(), password: f.get("password"),
+        world_id: f.get("world_id"), world_idea: f.get("world_id") === "custom" ? f.get("world_idea").trim() : null,
+        max_turns: Number(f.get("max_turns")) || null, history: f.get("history"),
+        difficulty: f.get("hints") ? "easy" : "normal",
+        model: $("#model").value.trim(),
+        text_api_base: f.get("text_api_base").trim(), text_api_key: f.get("text_api_key").trim(),
+        image_kind: kind, image_model: $("#imageModelWrap").hidden ? null : f.get("image_model"),
+        image_url: f.get("image_url").trim(), image_lm_model: f.get("image_lm_model").trim(),
+        image_api_key: f.get("image_api_key").trim(), image_size: f.get("image_size").trim() || "1536x1024",
+      };
+      const btn = $("#submit");
+      btn.disabled = true;
+      $("#formErr").textContent = "";
+      try {
+        await api("/api/admin/users", { method: "POST", body: JSON.stringify(body) });
+        for (const name of ["login", "password", "text_api_key", "image_api_key"]) e.target.elements[name].value = "";
+        loadPlayers();
+      } catch (err) {
+        $("#formErr").textContent = err.message;
+      } finally { btn.disabled = false; }
+    });
+
+    (async function init() {
+      try {
+        config = await api("/api/config");
+      } catch (e) { $("#listErr").textContent = e.message; return; }
+      $("#world").innerHTML = `<option value="custom">Własny scenariusz (opis poniżej)</option>` +
+        config.worlds.map((w) => `<option value="${esc(w.id)}">${esc(w.title)}</option>`).join("");
+      const models = [...new Set([config.defaults.model, ...config.suggested_models])].filter((m) => !m.includes("<"));
+      $("#modelPick").innerHTML = models.map((m) => `<option value="${esc(m)}">${esc(m)}${m === config.defaults.model ? " (domyślny z .env)" : ""}</option>`).join("") +
+        `<option value="__other">Inny model (wpisz nazwę)…</option>`;
+      $("#model").value = config.defaults.model;
+      $("#imageModel").innerHTML = config.image_models.map((m) => `<option value="${esc(m.id)}">${esc(m.label)}</option>`).join("");
+      $("#imageModel").value = config.defaults.image_model;
+      $("#serverOpt").textContent = config.image_server ? "Serwer obrazów z .env" : "Serwer obrazów z .env (nie ustawiony: bez obrazów)";
+      $("[name=history]").value = config.defaults.history;
+      showScenario();
+      showImage();
+      loadPlayers();
+    })();
+  </script>
+</body>
+</html>

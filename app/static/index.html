@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="/style.css?v=19" />
+  <link rel="stylesheet" href="/style.css?v=20" />
 </head>
 <body>
   <div id="banner" class="banner" hidden></div>
@@ -32,6 +32,7 @@
             <button type="button" class="tool" id="btnTts" aria-pressed="false" title="Czytaj tekst na głos (L)" hidden>Lektor</button>
             <button type="button" class="tool" id="btnFull" title="Pełny ekran (F)">Pełny ekran</button>
             <button type="button" class="tool" id="btnNew">Menu</button>
+            <a class="tool" id="btnLogout" href="/logout" hidden>Wyloguj</a>
           </nav>
         </header>
 
@@ -123,6 +124,8 @@
         </button>
         <button type="button" class="btn ghost" id="btnSaved" aria-controls="savedGames" aria-expanded="false">Zapisane gry</button>
         <button type="button" class="btn ghost" id="btnDev" aria-controls="devSettings" aria-expanded="false">Ustawienia deweloperskie <span class="dev-model" id="devSummary"></span></button>
+        <a class="btn ghost" id="btnAdmin" href="/admin" hidden>Panel administratora</a>
+        <a class="btn ghost" id="mLogout" href="/logout" hidden>Wyloguj</a>
         <button type="button" class="btn ghost" id="mBack" hidden>Wróć do gry</button>
       </div>
     </header>
@@ -260,6 +263,16 @@
     </div>
   </section>
 
-  <script src="/app.js?v=19"></script>
+  <div class="building" id="playerWait" hidden role="status" aria-live="polite">
+    <div class="building-card">
+      <span class="ring" id="waitRing" aria-hidden="true"></span>
+      <p class="eyebrow" id="waitEyebrow">Twoja gra się przygotowuje</p>
+      <h2 id="waitTitle">Narrator buduje świat</h2>
+      <p class="muted" id="waitText">To zwykle trwa kilka minut. Strona sama otworzy grę, gdy będzie gotowa.</p>
+      <a class="btn ghost" href="/logout">Wyloguj</a>
+    </div>
+  </div>
+
+  <script src="/app.js?v=20"></script>
 </body>
 </html>

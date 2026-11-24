@@ -20,12 +20,23 @@ Projektujesz świat startowy interaktywnej powieści wizualnej. Gracz opisuje sw
   „{visual_style} setting” i „{visual_style} clothing”, więc ma do nich pasować.
 - `intro`: scena otwierająca w 2. osobie („siedzisz”, „widzisz”), 2 do 4 zdań. Bohater jest w lokacji startowej, obok jest co najmniej jedna postać, z którą można porozmawiać, i jest pierwszy trop prowadzący do celu.
 - `locations`: 4 do 6 miejsc, między którymi bohater może chodzić. `description` to wygląd miejsca do narysowania tła: maks. 25 słów, bez postaci i bez akcji.
+  `look` to ten sam wygląd PO ANGIELSKU dla modelu obrazów, maks. 30 słów, zaczyna się od „Interior of” (wnętrze)
+  albo „Exterior of” (na zewnątrz). Zachowaj nietypowe szczegóły z pomysłu gracza (kolory, materiały, dziwne zjawiska)
+  i nazwij je wprost, np. „books swimming as fish in round aquariums” zamiast „library”.
 - `start_location`: `id` jednej z lokacji, w której zaczyna się `intro`.
 - `facts`: 6 do 10 faktów o świecie w formie encja, atrybut, wartość. Nazwy encji małymi literami, bohater to zawsze encja `bohater`.
   - `immutable: true` dla cech, które nie mogą się zmienić: wygląd postaci, znaki szczególne, zawody, materiały przedmiotów.
   - `immutable: false` dla tego, co zmienia się w grze: monety, ekwipunek, miejsce poszukiwanej rzeczy.
-  - Bohater ma `ekwipunek` i jeden fakt o wyglądzie (`wygląd` albo `znak szczególny`).
-  - Każda postać z `intro` ma `zawód` i `wygląd`, bo z nich powstają portrety postaci.
+  - Bohater ma `ekwipunek`, `wygląd` i `płeć` (np. „kobieta”, „mężczyzna”, „chłopiec”).
+  - KAŻDA postać z pomysłu gracza i z `intro` (także zwierzęta) ma `zawód`, `wygląd` i `płeć`.
+    Wygląd przepisz z pomysłu gracza bez skracania: wiek, sylwetkę, włosy, ubranie, znaki szczególne.
+- `hero_look`: wygląd bohatera PO ANGIELSKU dla modelu obrazów, 15 do 40 słów. Zaczyna się od płci i wieku
+  („a 34-year-old woman”, „a 10-year-old boy”, „an old man”), potem sylwetka, twarz i włosy, ubranie, rzeczy przy sobie.
+  Same cechy wyglądu, bez imienia, bez historii i bez charakteru.
+- `characters`: lista WSZYSTKICH postaci z pomysłu gracza i z `intro` poza bohaterem, także zwierząt:
+  `{"name": "<encja z faktów>", "look": "<wygląd po angielsku>"}`. `name` to ta sama nazwa co encja w `facts`.
+  `look` jak w `hero_look`: na początku płeć i wiek albo gatunek („a tall thin woman in her fifties”,
+  „a huge black cat”), potem wszystkie szczegóły wyglądu z pomysłu gracza. Bez imienia.
 
 # Format odpowiedzi
 Odpowiadasz WYŁĄCZNIE jednym obiektem JSON, bez żadnego tekstu przed nim ani po nim, z polami jak we wzorze.

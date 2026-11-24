@@ -10,8 +10,13 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://host.docker.internal:11434"
     ollama_model: str = "llama3.1:8b"
     data_dir: str = "data"
-    # Hasło do gry (strona logowania). Puste = bez logowania.
+    # Konta (app/auth.py). Puste ADMIN_PASSWORD = gra bez logowania (lokalnie, testy).
+    admin_login: str = "administrator"
+    admin_password: str = ""
+    # Stare hasło do gry z jednego wspólnego konta. Działa jako hasło administratora, gdy ADMIN_PASSWORD jest puste.
     game_password: str = ""
+    # Sekret do ciasteczek sesji i szyfrowania kluczy API graczy. Puste = losowy w data/secret.key.
+    secret_key: str = ""
 
     # Narrator: model w formacie LiteLLM "<provider>/<model>", np. ollama_chat/gemma4:12b,
     # hosted_vllm/Qwen/Qwen3-8B, anthropic/claude-haiku-5-5. Puste = Ollama z OLLAMA_MODEL.
@@ -48,12 +53,18 @@ class Settings(BaseSettings):
     image_scene_style: str = (
         "Digital painting of a {era} scene, cinematic lighting. The first reference image shows the place. "
         "The next reference images show the characters in the order listed below: keep their faces, hair and "
-        "clothes. Each character appears only once, in the place from the first image."
+        "clothes. Each character appears only once, in the place from the first image. No text, no speech "
+        "bubbles. The place:"
     )
     image_portrait_style: str = (
-        "Digital painting, full body character reference of a single person, {era} clothing, "
-        "standing and facing the viewer, plain light grey background."
+        "Digital painting, full body character reference of a single character standing alone and facing the "
+        "viewer, isolated on a plain light grey background with nothing else around. Clothing fits a world of "
+        "{era}. No text. The character:"
     )
+
+    @property
+    def admin_pass(self) -> str:
+        return self.admin_password or self.game_password
 
     @property
     def default_narrator_model(self) -> str:

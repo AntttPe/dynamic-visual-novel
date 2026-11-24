@@ -90,6 +90,16 @@ CREATE TABLE IF NOT EXISTS worlds (
     tokens_out  INTEGER NOT NULL,
     latency_ms  REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS users (
+    login         TEXT PRIMARY KEY,
+    created_at    TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    setup         TEXT NOT NULL,
+    secrets       TEXT,
+    game_id       TEXT,
+    status        TEXT NOT NULL,
+    error         TEXT
+);
 """
 
 
@@ -213,6 +223,40 @@ class Store:
     def images(self, run_id: str) -> list[dict]:
         with closing(self._connect()) as conn:
             return [dict(r) for r in conn.execute("SELECT * FROM images WHERE run_id = ? ORDER BY rowid", (run_id,))]
+
+    # --- Konta graczy (app/accounts.py). Klucze API w kolumnie secrets są zaszyfrowane. ---
+
+    def add_user(self, login: str, password_hash: str, setup: dict, secrets: str | None) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "INSERT INTO users (login, created_at, password_hash, setup, secrets, game_id, status, error)"
+                " VALUES (?,?,?,?,?,NULL,'pending',NULL)", (login, _now(), password_hash, _json(setup), secrets))
+
+    def users(self) -> list[dict]:
+        with closing(self._connect()) as conn:
+            return [dict(r) for r in conn.execute("SELECT * FROM users ORDER BY created_at, login")]
+
+    def user(self, login: str) -> dict | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute("SELECT * FROM users WHERE login = ?", (login,)).fetchone()
+        return dict(row) if row else None
+
+    def user_by_game(self, game_id: str) -> dict | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute("SELECT * FROM users WHERE game_id = ?", (game_id,)).fetchone()
+        return dict(row) if row else None
+
+    def update_user(self, login: str, **fields) -> None:
+        allowed = {"password_hash", "game_id", "status", "error"}
+        if not fields or set(fields) - allowed:
+            raise ValueError(f"Nie można zmienić pól: {set(fields) - allowed}")
+        sets = ", ".join(f"{k} = ?" for k in fields)
+        with closing(self._connect()) as conn, conn:
+            conn.execute(f"UPDATE users SET {sets} WHERE login = ?", (*fields.values(), login))
+
+    def delete_user(self, login: str) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute("DELETE FROM users WHERE login = ?", (login,))
 
     # --- Eksperymenty (app/eval) ---
 

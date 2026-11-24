@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.core.world import Fact
+from app.core.world import CharacterLook, Fact
 
 
 class DialogueLine(BaseModel):
@@ -51,11 +51,23 @@ class VoicedLine(DialogueLine):
     gender: Literal["female", "male"] | None = Field(default=None, description="Płeć postaci, która mówi.")
 
 
+class PlayScene(Scene):
+    """Miejsce w grze: do tego jego wygląd po angielsku dla modelu obrazów."""
+
+    look: str = Field(default="", description="Wygląd miejsca PO ANGIELSKU, zaczyna się od „Interior of” albo "
+                      "„Exterior of”, maks. 30 słów, bez postaci.")
+
+
 class PlayNarratorResponse(NarratorResponse):
-    """Odpowiedź narratora w grze: to samo co w eksperymentach plus wynik gry i płeć mówiących."""
+    """Odpowiedź narratora w grze: to samo co w eksperymentach plus wynik gry, płeć mówiących i opisy do obrazów."""
 
     dialogue: list[VoicedLine] = Field(default_factory=list)
+    scene: PlayScene
     outcome: GameOutcome = Field(default_factory=GameOutcome)
+    picture: str = Field(default="", description="PO ANGIELSKU: co widać na obrazie tej tury, 1 do 2 zdań, "
+                         "postacie opisane wyglądem, bez imion, bez mowy i bez napisów.")
+    new_characters: list[CharacterLook] = Field(
+        default_factory=list, description="Postacie, które pojawiły się pierwszy raz: imię i wygląd PO ANGIELSKU.")
 
 
 class HintNarratorResponse(PlayNarratorResponse):

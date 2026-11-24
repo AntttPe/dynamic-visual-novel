@@ -392,6 +392,25 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ## Dziennik
 
+### 2026-11-24, Dudsztor: opisy do obrazów po angielsku, z wyglądem każdej postaci
+- Co zrobione: poprawki po teście 5 gier (portrety bez opisu, zła płeć i wiek, imiona jako napisy, duplikaty w scenach).
+  Twórca świata zapisuje wygląd bohatera, postaci i miejsc po angielsku (`hero_look`, `characters`, `look`),
+  narrator w grze dopisuje `picture`, `scene.look` i `new_characters`. Prompty obrazów bez imion, z liczbą postaci w kadrze.
+- Podobne imiona to jedna postać (`Looks` w `app/images.py`). Portrety postaci z wstępu powstają przed pierwszą turą.
+- Pliki: `app/images.py`, `app/main.py`, `app/core/world.py`, `app/core/world_builder.py`, `app/core/schemas.py`,
+  `app/prompts/world_builder.md`, `app/prompts/narrator_ending.md`, `app/config.py`, `app/worlds/zaginiona_korona.yaml`.
+- Uwaga dla następnych: prompt narratora w eksperymentach (`narrator_system.md`) bez zmian, nowe pola są tylko w grze.
+
+### 2026-11-24, Dudsztor: konta administratora i graczy
+- Co zrobione: logowanie loginem i hasłem. Administrator z `.env` (`ADMIN_LOGIN`, `ADMIN_PASSWORD`) zakłada w `/admin`
+  konta graczy z ustawionym scenariuszem, modelem tekstowym i grafiką. Gra gracza buduje się w tle od razu po założeniu konta.
+- Gracz widzi tylko swoją grę (sprawdza to serwer), bez menu i panelu badawczego. Po restarcie serwera gra gracza
+  wraca z jego modelem i API.
+- Klucze API w bazie zaszyfrowane (biblioteka standardowa, bez nowych zależności), hasła jako scrypt.
+- Pliki: `app/auth.py`, `app/admin.py`, `app/accounts.py`, `app/static/admin.html`, `app/static/login.html`,
+  `app/storage/db.py` (tabela `users`), `app/main.py`, `app/images.py`, `app/static/app.js`, `tests/test_auth.py`.
+- Uwaga dla następnych: `GAME_PASSWORD` dalej działa jako hasło administratora. Gry tworzone przez API eksperymentów bez zmian.
+
 ### 2026-11-24, Dudsztor: komiks z rozgrywki
 - Co zrobione: po wygranej albo przegranej przycisk „Komiks z rozgrywki”: kadr na każdą turę, obraz po lewej, opis po prawej.
 - Pliki: `app/static/comic.html`, `app/main.py` (`/api/games/{id}/comic`), `app/static/app.js`, `app/static/index.html`,

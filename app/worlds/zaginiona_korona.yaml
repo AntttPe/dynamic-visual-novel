@@ -24,22 +24,27 @@ locations:
     name: Karczma Pod Złamanym Kołem
     aliases: [karczm]
     description: zadymiona drewniana karczma, kominek, długie stoły, beczki piwa, ciepłe światło świec
+    look: Interior of a smoky wooden medieval tavern, stone fireplace, long tables, beer barrels, warm candlelight
   - id: market
     name: Rynek
     aliases: [rynek, rynku, targ]
     description: brukowany rynek z kolorowymi kramami, w tle wieża ratusza, pochmurne niebo
+    look: Exterior of a cobbled medieval market square with colorful stalls, town hall tower in the background, cloudy sky
   - id: castle_gate
     name: Brama zamku
     aliases: [bram, zamek, zamku]
     description: kamienne mury zamku, zamknięta dębowa brama okuta żelazem, dwie baszty
+    look: Exterior of stone castle walls, a closed iron-bound oak gate between two towers
   - id: forest
     name: Las za miastem
     aliases: [las]
     description: gęsty sosnowy las, wąska ścieżka, mgła między drzewami
+    look: Exterior of a dense pine forest, narrow path, mist between the trees
   - id: town_hall
     name: Ratusz
     aliases: [ratusz]
     description: kamienny ratusz z wieżą zegarową, szerokie schody, plac przed wejściem
+    look: Exterior of a stone medieval town hall with a clock tower, wide stairs, a square in front
 facts:
   - {entity: miecz, attribute: materiał, value: srebrny, immutable: true}
   - {entity: bohater, attribute: znak szczególny, value: blizna na lewej dłoni, immutable: true}
@@ -48,3 +53,9 @@ facts:
   - {entity: bohater, attribute: monety, value: "12"}
   - {entity: bohater, attribute: ekwipunek, value: "miecz, sakiewka, lina"}
   - {entity: korona, attribute: miejsce, value: nieznane}
+hero_look: >-
+  a lean man in his thirties, short dark hair, stubble, a scar on his left hand, worn leather jerkin,
+  travel cloak, a silver sword at his belt
+characters:
+  - name: borwin
+    look: a stocky middle-aged man with red hair and beard, one eye covered by a leather patch, innkeeper's apron
