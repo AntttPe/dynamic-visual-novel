@@ -1,4 +1,4 @@
-"""Hasło do gry, gdy strona jest wystawiona do internetu (np. przez Tailscale Funnel).
+"""Hasło do gry, np. gdy strona jest dostępna dla innych osób.
 
 GAME_PASSWORD w .env włącza logowanie. Puste = brak logowania (gra lokalna, testy).
 Po poprawnym haśle przeglądarka dostaje ciasteczko z podpisem HMAC hasła,

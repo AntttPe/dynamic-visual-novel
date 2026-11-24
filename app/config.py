@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://host.docker.internal:11434"
     ollama_model: str = "llama3.1:8b"
     data_dir: str = "data"
-    # Hasło do gry wystawionej w internecie (Tailscale Funnel). Puste = bez logowania.
+    # Hasło do gry (strona logowania). Puste = bez logowania.
     game_password: str = ""
 
     # Narrator: model w formacie LiteLLM "<provider>/<model>", np. ollama_chat/gemma4:12b,

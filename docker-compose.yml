@@ -3,7 +3,7 @@ services:
     build: .
     env_file: .env
     ports:
-      - "127.0.0.1:8000:8000"   # tylko z tego komputera; z internetu przez Tailscale Funnel
+      - "8000:8000"
     volumes:
       - .:/app                # hot reload kodu (Python + UI)
       - claude_home:/root/.claude   # pamięć i logowanie Claude Code, przetrwa docker compose down
