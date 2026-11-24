@@ -220,3 +220,33 @@ async def test_reasoning_effort_sent_in_extra_body(monkeypatch):
     with pytest.raises(Exception):
         await client.complete([{"role": "user", "content": "x"}])
     assert seen["extra_body"] == {"reasoning_effort": "low"}
+
+
+def test_world_build_gets_longer_timeout(monkeypatch):
+    """Serwer z wymuszonym JSON-em wysyła świat w całości po kilku minutach, więc limit tury by go uciął."""
+    import asyncio
+
+    from fastapi import Request
+
+    from app import main
+    from app.core import world_builder
+    from app.main import NewGame, make_world
+
+    seen = {}
+
+    async def fake_build(client, idea, **kwargs):
+        seen["timeout"] = client.timeout
+        return "ok"
+
+    monkeypatch.setattr(main, "build_world", fake_build)
+    client = LiteLLMClient("openai/strata-big", Settings(_env_file=None))
+    assert client.timeout == 180
+    request = Request({"type": "http", "app": main.app})
+    old = main.app.state.llm_factory
+    main.app.state.llm_factory = lambda model, world, **api: client
+    try:
+        asyncio.run(make_world(NewGame(world_id=world_builder.CUSTOM_WORLD, world_idea="pies na osiedlu"),
+                               request, "openai/strata-big", {}))
+    finally:
+        main.app.state.llm_factory = old
+    assert seen["timeout"] == main.settings.world_build_timeout_s == 600

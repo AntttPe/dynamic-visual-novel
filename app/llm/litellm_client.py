@@ -46,7 +46,9 @@ class LiteLLMClient:
         self.reasoning_effort = (reasoning_effort or None) if model.startswith(("openai/", "hosted_vllm/")) else None
         self._api_base = api_base or resolve_api_base(model, settings)
         self._api_key = api_key or resolve_api_key(model, settings)
-        self._timeout = settings.narrator_timeout_s
+        # Sekundy bez nowego fragmentu odpowiedzi. Uwaga: przy wymuszonym JSON-ie serwer instytutu potrafi
+        # wysłać całą odpowiedź naraz, wtedy to limit na całą odpowiedź.
+        self.timeout = settings.narrator_timeout_s
         self._stream = settings.narrator_stream
 
     async def complete(
@@ -82,7 +84,7 @@ class LiteLLMClient:
                 temperature=temperature,
                 seed=seed,
                 max_tokens=max_tokens,
-                timeout=self._timeout,
+                timeout=self.timeout,
                 **extra,
             )
             if self._stream:

@@ -400,6 +400,9 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 - Pliki: `app/images.py`, `app/main.py`, `app/core/world.py`, `app/core/world_builder.py`, `app/core/schemas.py`,
   `app/prompts/world_builder.md`, `app/prompts/narrator_ending.md`, `app/config.py`, `app/worlds/zaginiona_korona.yaml`.
 - Uwaga dla następnych: prompt narratora w eksperymentach (`narrator_system.md`) bez zmian, nowe pola są tylko w grze.
+- Budowanie świata ma osobny limit `WORLD_BUILD_TIMEOUT_S` (600 s): strata-big przy wymuszonym JSON-ie wysyła
+  całą odpowiedź naraz po 2 do 7 minutach, a limit tury (180 s) ucinał budowę. Gry z gotowym własnym światem
+  są w „Zapisanych grach” także bez tur.
 
 ### 2026-11-24, Dudsztor: konta administratora i graczy
 - Co zrobione: logowanie loginem i hasłem. Administrator z `.env` (`ADMIN_LOGIN`, `ADMIN_PASSWORD`) zakłada w `/admin`

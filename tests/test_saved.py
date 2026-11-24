@@ -60,3 +60,16 @@ def test_unknown_game_is_404_and_empty_games_are_not_listed(game_env):
     client.post("/api/games", json={})  # gra bez tur
     assert client.get("/api/games").json() == []
     assert client.get("/api/games/nie_ma_takiej").status_code == 404
+
+
+def test_prepared_custom_world_is_listed_without_turns(game_env):
+    """Świat z pomysłu buduje się minutami, więc gotowa gra jest na liście, zanim ktoś zagra pierwszą turę."""
+    from tests.test_world_builder import world_json
+
+    client, llm, _, _ = game_env
+    llm.responses = [world_json()]
+    game_id = client.post("/api/games", json={"world_id": "custom", "world_idea": "detektywka w Krakowie"}).json()[
+        "game_id"]
+    client.post("/api/games", json={})  # gra na wbudowanym świecie bez tur dalej jest pomijana
+    games = client.get("/api/games").json()
+    assert [(g["game_id"], g["turns"], g["custom"]) for g in games] == [(game_id, 0, True)]

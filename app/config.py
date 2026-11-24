@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     narrator_temperature: float = 0.7
     narrator_max_tokens: int = 1200
     narrator_timeout_s: float = 180
+    # Budowanie świata to jedna długa odpowiedź (2 do 8 minut), a serwer wysyła ją często w całości na końcu
+    world_build_timeout_s: float = 600
     narrator_json_retries: int = 2
     # Odpowiedź strumieniem: pozwala zmierzyć czas do pierwszego tokenu (TTFT), po którym widać cache promptu
     narrator_stream: bool = True

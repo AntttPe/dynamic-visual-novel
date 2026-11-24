@@ -271,6 +271,8 @@ async def make_world(req: NewGame, request: Request, model: str, text_api: dict)
     if model == "demo":
         return demo_world(idea)
     client = request.app.state.llm_factory(model, load_world(EXAMPLE_WORLD), **text_api)
+    if hasattr(client, "timeout"):
+        client.timeout = max(client.timeout, settings.world_build_timeout_s)
     try:
         return await build_world(client, idea, temperature=settings.narrator_temperature, seed=req.seed,
                                  max_tokens=max(settings.narrator_max_tokens, 4000),
@@ -380,12 +382,13 @@ def _thumb(store: Store, game_id: str) -> Path | None:
 
 @app.get("/api/games")
 def saved_games(request: Request) -> list[dict]:
-    """Rozegrane gry z bazy (najnowsze najpierw), do przeglądania w menu. Gry bez tur są pomijane."""
+    """Gry z bazy (najnowsze najpierw), do przeglądania w menu. Gry bez tur są pomijane, chyba że mają
+    własny zbudowany świat: jego budowa trwa minuty, więc taka gra jest gotowa do grania."""
     store = get_store(request)
     user = getattr(request.state, "user", auth.LOCAL_ADMIN)
     result = []
     for run in store.play_runs():
-        if not run["turns"]:
+        if not run["turns"] and run["world"] is None:
             continue
         if user["role"] == "player" and run["run_id"] != user["game_id"]:
             continue
