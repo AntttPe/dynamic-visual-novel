@@ -117,6 +117,8 @@ class GameEngine:
             "seed": seed,
             "prompt_version": version,
         }
+        if getattr(llm, "reasoning_effort", None):  # gra w przeglądarce z ograniczonym myśleniem modelu
+            self.config["reasoning_effort"] = llm.reasoning_effort
         if endings:
             self.config["max_turns"] = max_turns
             self.config["difficulty"] = self.difficulty

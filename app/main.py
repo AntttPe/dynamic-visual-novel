@@ -42,7 +42,8 @@ app.add_api_route("/login", auth.login_submit, methods=["POST"], include_in_sche
 app.add_api_route("/logout", auth.logout, methods=["GET", "POST"], include_in_schema=False)
 
 # Wymienne w testach: fabryka klientów LLM i magazyn danych
-app.state.llm_factory = lambda model, world, **api: llm.make_client(model, world, settings, **api)
+app.state.llm_factory = lambda model, world, **api: llm.make_client(
+    model, world, settings, reasoning_effort=settings.play_reasoning_effort, **api)
 app.state.store = None
 app.state.images = None
 GAMES: dict[str, GameEngine] = {}
@@ -422,6 +423,41 @@ def scene_file(game_id: str, t: int, request: Request) -> FileResponse:
     if path is None:
         raise HTTPException(404, "Tego obrazu jeszcze nie ma")
     return FileResponse(path, media_type="image/png")
+
+
+def _ready_url(status: dict) -> str | None:
+    return status.get("url") if status.get("status") == "ready" else None
+
+
+@app.get("/api/games/{game_id}/comic")
+def comic(game_id: str, request: Request) -> dict:
+    """Komiks z rozgrywki: dla każdej tury obraz (scena, a gdy jej nie ma, tło lokacji) i opis tego, co się stało."""
+    game = _game(game_id)
+    images = get_images(request)
+
+    def place_image(location: str) -> str | None:
+        return _ready_url(images.status(game_id, location))
+
+    panels = [{
+        "t": 0, "action": None, "text": game.world.intro, "dialogue": [],
+        "location": game.known_locations.get(game.world.start_location, game.world.start_location),
+        "image": place_image(game.world.start_location),
+    }]
+    for turn in game.turns:
+        if turn.response is None:  # tura z błędem narratora nic nie zmieniła w historii
+            continue
+        panels.append({
+            "t": turn.t, "action": turn.player_action, "text": turn.response.narration,
+            "dialogue": [d.model_dump(include={"speaker", "text"}) for d in turn.response.dialogue],
+            "location": game.known_locations.get(turn.location, turn.location),
+            "image": _ready_url(images.scene_status(game_id, turn.t)) or place_image(turn.location),
+        })
+    built = get_store(request).world(game_id)  # świat z pomysłu gracza: jego prompt trafia do komiksu
+    return {
+        "game_id": game_id, "title": game.world.title, "player": game.world.player, "goal": game.world.goal,
+        "world_idea": built["idea"] if built else None,
+        "outcome": game.outcome.model_dump(), "panels": panels,
+    }
 
 
 class RevalidatedStatic(StaticFiles):

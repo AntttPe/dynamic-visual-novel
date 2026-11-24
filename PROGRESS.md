@@ -392,6 +392,20 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ## Dziennik
 
+### 2026-11-24, Dudsztor: komiks z rozgrywki
+- Co zrobione: po wygranej albo przegranej przycisk „Komiks z rozgrywki”: kadr na każdą turę, obraz po lewej, opis po prawej.
+- Pliki: `app/static/comic.html`, `app/main.py` (`/api/games/{id}/comic`), `app/static/app.js`, `app/static/index.html`,
+  `tests/test_endings.py`.
+- Uwaga dla następnych: tury z błędnym JSON-em nie mają kadru. Opis to narracja tury, bez streszczania przez model.
+- Potem: okładka i jedna tura na stronę (wydruk A4 poziomo), za długi tekst się zmniejsza albo skraca. Link „Odpal komiks” w Zapisanych grach.
+
+### 2026-11-24, Dudsztor: krótsze myślenie modelu w grze
+- Co zrobione: `PLAY_REASONING_EFFORT` (domyślnie `low`) wysyłane jako `reasoning_effort` do serwerów zgodnych z API OpenAI,
+  tylko w grze w przeglądarce. Zapisuje się w `config` gry. Eksperymenty bez zmian.
+- Powód: na strata-big model czasem myślał do limitu 4000 tokenów i serwer zwracał błąd `finish_reason=length`.
+  Na prompcie z gry tura z `low` trwała 41 s, bez tego 168 s (część różnicy to kolejka na serwerze).
+- Pliki: `app/config.py`, `app/llm/__init__.py`, `app/llm/litellm_client.py`, `app/main.py`, `app/core/engine.py`, `tests/test_llm.py`.
+
 ### 2026-11-19, Dudsztor: lektor (czytanie tekstu na głos)
 - Co zrobione: przycisk „Lektor” (klawisz L) czyta nową turę głosem przeglądarki, kobiety kobiecym, mężczyzn męskim.
   Narrator w grze podaje `gender` przy każdej kwestii (prompt `narrator_ending.md`, schemat `PlayNarratorResponse`).

@@ -192,3 +192,31 @@ async def test_real_ollama_answers():
         [{"role": "user", "content": "Odpowiedz jednym słowem: tak"}], max_tokens=20)
     assert result.text.strip()
     assert result.tokens_out > 0
+
+
+def test_reasoning_effort_only_for_openai_compatible_servers():
+    from app.config import Settings
+    from app.llm.litellm_client import LiteLLMClient
+    s = Settings(_env_file=None)
+    assert LiteLLMClient("openai/strata-big", s, reasoning_effort="low").reasoning_effort == "low"
+    assert LiteLLMClient("hosted_vllm/Qwen/Qwen3-8B", s, reasoning_effort="low").reasoning_effort == "low"
+    assert LiteLLMClient("anthropic/claude-haiku-5-5", s, reasoning_effort="low").reasoning_effort is None
+    assert LiteLLMClient("ollama_chat/gemma4:12b", s, reasoning_effort="low").reasoning_effort is None
+    assert LiteLLMClient("openai/strata-big", s).reasoning_effort is None  # eksperymenty: domyślne modelu
+
+
+@pytest.mark.anyio
+async def test_reasoning_effort_sent_in_extra_body(monkeypatch):
+    from app.config import Settings
+    from app.llm import litellm_client
+    seen = {}
+
+    async def fake_acompletion(**kw):
+        seen.update(kw)
+        raise RuntimeError("stop")
+
+    monkeypatch.setattr(litellm_client.litellm, "acompletion", fake_acompletion)
+    client = litellm_client.LiteLLMClient("openai/strata-big", Settings(_env_file=None), reasoning_effort="low")
+    with pytest.raises(Exception):
+        await client.complete([{"role": "user", "content": "x"}])
+    assert seen["extra_body"] == {"reasoning_effort": "low"}

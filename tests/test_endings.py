@@ -199,3 +199,30 @@ def test_api_returns_voices_also_after_restore(env):
     GAMES.clear()  # jak po restarcie serwera: gra wraca z bazy
     restored = client.get(f"/api/games/{game['game_id']}").json()
     assert restored["turns"][0]["voices"] == {"Borwin": "male", "Ida": "female"}
+
+
+def test_comic_has_intro_and_every_good_turn(env):
+    client, fake = env
+    fake.responses = [voiced_answer(), "to nie JSON", "dalej nie JSON", "nadal nie", answer("won", "Korona wróciła.")]
+    game = client.post("/api/games", json={}).json()
+    gid = game["game_id"]
+    client.post(f"/api/games/{gid}/turns", json={"action": "Wchodzę"})
+    client.post(f"/api/games/{gid}/turns", json={"action": "Bełkoczę"})  # zły JSON: bez kadru w komiksie
+    client.post(f"/api/games/{gid}/turns", json={"action": "Oddaję koronę"})
+    comic = client.get(f"/api/games/{gid}/comic").json()
+    assert comic["title"] == WORLD.title and comic["outcome"]["status"] == "won"
+    assert comic["world_idea"] is None  # gotowy świat z YAML nie ma promptu gracza
+    panels = comic["panels"]
+    assert [p["action"] for p in panels] == [None, "Wchodzę", "Oddaję koronę"]
+    assert panels[0]["text"] == WORLD.intro
+    assert panels[1]["dialogue"][0] == {"speaker": "Borwin", "text": "Czego?"}
+    assert all(p["image"] is None for p in panels)  # testy bez serwera obrazów
+    assert client.get("/api/games/nie-ma/comic").status_code == 404
+    assert "Komiks" in client.get("/comic.html").text
+
+
+def test_comic_shows_world_prompt_of_custom_world(env):
+    client, _ = env
+    idea = "Miasto na grzbiecie ślimaka, waluta to dźwięki w słoikach."
+    game = client.post("/api/games", json={"world_id": "custom", "world_idea": idea, "model": "demo"}).json()
+    assert client.get(f"/api/games/{game['game_id']}/comic").json()["world_idea"] == idea

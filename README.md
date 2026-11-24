@@ -44,7 +44,7 @@ w terminalu **Ubuntu**, a projekt pobieraj do katalogu domowego (`cd ~`), nie na
    np. `Cyberpunkowy Kraków w 2090 roku, jestem detektywką i szukam zaginionego androida`.
 2. **Podpowiedzi** ułatwiają grę i pokazują następny krok w prawym górnym rogu. **Limit tur** jest opcjonalny.
 3. Kliknij **Zacznij grę** i wpisz w polu na dole, co robisz. Enter wysyła.
-4. Gra kończy się planszą **Wygrana** albo **Przegrana**, gdy osiągniesz cel świata albo coś pójdzie bardzo źle.
+4. Gra kończy się planszą **Wygrana** albo **Przegrana**, gdy osiągniesz cel świata albo coś pójdzie bardzo źle. Na planszy jest przycisk **Komiks z rozgrywki**: wszystkie obrazy z opisem tur, do zapisania jako PDF. Komiks każdej gry otworzysz też w **Zapisanych grach**.
 
 | Na ekranie gry | Co robi |
 |---|---|

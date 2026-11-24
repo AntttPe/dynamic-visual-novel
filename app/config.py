@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     narrator_json_retries: int = 2
     # Odpowiedź strumieniem: pozwala zmierzyć czas do pierwszego tokenu (TTFT), po którym widać cache promptu
     narrator_stream: bool = True
+    # Ile model "myśli" przed odpowiedzią w grze w przeglądarce (low, medium, high). Tylko modele myślące,
+    # np. strata-big: przy low tura trwa kilka razy krócej. Puste = domyślne modelu. Eksperymenty tego nie używają.
+    play_reasoning_effort: str = "low"
 
     # Pamięć narratora: "full" (pełna historia), "window" (ostatnie N tur)
     # albo "full_cached" (pełna historia w układzie pod cache promptu serwera)

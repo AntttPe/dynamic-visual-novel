@@ -84,6 +84,7 @@ function renderEnding() {
   el.className = `ending ${o.status}`;
   $("#endTitle").textContent = o.status === "won" ? "Wygrana!" : "Przegrana";
   $("#endReason").textContent = o.reason || (o.status === "won" ? "Cel osiągnięty." : "Cel nie został osiągnięty.");
+  $("#btnComic").href = `/comic.html?game=${encodeURIComponent(ui.game.game_id)}`;
 }
 $("#btnEndNew").addEventListener("click", () => openMenu());
 $("#btnEndHide").addEventListener("click", () => { endingHidden = true; renderEnding(); });
@@ -816,7 +817,8 @@ async function showSaved(on) {
       <span class="thumb" ${g.thumb ? `style='background-image:url("${g.thumb}")'` : ""}></span>
       <span class="meta"><b>${esc(g.title)}</b>
         <small>${g.turns} ${turnsWord} · <span class="${cls}">${label}</span>${g.hints ? " · podpowiedzi" : ""}</small>
-        <small>${esc(when)} · ${esc(g.model)}</small></span></button></li>`;
+        <small>${esc(when)} · ${esc(g.model)}</small></span></button>
+      ${g.turns ? `<a class="comic-link" href="/comic.html?game=${encodeURIComponent(g.game_id)}" target="_blank" rel="noopener">Odpal komiks</a>` : ""}</li>`;
   }).join("");
   list.querySelectorAll("[data-game]").forEach((b) => b.addEventListener("click", () => openSaved(b.dataset.game)));
 }

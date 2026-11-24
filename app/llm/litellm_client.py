@@ -36,9 +36,14 @@ def resolve_api_key(model: str, settings: Settings) -> str | None:
 
 
 class LiteLLMClient:
-    def __init__(self, model: str, settings: Settings, api_base: str | None = None, api_key: str | None = None):
-        """api_base i api_key podane w oknie „Nowa gra” (własne API) mają pierwszeństwo przed .env."""
+    def __init__(self, model: str, settings: Settings, api_base: str | None = None, api_key: str | None = None,
+                 reasoning_effort: str | None = None):
+        """api_base i api_key podane w oknie „Nowa gra” (własne API) mają pierwszeństwo przed .env.
+        reasoning_effort: ile model myśli (low, medium, high), tylko gra w przeglądarce. None = domyślne modelu."""
         self.model = model
+        # Tylko serwery zgodne z API OpenAI (vLLM, serwer instytutu). Anthropic albo Ollama dostałyby nieznany
+        # parametr albo włączone myślenie, którego nie było.
+        self.reasoning_effort = (reasoning_effort or None) if model.startswith(("openai/", "hosted_vllm/")) else None
         self._api_base = api_base or resolve_api_base(model, settings)
         self._api_key = api_key or resolve_api_key(model, settings)
         self._timeout = settings.narrator_timeout_s
@@ -60,6 +65,9 @@ class LiteLLMClient:
                 "type": "json_schema",
                 "json_schema": {"name": "narrator_response", "schema": json_schema},
             }
+        if self.reasoning_effort:
+            # W extra_body, bo LiteLLM pomija reasoning_effort dla modeli, których nie zna jako myślących
+            extra["extra_body"] = {"reasoning_effort": self.reasoning_effort}
         if self._stream:
             # Serwer wysyła zużycie tokenów w ostatnim fragmencie strumienia
             extra["stream"] = True

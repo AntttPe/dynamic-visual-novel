@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Komiks z rozgrywki</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&display=swap" />
+  <style>
+    /* Komiks zawsze na „papierze”, także w trybie ciemnym, bo ma wyglądać jak wydruk.
+       Jedna tura = jedna strona o stałym rozmiarze 1040 x 680 px (mieści się na A4 poziomo).
+       Na ekranie strona jest pomniejszana do okna (zoom), za długi tekst zmniejsza się albo skraca (fit w skrypcie). */
+    :root {
+      --paper: #f3ecdd; --ink: #16120c; --muted: #6b6152; --panel: #fffdf8; --line: #16120c;
+      --caption: #f7d774; --won: #2b7a4b; --lost: #b8362a;
+      --f-ui: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --f-display: "Cormorant Garamond", "Palatino Linotype", Palatino, Georgia, serif;
+      --f-story: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-snap-type: y proximity; scroll-padding-top: 64px; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--f-ui);
+      background-image: radial-gradient(rgba(22,18,12,.07) 1px, transparent 1.2px); background-size: 7px 7px; }
+    .bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 16px;
+      background: rgba(243,236,221,.92); backdrop-filter: blur(6px); border-bottom: 2px solid var(--line); }
+    .bar .count { margin-right: auto; color: var(--muted); font-size: .88rem; }
+    .bar a, .bar button { font: 600 .9rem var(--f-ui); color: var(--ink); background: var(--panel); border: 2px solid var(--line);
+      border-radius: 8px; padding: 7px 14px; cursor: pointer; text-decoration: none; box-shadow: 3px 3px 0 var(--line); }
+    .bar a:active, .bar button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+    :focus-visible { outline: 3px solid #2f5d8a; outline-offset: 2px; }
+    main { display: grid; justify-content: center; gap: 28px; padding: 24px 16px 60px; zoom: var(--z, 1); }
+    .msg { text-align: center; color: var(--muted); padding: 40px 0; }
+
+    .page { width: 1040px; height: 680px; background: var(--panel); border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--line);
+      scroll-snap-align: start; overflow: hidden; position: relative; }
+    .turn { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+    .art { position: relative; border-right: 3px solid var(--line); background: #2a241b center / cover no-repeat; }
+    .art.empty { display: grid; place-items: center; color: rgba(255,255,255,.75); font: 600 1.6rem var(--f-display); padding: 24px; text-align: center; }
+    .tag { position: absolute; background: var(--panel); border: 2px solid var(--line); font-weight: 700; font-size: .8rem; padding: 2px 10px; }
+    .num { top: 12px; left: 12px; }
+    .where { left: 12px; bottom: 12px; max-width: calc(100% - 24px); background: var(--caption); font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .story { --fs: 1; min-height: 0; overflow: hidden; padding: 22px 22px; display: flex; flex-direction: column; gap: calc(12px * var(--fs)); }
+    .action { margin: 0; background: var(--caption); border: 2px solid var(--line); padding: 6px 12px; font-weight: 600;
+      font-size: calc(.92rem * var(--fs)); flex-shrink: 0; }
+    .action::before { content: "Ty: "; font-weight: 700; }
+    .narr { margin: 0; font: calc(1.1rem * var(--fs))/1.55 var(--f-story); }
+    .bubble { position: relative; margin: 0 0 0 14px; background: #fff; border: 2px solid var(--line); border-radius: 16px; padding: 7px 14px;
+      font: calc(1.02rem * var(--fs))/1.4 var(--f-story); flex-shrink: 0; }
+    .bubble::before { content: ""; position: absolute; left: -12px; top: 12px; border: 7px solid transparent; border-right: 11px solid var(--line); }
+    .bubble b { display: block; font: 700 calc(.74rem * var(--fs)) var(--f-ui); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+    .more { margin: 0; color: var(--muted); font-size: .8rem; font-style: italic; }
+
+    .cover { display: grid; place-items: center; text-align: center; color: #fff; background: #1c1710 center / cover no-repeat; }
+    .cover::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,8,5,.35), rgba(10,8,5,.82)); }
+    .cover > div { position: relative; display: grid; gap: 14px; justify-items: center; padding: 40px; max-width: 820px; }
+    .cover h1 { margin: 0; font: 700 4.2rem/1 var(--f-display); text-shadow: 0 3px 18px rgba(0,0,0,.6); }
+    .cover p { margin: 0; font: 1.15rem/1.5 var(--f-story); color: rgba(255,255,255,.88); }
+    .badge { padding: 5px 16px; border: 2px solid currentColor; border-radius: 999px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; font-size: .85rem; background: rgba(0,0,0,.35); }
+    .badge.won { color: #9be3a9; } .badge.lost { color: #ff9a90; } .badge.ongoing { color: #e6dccb; }
+    .idea { display: grid; grid-template-rows: auto minmax(0, 1fr); padding: 34px 44px 28px; gap: 16px;
+      background: var(--panel) repeating-linear-gradient(180deg, transparent 0 31px, rgba(47,93,138,.12) 31px 32px); }
+    .idea h2 { margin: 0; font: 700 2.4rem/1.1 var(--f-display); }
+    .idea h2 small { display: block; font: 500 .85rem var(--f-ui); color: var(--muted); letter-spacing: .04em; margin-top: 6px; }
+    .idea .story { padding: 18px 22px; border: 2px solid var(--line); background: #fffef9; box-shadow: 4px 4px 0 var(--line); }
+    .idea .narr { white-space: pre-wrap; font-size: calc(1.08rem * var(--fs)); }
+    .end { display: grid; place-items: center; text-align: center; }
+    .end > div { display: grid; gap: 14px; justify-items: center; max-width: 700px; padding: 40px; }
+    .end h2 { margin: 0; font: 700 4rem/1 var(--f-display); }
+    .end.won h2 { color: var(--won); } .end.lost h2 { color: var(--lost); }
+    .end p { margin: 0; font: 1.2rem/1.6 var(--f-story); }
+
+    /* Telefon: zwykły układ jeden pod drugim, bez stałych stron */
+    @media (max-width: 720px) {
+      main { zoom: 1; justify-content: stretch; }
+      .page { width: auto; height: auto; }
+      .turn { grid-template-columns: 1fr; grid-template-rows: auto; }
+      .art { border-right: 0; border-bottom: 3px solid var(--line); aspect-ratio: 3 / 2; }
+      .cover, .end { min-height: 70vh; }
+      .idea { padding: 22px 16px; }
+      .cover h1 { font-size: 2.6rem; }
+    }
+    @media print {
+      @page { size: A4 landscape; margin: 8mm; }
+      html { scroll-snap-type: none; }
+      .bar { display: none; }
+      body { background: #fff; }
+      main { zoom: 1; padding: 0; gap: 0; display: block; }
+      .page { box-shadow: none; margin: 0 auto; break-after: page; page-break-after: always; }
+      .page:last-child { break-after: auto; page-break-after: auto; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="bar">
+    <span class="count" id="count"></span>
+    <a href="/">Wróć do gry</a>
+    <button type="button" id="print">Drukuj albo zapisz PDF</button>
+  </nav>
+  <main id="comic"><p class="msg">Składam komiks…</p></main>
+
+  <script>
+    // Komiks z rozgrywki: dane z /api/games/{id}/comic. Okładka, potem jedna tura na stronę, na końcu wynik.
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const OUTCOME = { won: "Wygrana", lost: "Przegrana", ongoing: "Gra trwa" };
+    const PAGE_W = 1040, PAGE_H = 680, MIN_FS = 0.66;
+    const root = document.getElementById("comic");
+    document.getElementById("print").addEventListener("click", () => window.print());
+
+    function turnPage(p, i) {
+      const art = p.image
+        ? `<div class="art" style="background-image:url('${esc(p.image)}')"><span class="tag where">${esc(p.location)}</span>`
+        : `<div class="art empty">${esc(p.location)}`;
+      const lines = p.dialogue.map((d) => `<p class="bubble"><b>${esc(d.speaker)}</b>„${esc(d.text)}”</p>`).join("");
+      return `<section class="page turn">
+        ${art}<span class="tag num">${i === 0 ? "Początek" : `Tura ${i}`}</span></div>
+        <div class="story">
+          ${p.action ? `<p class="action">${esc(p.action)}</p>` : ""}
+          <p class="narr" data-full="${esc(p.text)}">${esc(p.text)}</p>
+          ${lines}
+        </div>
+      </section>`;
+    }
+
+    // Tekst ma się zmieścić na stronie: najpierw mniejsza czcionka (do MIN_FS), potem skrócona narracja,
+    // a na końcu ostatnie dymki chowają się za dopiskiem.
+    function fit(story) {
+      const over = () => story.scrollHeight > story.clientHeight + 1;
+      const narr = story.querySelector(".narr");
+      const bubbles = [...story.querySelectorAll(".bubble")];
+      story.querySelector(".more")?.remove();
+      bubbles.forEach((b) => (b.hidden = false));
+      narr.textContent = narr.dataset.full;
+      let fs = 1;
+      story.style.setProperty("--fs", fs);
+      while (over() && fs > MIN_FS) story.style.setProperty("--fs", (fs = Math.round((fs - 0.04) * 100) / 100));
+      if (!over()) return;
+      const words = narr.dataset.full.split(/\s+/);
+      let lo = Math.min(12, words.length), hi = words.length; // co najmniej początek narracji zostaje
+      while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        narr.textContent = `${words.slice(0, mid).join(" ")}…`;
+        if (over()) hi = mid - 1; else lo = mid;
+      }
+      narr.textContent = `${words.slice(0, lo).join(" ")}…`;
+      if (!over()) return;
+      const more = document.createElement("p");
+      more.className = "more";
+      story.append(more);
+      for (let n = 1; n <= bubbles.length && over(); n++) {
+        bubbles[bubbles.length - n].hidden = true;
+        more.textContent = `(i jeszcze ${n} ${n === 1 ? "kwestia" : n < 5 ? "kwestie" : "kwestii"})`;
+      }
+    }
+    const fitAll = () => { if (innerWidth > 720) document.querySelectorAll(".story").forEach(fit); };
+    function scaleToWindow() {
+      const z = innerWidth > 720 ? Math.min(1, (innerWidth - 40) / (PAGE_W + 12), (innerHeight - 90) / (PAGE_H + 12)) : 1;
+      document.documentElement.style.setProperty("--z", Math.max(0.4, z).toFixed(3));
+    }
+    let resizeTimer = null;
+    addEventListener("resize", () => {
+      scaleToWindow();
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(fitAll, 150); // przejście telefon <-> komputer zmienia układ tekstu
+    });
+    addEventListener("beforeprint", () => { document.documentElement.style.setProperty("--z", 1); fitAll(); });
+    addEventListener("afterprint", scaleToWindow);
+
+    async function load() {
+      const id = new URLSearchParams(location.search).get("game");
+      if (!id) { root.innerHTML = `<p class="msg">Brak gry w adresie. Otwórz komiks z ekranu końca gry albo z zapisanych gier.</p>`; return; }
+      const r = await fetch(`/api/games/${encodeURIComponent(id)}/comic`);
+      if (r.status === 401) { location.href = "/login"; return; }
+      if (!r.ok) { root.innerHTML = `<p class="msg">Nie znalazłem tej gry (błąd ${r.status}).</p>`; return; }
+      const c = await r.json();
+      document.title = `${c.title}: komiks`;
+      const o = c.outcome;
+      const coverImg = c.panels.map((p) => p.image).filter(Boolean).pop();
+      const turns = c.panels.length - 1;
+      document.getElementById("count").textContent = `${turns} ${turns === 1 ? "tura" : turns % 10 >= 2 && turns % 10 <= 4 && (turns % 100 < 12 || turns % 100 > 14) ? "tury" : "tur"}`;
+      root.innerHTML = `
+        <section class="page cover" ${coverImg ? `style="background-image:url('${esc(coverImg)}')"` : ""}><div>
+          <h1>${esc(c.title)}</h1>
+          <p>${esc(c.player)}</p>
+          <p>Cel: ${esc(c.goal)}</p>
+          <span class="badge ${o.status}">${OUTCOME[o.status] ?? o.status}</span>
+        </div></section>
+        ${c.world_idea ? `<section class="page idea">
+          <h2>Prompt świata<small>Pomysł gracza, z którego model narratora zbudował ten świat</small></h2>
+          <div class="story"><p class="narr" data-full="${esc(c.world_idea)}">${esc(c.world_idea)}</p></div>
+        </section>` : ""}
+        ${c.panels.map(turnPage).join("")}
+        ${o.status !== "ongoing" ? `<section class="page end ${o.status}"><div>
+          <h2>${o.status === "won" ? "Wygrana!" : "Przegrana"}</h2><p>${esc(o.reason)}</p></div></section>` : ""}`;
+      scaleToWindow();
+      await document.fonts?.ready;
+      fitAll();
+    }
+    load().catch(() => { root.innerHTML = `<p class="msg">Nie udało się wczytać komiksu.</p>`; });
+  </script>
+</body>
+</html>

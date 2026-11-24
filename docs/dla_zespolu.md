@@ -45,6 +45,12 @@ fakty niezmienne (wygląd postaci, materiały przedmiotów) i scenę otwierając
   przed niebezpieczeństwem, a po każdej turze zwraca pole `hint` z następnym krokiem w stronę wygranej.
   Podpowiedź widać w prawym górnym rogu ekranu gry. Zasady świata i fakty niezmienne obowiązują dalej.
 * Wynik każdej tury zapisuje się w kolumnie `outcome` tabeli `turns`.
+* **Komiks z rozgrywki:** na planszy końca gry przycisk otwiera `comic.html?game=<id>` w nowej karcie. Najpierw okładka,
+  przy własnym świecie strona „Prompt świata” (pomysł gracza z tabeli `worlds`), potem jedna tura na stronę (1040 x 680 px, na wydruku A4 poziomo): po lewej obraz sceny (a gdy go nie ma, tło lokacji),
+  po prawej komenda gracza, narracja i dymki z dialogami. Za długi tekst najpierw się zmniejsza, potem narracja
+  jest skracana („…”), a na końcu chowają się ostatnie dymki. Na telefonie strony są jedna pod drugą bez stałego rozmiaru.
+  Dane daje `GET /api/games/{id}/comic`, bez dodatkowych zapytań do modelu. Zapis do PDF: przycisk „Drukuj”.
+  Komiks każdej gry (także niedokończonej) otworzysz też z menu: **Zapisane gry**, przycisk „Odpal komiks”.
 * **Lektor** (przycisk na scenie albo klawisz L) czyta nową turę głosem przeglądarki (Web Speech API, bez serwera).
   Narrator w grze podaje płeć mówiących (`gender` w `dialogue`, w odpowiedzi API pole `voices` tury), więc kobiety
   czyta kobiecy głos, a mężczyzn męski. Bez płci lektor zgaduje po końcówce imienia. Naturalne polskie głosy
