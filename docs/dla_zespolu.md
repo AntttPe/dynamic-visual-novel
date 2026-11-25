@@ -279,6 +279,10 @@ Model obrazów dostaje opisy tylko po angielsku i bez imion postaci (imiona ryso
   więc ma jeden portret i jeden opis na całą grę.
 - Portrety postaci z wstępu powstają razem ze światem, przed pierwszą turą.
 - Stare gry i światy bez tych pól dostają, jak wcześniej, wygląd z faktów i zdania z narracji po polsku.
+- W promptach do obrazów nie ma zaprzeczeń („no”, „not”, „without”). Model obrazów rysuje każdą nazwaną rzecz:
+  „no vines” dawało pnącza, „clock without hands” zegar ze wskazówkami. Szablony stylu w `app/config.py` mówią
+  tylko, co ma być widać, wytyczne każą modelom pisać opisy bez zaprzeczeń, a `positive()` w `app/images.py`
+  wycina zaprzeczone fragmenty, które mimo to przyjdą (także ze starych światów).
 
 ## Eksperymenty (badanie modeli)
 

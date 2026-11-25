@@ -22,3 +22,6 @@ $limit
     wymyśl jej wygląd pasujący do świata, zapisz go w `state_updates` (atrybut `wygląd`, po polsku) i dodaj tu
     `{"name": "<imię albo nazwa jak w characters_present>", "look": "<po angielsku: płeć i wiek albo gatunek, potem
     sylwetka, włosy, ubranie>"}`. Postacie znane wcześniej pomijasz.
+  - W `picture`, `scene.look` i `new_characters` opisuj tylko to, co widać, BEZ zaprzeczeń („no”, „not”, „without”):
+    model obrazów rysuje każdą nazwaną rzecz. Pisz „bare walls” zamiast „no vines”, „a blank clock face” zamiast
+    „a clock without hands”.

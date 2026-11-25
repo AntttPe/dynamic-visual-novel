@@ -37,6 +37,10 @@ Projektujesz świat startowy interaktywnej powieści wizualnej. Gracz opisuje sw
   `{"name": "<encja z faktów>", "look": "<wygląd po angielsku>"}`. `name` to ta sama nazwa co encja w `facts`.
   `look` jak w `hero_look`: na początku płeć i wiek albo gatunek („a tall thin woman in her fifties”,
   „a huge black cat”), potem wszystkie szczegóły wyglądu z pomysłu gracza. Bez imienia.
+- We wszystkich polach po angielsku (`look`, `hero_look`, `characters`) opisuj tylko to, co widać, BEZ zaprzeczeń
+  („no”, „not”, „without”, „never”, „nothing”). Model obrazów rysuje każdą nazwaną rzecz, także zaprzeczoną.
+  Pisz „a blank clock face” zamiast „a clock without hands”, „bare wet stone walls” zamiast „no vines”,
+  „a deaf old woman with a calm face” zamiast „not smiling”.
 
 # Format odpowiedzi
 Odpowiadasz WYŁĄCZNIE jednym obiektem JSON, bez żadnego tekstu przed nim ani po nim, z polami jak we wzorze.

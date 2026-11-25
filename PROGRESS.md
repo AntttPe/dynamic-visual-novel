@@ -392,6 +392,20 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ## Dziennik
 
+### 2026-11-25, Dudsztor: prompty obrazów bez zaprzeczeń, dłuższe tury, odmiana krótkich imion
+- Co zrobione: w promptach do obrazów nie ma „no”, „not”, „without” (model rysował zaprzeczone rzeczy:
+  „no vines” dawało pnącza). Szablony stylu opisują, co widać, wytyczne świata i narratora zabraniają zaprzeczeń,
+  `positive()` wycina te, które przyjdą. Limit tokenów tury w grze 2500 (odpowiedzi z polami po angielsku
+  ucinało przy 1200). Krótkie imiona w odmianie („Kubę”, „Isy”) trafiają do sceny.
+- Pliki: `app/images.py`, `app/config.py`, `app/main.py`, `app/prompts/world_builder.md`,
+  `app/prompts/narrator_ending.md`, `tests/test_images.py`, `docs/dla_zespolu.md`.
+- Wyniki: 6 gier (48 tur, wszystkie wygrane, JSON 48 z 48 za pierwszym razem, 106 z 106 obrazów).
+  Po zmianie szablonów portrety na czystym tle 9 z 9 (wcześniej tło świata na 10 z 22), tła bez ludzi.
+  Gra 20 tur: 6 wątków bez zgubienia, prompt 38,8 tys. tokenów w turze 20 (91% z cache).
+- Uwaga dla następnych: duplikaty postaci przy 3 i więcej osobach w kadrze. Twórca świata zmienia zasady
+  z pomysłu gracza (gołąbki miały dawać latanie, dają pancerz): zasady trzeba zapisać jako fakty niezmienne.
+  Narrator myli monety, dni i porę dnia. Warunek wygranej warto sprawdzać sędzią LLM.
+
 ### 2026-11-24, Dudsztor: opisy do obrazów po angielsku, z wyglądem każdej postaci
 - Co zrobione: poprawki po teście 5 gier (portrety bez opisu, zła płeć i wiek, imiona jako napisy, duplikaty w scenach).
   Twórca świata zapisuje wygląd bohatera, postaci i miejsc po angielsku (`hero_look`, `characters`, `look`),

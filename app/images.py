@@ -173,8 +173,17 @@ def _stem(name: str) -> str:
 
 
 def mentioned(name: str, text: str) -> bool:
-    stem = _stem(name)
-    return bool(stem) and re.search(rf"\b{re.escape(stem)}", text, re.IGNORECASE) is not None
+    """Czy imię jest w tekście w dowolnym przypadku. Krótkie imiona („Kuba”, „Isa”) odmieniają ostatnią literę
+    („Kubę”, „Isy”), więc dla nich rdzeń jest o literę krótszy, a końcówka ma najwyżej 2 litery („Isie”, „Kubie”)."""
+    word = character_key(name).split(" ")[0]
+    if 3 <= len(word) <= 5:
+        pattern = rf"\b{re.escape(word[:-1])}\w{{0,2}}\b"
+    else:
+        stem = _stem(name)
+        if not stem:
+            return False
+        pattern = rf"\b{re.escape(stem)}"
+    return re.search(pattern, text, re.IGNORECASE) is not None
 
 
 class SceneCast:
@@ -216,22 +225,37 @@ def visual_text(action: str, narration: str, hidden: Sequence[str] = ()) -> str:
     return " ".join([first, *sentences[:MAX_SENTENCES]])
 
 
+# Model obrazów rysuje każdą rzecz nazwaną w prompcie, także zaprzeczoną: „no vines” daje pnącza,
+# „clock face without hands” daje wskazówki. Zaprzeczone fragmenty wycinamy, zostaje to, co widać.
+_NEGATION = re.compile(
+    r"(?:\bwith\s+)?(?:\b(?:no|not|without|never|nothing|none|neither|nor)\b(?!-)|\b\w+n't\b)[^,.;:!?]*",
+    re.IGNORECASE)
+
+
+def positive(text: str) -> str:
+    """Tekst dla modelu obrazów bez zaprzeczeń („with no vines”, „without hands”, „not smiling”)."""
+    out = re.sub(r"\s+([,.;:!?])", r"\1", _NEGATION.sub("", text))
+    out = re.sub(r",\s*(?=[,.;:!?]|$)", "", out)
+    out = re.sub(r"(^|[.!?]\s*)[,;]\s*", r"\1", out)
+    return re.sub(r"\s{2,}", " ", out).strip()
+
+
 def scene_prompt(style: str, place: str, people: Sequence[str], picture: str) -> str:
     """Opis sceny po angielsku. people: wygląd postaci w tej samej kolejności, co ich portrety na wejściu modelu
     (bohater pierwszy). Bez imion, bo model obrazów rysuje je jako napisy."""
-    shown = [look.strip().rstrip(".") for look in people if look.strip()]
+    shown = [positive(look).rstrip(".") for look in people if positive(look)]
     cast = ""
     if shown:
         listed = "; ".join(f"{i}) {look}" for i, look in enumerate(shown, 1))
         cast = (f" Characters in the order of the reference images: {listed}. "
                 f"Exactly {len(shown)} {'character' if len(shown) == 1 else 'characters'} in the picture, "
-                "each one only once.")
-    return f"{style} {place.strip().rstrip('.')}.{cast} {picture.strip()}".strip()
+                "each one exactly once.")
+    return f"{style} {positive(place).rstrip('.')}.{cast} {positive(picture)}".strip()
 
 
 def portrait_prompt(style: str, look: str) -> str:
     """Opis portretu postaci po angielsku, bez imienia (model obrazów wypisywał je na obrazie)."""
-    return f"{style} {look.strip().rstrip('.') or 'A person'}."
+    return f"{style} {positive(look).rstrip('.') or 'A person'}."
 
 
 def legacy_look(facts: Iterable, entity: str) -> str:
@@ -336,7 +360,7 @@ class BackgroundImages:
         self._start(location, Job(
             game_id, location, t, "background",
             f"/api/games/{game_id}/image/file?location={quote(location, safe='')}",
-            f"{styled(self.style, era)} {description}".strip(), location_seed(game_seed, location),
+            f"{styled(self.style, era)} {positive(description)}".strip(), location_seed(game_seed, location),
             self.root / game_id / f"{location[:80]}-{crc:08x}.png",
         ))
 

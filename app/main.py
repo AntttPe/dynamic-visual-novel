@@ -314,7 +314,7 @@ async def create_game(req: NewGame, request: Request, images_off: bool = False) 
         window=req.window or settings.memory_window,
         state_in_prompt=settings.memory_state_in_prompt if req.state_in_prompt is None else req.state_in_prompt,
         temperature=settings.narrator_temperature,
-        max_tokens=settings.narrator_max_tokens,
+        max_tokens=max(settings.narrator_max_tokens, settings.play_max_tokens),
         json_retries=settings.narrator_json_retries,
         seed=req.seed,
         store=get_store(request),
@@ -423,6 +423,8 @@ def get_game(game_id: str, request: Request) -> dict:
 @app.post("/api/games/{game_id}/turns")
 async def play_turn(game_id: str, req: PlayerTurn, request: Request) -> dict:
     game = _game(game_id)
+    # Gry utworzone przed podniesieniem limitu mają w konfiguracji 1200 tokenów, za mało na opisy do obrazów
+    game.config["max_tokens"] = max(game.config.get("max_tokens") or 0, settings.play_max_tokens)
     async with LOCKS[game_id]:
         try:
             record = await game.step(req.action)

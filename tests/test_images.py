@@ -177,7 +177,7 @@ def test_scene_prompt_is_english_without_names():
                           "The innkeeper frowns at the hero.")
     assert prompt == ("STYLE Interior of a tavern. Characters in the order of the reference images: "
                       "1) a lean man, scar on his left hand; 2) a red-haired man. Exactly 2 characters in the "
-                      "picture, each one only once. The innkeeper frowns at the hero.")
+                      "picture, each one exactly once. The innkeeper frowns at the hero.")
     assert portrait_prompt("STYLE", "a huge black cat.") == "STYLE a huge black cat."
 
 
@@ -404,3 +404,41 @@ def test_narrator_english_picture_and_new_character_look(game_env):
     assert client.post(f"/api/games/{game_id}/turns", json={"action": "patrzę"}).status_code == 200
     assert wait_scene(client, game_id, 2)["status"] == "ready"
     assert "silver braids" in next(c[0] for c in images.calls if "patrzę" in c[0])
+
+
+@pytest.mark.parametrize(("name", "text", "found"), [
+    ("Kuba", "Sadzam Kubę w foteliku", True),
+    ("Isa", "dobiega głos Isy", True),
+    ("Isa", "iskra z kotła", False),
+    ("Borwin", "Wychodzę z Borwinem", True),
+    ("Kuba", "kubek kawy", True),  # znany wyjątek: krótki rdzeń trafia też w podobne słowa
+])
+def test_mentioned_handles_declension_of_short_names(name, text, found):
+    from app.images import mentioned
+    assert mentioned(name, text) is found
+
+
+@pytest.mark.parametrize(("text", "expected"), [
+    ("Interior of narrow stone passages with no vines, wet walls, claw marks",
+     "Interior of narrow stone passages, wet walls, claw marks"),
+    ("Exterior of a tall black tower with a giant clock face without hands, steam venting",
+     "Exterior of a tall black tower with a giant clock face, steam venting"),
+    ("a quiet old woman, not smiling, grey shawl.", "a quiet old woman, grey shawl."),
+    ("The man doesn't move. A cat sleeps.", "The man. A cat sleeps."),
+    ("a no-nonsense nurse in blue scrubs", "a no-nonsense nurse in blue scrubs"),
+    ("A boy hands a jar to a girl. Nobody else is around.", "A boy hands a jar to a girl. Nobody else is around."),
+])
+def test_positive_drops_negations(text, expected):
+    from app.images import positive
+    assert positive(text) == expected
+
+
+def test_image_prompts_have_no_negations():
+    import re
+    from app.config import settings
+    from app.images import portrait_prompt, scene_prompt
+    scene = scene_prompt(settings.image_scene_style, "Interior of a cave with no light, wet walls",
+                         ["a man without a hat, grey coat"], "The man doesn't move. A torch burns.")
+    portrait = portrait_prompt(settings.image_portrait_style, "a huge black cat, never sleeping")
+    for prompt in (settings.image_style, scene, portrait):
+        assert not re.search(r"\b(no|not|without|nothing|never)\b|n't", prompt, re.IGNORECASE), prompt

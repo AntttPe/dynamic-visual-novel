@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     narrator_api_key: str = ""
     narrator_temperature: float = 0.7
     narrator_max_tokens: int = 1200
+    # Gra w przeglądarce: do odpowiedzi dochodzą opisy do obrazów po angielsku, a limit liczy też myślenie modelu
+    play_max_tokens: int = 2500
     narrator_timeout_s: float = 180
     # Budowanie świata to jedna długa odpowiedź (2 do 8 minut), a serwer wysyła ją często w całości na końcu
     world_build_timeout_s: float = 600
@@ -48,20 +50,21 @@ class Settings(BaseSettings):
     image_server_url: str = ""
     image_model: str = "flux2-klein-4b"
     image_timeout_s: float = 300  # zmiana generatora to wczytanie innego modelu
+    # Szablony obrazów bez zaprzeczeń (no, without): model obrazów rysuje każdą nazwaną rzecz.
     image_style: str = (
         "Digital painting, visual novel background, {era} setting, detailed environment, "
-        "cinematic lighting. No people, no text, no watermark. Location:"
+        "cinematic lighting, an empty deserted place, a clean wordless image. Location:"
     )
     image_scene_style: str = (
         "Digital painting of a {era} scene, cinematic lighting. The first reference image shows the place. "
         "The next reference images show the characters in the order listed below: keep their faces, hair and "
-        "clothes. Each character appears only once, in the place from the first image. No text, no speech "
-        "bubbles. The place:"
+        "clothes. Each character appears exactly once, in the place from the first image. A clean wordless "
+        "image. The place:"
     )
     image_portrait_style: str = (
         "Digital painting, full body character reference of a single character standing alone and facing the "
-        "viewer, isolated on a plain light grey background with nothing else around. Clothing fits a world of "
-        "{era}. No text. The character:"
+        "viewer, isolated on a plain empty light grey studio background. Clothing fits a world of "
+        "{era}. A clean wordless image. The character:"
     )
 
     @property
