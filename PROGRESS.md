@@ -392,6 +392,11 @@ Dostęp mają Antek i Krzysiek przez wspólne konto `antpie` (klucze SSH, VPN in
 
 ## Dziennik
 
+### 2026-11-27, Antek: poradnik serwera obrazów od zera
+- `docs/serwer_obrazow.md`: nowe konto na serwerze GPU (Conda, kod z GitLaba uczelni, biblioteki), każda sesja
+  (`tmux ls`, `serve.py`, tunel, `IMAGE_SERVER_URL`), zasady serwera i tabela „Gdy nie ma obrazów”.
+- Kod na GitLabie uczelni jest na gałęzi `zolc/dynamic-visual-novel`. Adresu GitLaba nie wpisujemy do repo na GitHubie.
+
 ### 2026-11-25, Dudsztor: prompty obrazów bez zaprzeczeń, dłuższe tury, odmiana krótkich imion
 - Co zrobione: w promptach do obrazów nie ma „no”, „not”, „without” (model rysował zaprzeczone rzeczy:
   „no vines” dawało pnącza). Szablony stylu opisują, co widać, wytyczne świata i narratora zabraniają zaprzeczeń,

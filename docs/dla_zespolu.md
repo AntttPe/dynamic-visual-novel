@@ -244,6 +244,8 @@ Puste hasło = gra bez logowania, jak wcześniej. Stare `GAME_PASSWORD` działa 
 
 ## Gra z obrazami (serwer GPU instytutu)
 
+Pierwsze uruchomienie na nowym koncie (Conda, kod, biblioteki) krok po kroku: [serwer_obrazow.md](serwer_obrazow.md).
+
 Obrazy powstają w trakcie gry. Gra nie czeka na nie: tekst pojawia się od razu, a obraz po chwili.
 Każda lokacja ma jedno stałe tło (wzorzec miejsca), a każda tura osobny obraz sceny rysowany na jego podstawie.
 Bez serwera obrazów gra działa jak zwykle.

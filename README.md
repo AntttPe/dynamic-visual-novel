@@ -23,6 +23,9 @@ docker compose up -d --build
 
 Pierwsze uruchomienie trwa kilka minut. Potem otwórz **http://localhost:8000**.
 
+Kod jest też na GitLabie uczelni (repo kursu, gałąź `zolc/dynamic-visual-novel`, link w **Code > Clone with HTTPS**).
+Stamtąd pobieramy go na serwer GPU: `git clone -b zolc/dynamic-visual-novel <adres repo> dvn`.
+
 | Chcę… | Co zrobić |
 |---|---|
 | tylko zobaczyć, jak to działa | kliknij **Podgląd bez modelu (demo)**, bez modelu i bez kluczy |
@@ -65,7 +68,7 @@ domyślnie `administrator`) w menu ma **Panel administratora**: zakłada konta g
 model tekstowy i grafikę. Gra gracza przygotowuje się od razu w tle, więc gracz po zalogowaniu nie czeka na budowę świata.
 Gracz widzi tylko swoją grę i jej komiks. Szczegóły w [dokumentacji dla zespołu](docs/dla_zespolu.md#konta-administrator-i-gracze).
 
-Obrazy scen rysuje osobny serwer obrazów albo API obrazów (opis w [dokumentacji dla zespołu](docs/dla_zespolu.md#gra-z-obrazami-serwer-gpu-instytutu)).
+Obrazy scen rysuje osobny serwer obrazów na GPU (uruchomienie od zera: [docs/serwer_obrazow.md](docs/serwer_obrazow.md)) albo API obrazów.
 Bez niego gra działa z samym tekstem.
 
 ## Najważniejsze komendy
